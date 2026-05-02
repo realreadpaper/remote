@@ -17,12 +17,14 @@ describe("loadAgentConfig", () => {
     process.env.REMOTE_SERVER_URL = "ws://relay.example.test/ws/agent";
     process.env.REMOTE_DEVICE_ID = "mac-123";
     process.env.REMOTE_DEVICE_NAME = "Build Mac";
+    process.env.REMOTE_DEV_TOKEN = "secret";
     process.env.SHELL = "/bin/bash";
 
     expect(loadAgentConfig()).toEqual({
       serverUrl: "ws://relay.example.test/ws/agent",
       deviceId: "mac-123",
       deviceName: "Build Mac",
+      devToken: "secret",
       shell: "/bin/bash"
     });
   });
@@ -31,12 +33,14 @@ describe("loadAgentConfig", () => {
     delete process.env.REMOTE_SERVER_URL;
     delete process.env.REMOTE_DEVICE_ID;
     delete process.env.REMOTE_DEVICE_NAME;
+    delete process.env.REMOTE_DEV_TOKEN;
     delete process.env.SHELL;
 
     expect(loadAgentConfig()).toEqual({
       serverUrl: "ws://127.0.0.1:8787/ws/agent",
       deviceId: `${os.hostname()}-dev`,
       deviceName: os.hostname(),
+      devToken: null,
       shell: "/bin/zsh"
     });
   });

@@ -77,10 +77,11 @@ const config: AgentConfig = {
   serverUrl: "ws://localhost:8787/ws/agent",
   deviceId: "device-1",
   deviceName: "Mac",
+  devToken: null,
   shell: "/bin/zsh"
 };
 
-const createHarness = () => {
+const createHarness = (configOverride: AgentConfig = config) => {
   const socket = new FakeSocket();
   const terminals = new Map<string, FakeTerminalSession>();
   const createSocket = vi.fn(() => socket);
@@ -89,7 +90,7 @@ const createHarness = () => {
     terminals.set(sessionId, terminal);
     return terminal as unknown as TerminalSession;
   });
-  const client = new AgentClient(config, {
+  const client = new AgentClient(configOverride, {
     createSocket,
     createTerminal
   });
@@ -104,6 +105,25 @@ describe("AgentClient", () => {
     const { createSocket } = createHarness();
 
     expect(createSocket).toHaveBeenCalledWith("ws://localhost:8787/ws/agent");
+  });
+
+  it("appends configured dev token to the socket factory URL", () => {
+    const { createSocket } = createHarness({
+      ...config,
+      devToken: "secret"
+    });
+
+    expect(createSocket).toHaveBeenCalledWith("ws://localhost:8787/ws/agent?token=secret");
+  });
+
+  it("preserves existing query when appending configured dev token", () => {
+    const { createSocket } = createHarness({
+      ...config,
+      serverUrl: "ws://localhost:8787/ws/agent?mode=dev",
+      devToken: "secret"
+    });
+
+    expect(createSocket).toHaveBeenCalledWith("ws://localhost:8787/ws/agent?mode=dev&token=secret");
   });
 
   it("sends device.register when the socket opens", () => {

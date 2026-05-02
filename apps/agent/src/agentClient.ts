@@ -54,6 +54,16 @@ function createDefaultTerminal(sessionId: string, config: AgentConfig): Terminal
   return new TerminalSession(sessionId, adapter);
 }
 
+export function buildAgentSocketUrl(config: Pick<AgentConfig, "serverUrl" | "devToken">): string {
+  if (!config.devToken) {
+    return config.serverUrl;
+  }
+
+  const url = new URL(config.serverUrl);
+  url.searchParams.set("token", config.devToken);
+  return url.toString();
+}
+
 function parseJson(data: unknown): unknown {
   if (typeof data === "string") {
     return JSON.parse(data);
@@ -98,7 +108,7 @@ export class AgentClient {
   }
 
   connect(): void {
-    const socket = this.createSocket(this.config.serverUrl);
+    const socket = this.createSocket(buildAgentSocketUrl(this.config));
     this.socket = socket;
 
     socket.on("open", () => {
