@@ -290,3 +290,48 @@
 - 实现 Mobile 配对入口，先支持手动输入配对码，再接扫码。
 - 实现 Agent 本地配对确认/拒绝交互。
 - 实现会话短期 token，让未绑定 Mobile 无法打开终端。
+
+## 2026-05-03 Mobile 手动配对入口
+
+**状态：** completed
+
+**提交：**
+- `cc797d1` `docs: plan mobile manual pairing flow`
+- `bf86e56` `feat: add mobile manual pairing flow`
+
+**实现内容：**
+- Mobile runtime config 增加 `apiBaseUrl`、`displayApiBaseUrl`、`mobileClientId`、`mobileName`。
+- `apiBaseUrl` 默认从 WebSocket URL 推导：`ws` -> `http`，`wss` -> `https`。
+- 新增 `PairingClient`，封装 `POST /pairing/requests`。
+- `PairingClient` 支持注入 `fetch`，覆盖成功、server error、无效响应测试。
+- `TerminalScreen` 顶部新增紧凑手动配对面板。
+- 用户输入配对码并点击 `Pair` 后，Mobile 提交 pairing request，成功显示 pending request id，失败显示错误。
+- 现有终端连接、快捷键、命令输入不变。
+
+**涉及文件：**
+- `docs/superpowers/specs/2026-05-03-mobile-manual-pairing-design.md`
+- `docs/superpowers/plans/2026-05-03-mobile-manual-pairing-plan.md`
+- `apps/mobile/src/config/runtimeConfig.ts`
+- `apps/mobile/src/protocol/pairingClient.ts`
+- `apps/mobile/src/components/TerminalScreen.tsx`
+- `apps/mobile/tests/runtimeConfig.test.ts`
+- `apps/mobile/tests/pairingClient.test.ts`
+
+**验证：**
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile test`: pass，29 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm test`: pass，129 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm build`: pass。
+- Pairing smoke：`HOST=127.0.0.1 PORT=8795 node apps/server/dist/index.js`，WebSocket probe 注册 `pairing-smoke-mac` 并创建配对码，HTTP `POST /pairing/requests` 提交 `mobile-smoke`，Agent approve 后 `GET /pairing/bindings` 返回 `mobile-smoke` binding。
+
+**已知风险：**
+- 当前是开发态手动输入配对码，不是扫码。
+- 绑定结果不持久化到 Mobile 本地，App 重启后不会记住 binding。
+- 没有轮询 binding approve/reject 结果；用户需要等待后续设备列表/session token 能力。
+- HTTP pairing request 仍未接正式登录鉴权。
+
+**后续：**
+- 增加 Agent 本地配对码展示和 approve/reject 操作。
+- 增加 Mobile 扫码入口和 secure storage。
+- 实现会话短期 token，让终端连接真正依赖绑定关系。
