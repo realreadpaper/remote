@@ -204,3 +204,45 @@
 - 实现 Agent 持久设备身份，避免安装/重启后设备 ID 改变。
 - 实现 Mobile 扫码/手动输入配对码。
 - 再推进 macOS Agent 安装包和 iOS TestFlight。
+
+## 2026-05-03 Agent 持久设备身份
+
+**状态：** completed
+
+**提交：**
+- `83ed8cb` `docs: plan agent persistent identity`
+- `2fdb9fb` `feat: persist agent device identity`
+
+**实现内容：**
+- 新增 Agent identity 模块，默认路径为 `~/.remote-terminal-agent/identity.json`。
+- Agent 首次启动生成 `deviceId`、Ed25519 `publicKey`、`privateKey`、`createdAt`。
+- Agent 后续启动复用同一身份文件，不再默认依赖 `${hostname}-dev`。
+- `REMOTE_DEVICE_ID` 仍保留开发覆盖能力，现有手动 smoke 和调试命令不受影响。
+- 损坏 JSON、缺失字段、多余字段都会拒绝启动并提示 `Agent identity file is invalid`。
+- 预留 `DeviceIdentityStore` 接口，后续 macOS 安装版可替换为 Keychain store。
+
+**涉及文件：**
+- `docs/superpowers/specs/2026-05-03-agent-persistent-identity-design.md`
+- `docs/superpowers/plans/2026-05-03-agent-persistent-identity-plan.md`
+- `apps/agent/src/identity.ts`
+- `apps/agent/src/config.ts`
+- `apps/agent/tests/identity.test.ts`
+- `apps/agent/tests/config.test.ts`
+
+**验证：**
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent test`: pass，28 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm test`: pass，118 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm build`: pass。
+- 持久身份运行 smoke：`HOST=127.0.0.1 PORT=8794 node apps/server/dist/index.js` + 临时 `HOME` 下不设置 `REMOTE_DEVICE_ID` 启动 Agent，`/devices` 返回 UUID 设备，WebSocket probe 收到 `__IDENTITY__/tmp/remote-agent-home...`。
+
+**已知风险：**
+- 开发期私钥仍保存在本地 JSON 文件中，macOS 安装版需要切到 Keychain 或系统受保护存储。
+- Server 还没有校验 Agent 公钥，当前只保证本地身份稳定。
+- 用户删除 identity 文件后会生成新设备；安装版需要提供明确的重置/迁移流程。
+
+**后续：**
+- 实现 Server 配对状态机，使用 `deviceId` 和 `publicKey` 建立绑定关系。
+- 实现 Agent 配对码请求和本地确认/拒绝。
+- 实现 Mobile 扫码或手动输入配对码。
