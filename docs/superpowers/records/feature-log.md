@@ -446,3 +446,55 @@
 - 增加设备列表，只展示已绑定设备。
 - 增加撤销绑定和 token revoke。
 - 开始 macOS Agent 安装版和菜单栏确认 UI。
+
+## 2026-05-03 Mobile 持久配对与 token 恢复
+
+**状态：** completed
+
+**提交：**
+- `460cadc` `docs: design mobile persisted pairing`
+- `2c84f7b` `docs: plan mobile persisted pairing`
+- `e242970` `feat: persist mobile pairing token`
+
+**实现内容：**
+- Mobile 增加 `expo-secure-store@~14.0.1`，并在 `app.json` 注册 `expo-secure-store` plugin。
+- 新增 `pairingTokenStore`，提供安全存储抽象和默认 SecureStore 适配器。
+- 保存字段包含 `deviceId`、`sessionToken`、`expiresAt`、`pairedAt`。
+- `loadPairingToken()` 会严格解析 JSON，遇到损坏、缺字段或过期 token 会清理存储并返回 `null`。
+- `TerminalScreen` 启动时恢复有效 token，恢复后显示 paired 状态并可直接 Connect。
+- 配对批准后，Mobile 保存 token 到 SecureStore，再把 token 传给 `SessionClient`。
+- SecureStore 采用懒加载，Vitest 单元测试使用 fake storage，不加载原生模块。
+
+**涉及文件：**
+- `docs/superpowers/specs/2026-05-03-mobile-persisted-pairing-design.md`
+- `docs/superpowers/plans/2026-05-03-mobile-persisted-pairing-plan.md`
+- `apps/mobile/app.json`
+- `apps/mobile/package.json`
+- `apps/mobile/src/state/pairingTokenStore.ts`
+- `apps/mobile/src/components/TerminalScreen.tsx`
+- `apps/mobile/tests/pairingTokenStore.test.ts`
+- `pnpm-lock.yaml`
+
+**TDD 记录：**
+- 红灯：`PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile test` 失败，原因是 `pairingTokenStore` 模块不存在。
+- 中间失败：静态导入 `expo-secure-store` 会让 Vitest 解析原生包失败；改为懒加载 SecureStore，测试只走 fake storage。
+- 绿灯：实现后 `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile test` 通过，40 tests passed。
+
+**验证：**
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile test`: pass，40 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm test`: pass，155 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm build`: pass。
+
+**已知风险：**
+- Server token 仍是内存态，Server 重启后 Mobile 本地 token 会失效。
+- 当前只保存一个本地设备 token，不是多设备列表。
+- 没有 refresh、revoke、Forget device UI。
+- 真机如果使用 Expo Go，需要确认对应 SDK 环境支持 `expo-secure-store`；开发客户端需要重新安装原生依赖。
+
+**后续：**
+- Server 持久化 binding/token，避免重启后失效。
+- Mobile 增加多设备列表和 Forget device。
+- 增加 token refresh/revoke。
+- 推进 macOS Agent 安装版和菜单栏确认 UI。
