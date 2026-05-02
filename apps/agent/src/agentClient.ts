@@ -9,6 +9,12 @@ import {
   type ServerMessage
 } from "@remote/protocol";
 import type { AgentConfig } from "./config.js";
+import {
+  displayPairingCode as defaultDisplayPairingCode,
+  promptPairingApproval,
+  type PairingApprovalPrompt,
+  type PairingCodeDisplay
+} from "./pairing.js";
 import { TerminalSession, type PtyAdapter } from "./terminalSession.js";
 
 export interface AgentSocket {
@@ -23,6 +29,8 @@ export interface AgentSocket {
 interface AgentClientDependencies {
   createSocket?: (url: string) => AgentSocket;
   createTerminal?: (sessionId: string, config: AgentConfig) => TerminalSession;
+  displayPairingCode?: PairingCodeDisplay;
+  approvePairingRequest?: PairingApprovalPrompt;
 }
 
 type AgentOutboundMessage = Extract<ServerMessage, { type: "terminal.output" | "terminal.exit" }>;
@@ -98,6 +106,8 @@ export class AgentClient {
   private readonly sessions = new Map<string, TerminalSession>();
   private readonly createSocket: (url: string) => AgentSocket;
   private readonly createTerminal: (sessionId: string, config: AgentConfig) => TerminalSession;
+  private readonly displayPairingCode: PairingCodeDisplay;
+  private readonly approvePairingRequest: PairingApprovalPrompt;
 
   constructor(
     private readonly config: AgentConfig,
@@ -105,6 +115,8 @@ export class AgentClient {
   ) {
     this.createSocket = dependencies.createSocket ?? createDefaultSocket;
     this.createTerminal = dependencies.createTerminal ?? createDefaultTerminal;
+    this.displayPairingCode = dependencies.displayPairingCode ?? defaultDisplayPairingCode;
+    this.approvePairingRequest = dependencies.approvePairingRequest ?? promptPairingApproval;
   }
 
   connect(): void {
@@ -152,7 +164,13 @@ export class AgentClient {
           this.handleTerminalClose(parseClientMessage(payload));
           return;
         case "device.registered":
-          parseServerMessage(payload);
+          this.handleDeviceRegistered(parseServerMessage(payload));
+          return;
+        case "pairing.created":
+          this.handlePairingCreated(parseServerMessage(payload));
+          return;
+        case "pairing.requested":
+          void this.handlePairingRequested(parseServerMessage(payload));
           return;
         case "session.error":
           console.error("Agent session error", parseServerMessage(payload));
@@ -203,6 +221,57 @@ export class AgentClient {
     });
 
     this.sessions.set(message.sessionId, session);
+  }
+
+  private handleDeviceRegistered(message: ServerMessage): void {
+    if (message.type !== "device.registered") {
+      return;
+    }
+
+    this.sendMessage({
+      type: "pairing.create",
+      deviceId: this.config.deviceId
+    });
+  }
+
+  private handlePairingCreated(message: ServerMessage): void {
+    if (message.type !== "pairing.created") {
+      return;
+    }
+
+    this.displayPairingCode(message);
+  }
+
+  private async handlePairingRequested(message: ServerMessage): Promise<void> {
+    if (message.type !== "pairing.requested") {
+      return;
+    }
+
+    try {
+      const decision = await this.approvePairingRequest(message);
+      if (decision.approved) {
+        this.sendMessage({
+          type: "pairing.approved",
+          pairingRequestId: message.pairingRequestId,
+          deviceId: this.config.deviceId
+        });
+        return;
+      }
+
+      this.sendMessage({
+        type: "pairing.rejected",
+        pairingRequestId: message.pairingRequestId,
+        deviceId: this.config.deviceId,
+        reason: normalizeRejectionReason(decision.reason)
+      });
+    } catch (error) {
+      this.sendMessage({
+        type: "pairing.rejected",
+        pairingRequestId: message.pairingRequestId,
+        deviceId: this.config.deviceId,
+        reason: normalizeRejectionReason(error instanceof Error ? error.message : undefined)
+      });
+    }
   }
 
   private handleTerminalInput(message: ClientMessage): void {
@@ -269,4 +338,9 @@ export class AgentClient {
       }
     }
   }
+}
+
+function normalizeRejectionReason(reason: string | undefined): string {
+  const normalized = reason?.trim();
+  return normalized && normalized.length > 0 ? normalized : "Pairing rejected by agent";
 }

@@ -81,7 +81,10 @@ const config: AgentConfig = {
   shell: "/bin/zsh"
 };
 
-const createHarness = (configOverride: AgentConfig = config) => {
+const createHarness = (
+  configOverride: AgentConfig = config,
+  dependencyOverride: Record<string, unknown> = {}
+) => {
   const socket = new FakeSocket();
   const terminals = new Map<string, FakeTerminalSession>();
   const createSocket = vi.fn(() => socket);
@@ -92,7 +95,8 @@ const createHarness = (configOverride: AgentConfig = config) => {
   });
   const client = new AgentClient(configOverride, {
     createSocket,
-    createTerminal
+    createTerminal,
+    ...dependencyOverride
   });
 
   client.connect();
@@ -137,6 +141,83 @@ describe("AgentClient", () => {
       deviceId: "device-1",
       deviceName: "Mac",
       capabilities: ["terminal"]
+    });
+  });
+
+  it("creates a pairing code after device registration succeeds", () => {
+    const { socket } = createHarness();
+
+    socket.emit("message", encodeMessage({ type: "device.registered", deviceId: "device-1" }));
+
+    expect(parseClientMessage(JSON.parse(socket.sent[0] ?? ""))).toEqual({
+      type: "pairing.create",
+      deviceId: "device-1"
+    });
+  });
+
+  it("displays the pairing code when the server creates one", () => {
+    const displayPairingCode = vi.fn();
+    const { socket } = createHarness(config, { displayPairingCode });
+    const message = {
+      type: "pairing.created" as const,
+      deviceId: "device-1",
+      pairingCode: "123456",
+      expiresAt: "2026-05-03T10:00:00.000Z",
+      serverUrl: "http://127.0.0.1:8787",
+      deviceName: "Mac"
+    };
+
+    socket.emit("message", encodeMessage(message));
+
+    expect(displayPairingCode).toHaveBeenCalledWith(message);
+  });
+
+  it("approves a pairing request when local approval accepts it", async () => {
+    const approvePairingRequest = vi.fn(() => ({ approved: true }));
+    const { socket } = createHarness(config, { approvePairingRequest });
+
+    socket.emit(
+      "message",
+      encodeMessage({
+        type: "pairing.requested",
+        pairingRequestId: "request-1",
+        deviceId: "device-1",
+        mobileClientId: "mobile-1",
+        mobileName: "iPhone",
+        requestedAt: "2026-05-03T10:00:00.000Z"
+      })
+    );
+    await Promise.resolve();
+
+    expect(parseClientMessage(JSON.parse(socket.sent[0] ?? ""))).toEqual({
+      type: "pairing.approved",
+      pairingRequestId: "request-1",
+      deviceId: "device-1"
+    });
+  });
+
+  it("rejects a pairing request when local approval rejects it", async () => {
+    const approvePairingRequest = vi.fn(() => ({ approved: false, reason: "denied locally" }));
+    const { socket } = createHarness(config, { approvePairingRequest });
+
+    socket.emit(
+      "message",
+      encodeMessage({
+        type: "pairing.requested",
+        pairingRequestId: "request-1",
+        deviceId: "device-1",
+        mobileClientId: "mobile-1",
+        mobileName: "iPhone",
+        requestedAt: "2026-05-03T10:00:00.000Z"
+      })
+    );
+    await Promise.resolve();
+
+    expect(parseClientMessage(JSON.parse(socket.sent[0] ?? ""))).toEqual({
+      type: "pairing.rejected",
+      pairingRequestId: "request-1",
+      deviceId: "device-1",
+      reason: "denied locally"
     });
   });
 
