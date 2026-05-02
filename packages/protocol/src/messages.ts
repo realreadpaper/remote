@@ -1,0 +1,69 @@
+import { z } from "zod";
+
+export const ClientMessageSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("device.register"),
+    deviceId: z.string().min(1),
+    deviceName: z.string().min(1),
+    capabilities: z.array(z.enum(["terminal", "file", "desktop"]))
+  }),
+  z.object({
+    type: z.literal("session.open"),
+    deviceId: z.string().min(1)
+  }),
+  z.object({
+    type: z.literal("terminal.input"),
+    sessionId: z.string().min(1),
+    data: z.string()
+  }),
+  z.object({
+    type: z.literal("terminal.resize"),
+    sessionId: z.string().min(1),
+    cols: z.number().int().positive(),
+    rows: z.number().int().positive()
+  })
+]);
+
+export const ServerMessageSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("device.registered"),
+    deviceId: z.string().min(1)
+  }),
+  z.object({
+    type: z.literal("session.opened"),
+    sessionId: z.string().min(1),
+    deviceId: z.string().min(1)
+  }),
+  z.object({
+    type: z.literal("session.error"),
+    sessionId: z.string().optional(),
+    code: z.string().min(1),
+    message: z.string().min(1)
+  }),
+  z.object({
+    type: z.literal("terminal.output"),
+    sessionId: z.string().min(1),
+    stream: z.enum(["stdout", "stderr"]),
+    data: z.string()
+  }),
+  z.object({
+    type: z.literal("terminal.exit"),
+    sessionId: z.string().min(1),
+    exitCode: z.number().int().nullable()
+  })
+]);
+
+export type ClientMessage = z.infer<typeof ClientMessageSchema>;
+export type ServerMessage = z.infer<typeof ServerMessageSchema>;
+
+export function parseClientMessage(input: unknown): ClientMessage {
+  return ClientMessageSchema.parse(input);
+}
+
+export function parseServerMessage(input: unknown): ServerMessage {
+  return ServerMessageSchema.parse(input);
+}
+
+export function encodeMessage(message: ClientMessage | ServerMessage): string {
+  return JSON.stringify(message);
+}
