@@ -12,9 +12,14 @@ type SocketEvent = "open" | "message" | "close" | "error";
 
 class FakeSocket implements AgentSocket {
   readonly sent: string[] = [];
+  sendError?: Error;
   private readonly handlers = new Map<SocketEvent, Array<(...args: never[]) => void>>();
 
   send(data: string): void {
+    if (this.sendError) {
+      throw this.sendError;
+    }
+
     this.sent.push(data);
   }
 
@@ -227,6 +232,55 @@ describe("AgentClient", () => {
 
     expect(terminals.get("session-1")?.close).toHaveBeenCalledOnce();
     expect(terminals.get("session-2")?.close).toHaveBeenCalledOnce();
+  });
+
+  it("closes and removes active terminal sessions when the socket errors", () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const { socket, terminals } = createHarness();
+
+    socket.emit(
+      "message",
+      encodeMessage({ type: "session.opened", sessionId: "session-1", deviceId: "device-1" })
+    );
+    socket.emit("error", new Error("connection failed"));
+    socket.emit(
+      "message",
+      encodeMessage({ type: "terminal.input", sessionId: "session-1", data: "ignored" })
+    );
+
+    expect(terminals.get("session-1")?.close).toHaveBeenCalledOnce();
+    expect(terminals.get("session-1")?.writes).toEqual([]);
+    errorSpy.mockRestore();
+  });
+
+  it("does not throw and closes sessions when sending terminal output fails", () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const { socket, terminals } = createHarness();
+
+    socket.emit(
+      "message",
+      encodeMessage({ type: "session.opened", sessionId: "session-1", deviceId: "device-1" })
+    );
+    socket.sendError = new Error("send failed");
+
+    expect(() => terminals.get("session-1")?.emitOutput("ready")).not.toThrow();
+    expect(terminals.get("session-1")?.close).toHaveBeenCalledOnce();
+    errorSpy.mockRestore();
+  });
+
+  it("does not throw and closes sessions when sending terminal exit fails", () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const { socket, terminals } = createHarness();
+
+    socket.emit(
+      "message",
+      encodeMessage({ type: "session.opened", sessionId: "session-1", deviceId: "device-1" })
+    );
+    socket.sendError = new Error("send failed");
+
+    expect(() => terminals.get("session-1")?.emitExit(1)).not.toThrow();
+    expect(terminals.get("session-1")?.close).toHaveBeenCalledOnce();
+    errorSpy.mockRestore();
   });
 
   it("does not throw from the message handler on invalid JSON or invalid schema", () => {

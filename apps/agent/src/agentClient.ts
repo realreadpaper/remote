@@ -120,6 +120,7 @@ export class AgentClient {
 
     socket.on("error", (error) => {
       console.error("Agent socket error", error);
+      this.closeSessions();
     });
   }
 
@@ -217,13 +218,24 @@ export class AgentClient {
       return;
     }
 
-    socket.send(encodeMessage(message));
+    try {
+      socket.send(encodeMessage(message));
+    } catch (error) {
+      console.error("Agent socket send failed", error);
+      this.closeSessions();
+    }
   }
 
   private closeSessions(): void {
-    for (const session of this.sessions.values()) {
-      session.close();
-    }
+    const sessions = Array.from(this.sessions.values());
     this.sessions.clear();
+
+    for (const session of sessions) {
+      try {
+        session.close();
+      } catch (error) {
+        console.error("Failed to close terminal session", error);
+      }
+    }
   }
 }
