@@ -13,7 +13,7 @@ import {
 import { SessionClient } from "../protocol/sessionClient";
 import { createTerminalState } from "../state/terminalStore";
 
-const SESSION_URL = process.env.EXPO_PUBLIC_REMOTE_WS_URL ?? "ws://localhost:3000";
+const SESSION_URL = process.env.EXPO_PUBLIC_REMOTE_WS_URL ?? "ws://127.0.0.1:8787/ws/mobile";
 const DEVICE_ID = process.env.EXPO_PUBLIC_REMOTE_DEVICE_ID ?? "mac-dev";
 
 export function TerminalScreen() {

@@ -2,13 +2,19 @@
 
 ## Local MVP Foundation
 
-This workspace uses `pnpm`. If `pnpm` is not on your `PATH`, enable it with Corepack or prepend the local Corepack shim path when running commands:
+This workspace uses `pnpm` through Corepack. Set it up and install dependencies:
 
 ```bash
-PATH="/tmp/codex-corepack-shims:$PATH" pnpm --version
+corepack enable
+corepack prepare pnpm@9.15.0 --activate
+pnpm install
 ```
 
-Start the development server:
+If `pnpm --version` already reports `9.15.0`, the `corepack prepare` step is optional.
+
+### iOS Simulator and Local Development
+
+Start the development server. By default it listens on `127.0.0.1:8787`:
 
 ```bash
 pnpm dev:server
@@ -26,18 +32,52 @@ Start the mobile app:
 pnpm dev:mobile
 ```
 
+The mobile app defaults to `ws://127.0.0.1:8787/ws/mobile`, so the iOS simulator works with the local server without extra environment variables.
+
 In the mobile app, tap `Connect`, type `pwd`, and tap `发送`.
 
 Expected result: terminal output from the macOS Agent appears in the mobile terminal output panel.
+
+### Physical Device Development
+
+Start the server on all network interfaces:
+
+```bash
+HOST=0.0.0.0 pnpm dev:server
+```
+
+If the Agent runs on the same development machine as the server, keep its server URL local:
+
+```bash
+REMOTE_SERVER_URL=ws://127.0.0.1:8787/ws/agent REMOTE_DEVICE_ID=mac-dev pnpm dev:agent
+```
+
+If the Agent runs on another machine, point it at the server's LAN address instead:
+
+```bash
+REMOTE_SERVER_URL=ws://<dev-machine-lan-ip>:8787/ws/agent REMOTE_DEVICE_ID=mac-dev pnpm dev:agent
+```
+
+Start the mobile app with the development machine's LAN address:
+
+```bash
+EXPO_PUBLIC_REMOTE_WS_URL=ws://<dev-machine-lan-ip>:8787/ws/mobile pnpm dev:mobile
+```
+
+Optional Agent environment variables:
+
+- `REMOTE_SERVER_URL`: Agent relay URL. Defaults to `ws://127.0.0.1:8787/ws/agent`.
+- `REMOTE_DEVICE_NAME`: Display name reported to the relay. Defaults to the machine hostname.
+- `SHELL`: Shell spawned for terminal sessions. Defaults to `/bin/zsh` when unset.
 
 ## Local Verification
 
 Run the workspace checks:
 
 ```bash
-PATH="/tmp/codex-corepack-shims:$PATH" pnpm test
-PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck
-PATH="/tmp/codex-corepack-shims:$PATH" pnpm build
+pnpm test
+pnpm typecheck
+pnpm build
 ```
 
 Verify the local vertical slice:
@@ -45,7 +85,7 @@ Verify the local vertical slice:
 1. Start the server:
 
    ```bash
-   PATH="/tmp/codex-corepack-shims:$PATH" pnpm dev:server
+   pnpm dev:server
    ```
 
    Confirm it listens on `127.0.0.1:8787`.
@@ -65,7 +105,7 @@ Verify the local vertical slice:
 3. Start the macOS Agent:
 
    ```bash
-   PATH="/tmp/codex-corepack-shims:$PATH" REMOTE_DEVICE_ID=mac-dev pnpm dev:agent
+   REMOTE_DEVICE_ID=mac-dev pnpm dev:agent
    ```
 
    Confirm it registers with the server.
@@ -78,12 +118,57 @@ Verify the local vertical slice:
 
    Expected response includes `mac-dev`, capabilities `["terminal"]`, and `online: true`.
 
-5. If practical, verify WebSocket terminal routing with the mobile app or a temporary local client. The vertical slice is working when sending `pwd` through `/ws/mobile` returns terminal output from the Agent through the relay.
+5. Optionally verify WebSocket terminal routing with a smoke probe:
+
+   ```bash
+   pnpm --filter @remote/server exec node --input-type=module <<'EOF'
+   import WebSocket from "ws";
+
+   const ws = new WebSocket("ws://127.0.0.1:8787/ws/mobile");
+   const timeout = setTimeout(() => {
+     console.error("Timed out waiting for terminal output.");
+     ws.close();
+     process.exit(1);
+   }, 5000);
+
+   ws.on("open", () => {
+     ws.send(JSON.stringify({ type: "session.open", deviceId: "mac-dev" }));
+   });
+
+   ws.on("message", (data) => {
+     const message = JSON.parse(data.toString());
+     console.log(message);
+
+     if (message.type === "session.opened") {
+       ws.send(JSON.stringify({ type: "terminal.input", sessionId: message.sessionId, data: "pwd\n" }));
+       return;
+     }
+
+     if (message.type === "terminal.output") {
+       clearTimeout(timeout);
+       ws.close();
+     }
+   });
+
+   ws.on("error", (error) => {
+     clearTimeout(timeout);
+     console.error(error);
+     process.exit(1);
+   });
+   EOF
+   ```
 
 6. Verify the Expo command does not fail immediately:
 
    ```bash
-   PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile exec expo --help
+   pnpm --filter @remote/mobile exec expo --help
    ```
 
 Stop the development server and Agent processes when verification is complete.
+
+### Troubleshooting Connect Failures
+
+- Confirm the server is running and listening on the right host. Physical devices need `HOST=0.0.0.0 pnpm dev:server`.
+- Confirm the mobile app uses the matching URL: simulator default `ws://127.0.0.1:8787/ws/mobile`, physical device `EXPO_PUBLIC_REMOTE_WS_URL=ws://<dev-machine-lan-ip>:8787/ws/mobile`.
+- Check `curl http://127.0.0.1:8787/devices` and confirm the Agent is listed with `online: true`.
+- Confirm the mobile app device ID matches the Agent ID. The default is `mac-dev` when you start the Agent with `REMOTE_DEVICE_ID=mac-dev`.
