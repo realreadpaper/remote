@@ -3,9 +3,9 @@
   "private": true,
   "packageManager": "pnpm@9.15.0",
   "scripts": {
-    "build": "pnpm -r build",
-    "test": "pnpm -r test",
-    "typecheck": "pnpm -r typecheck",
+    "build": "pnpm -r --if-present build",
+    "test": "pnpm -r --if-present test",
+    "typecheck": "pnpm -r --if-present typecheck",
     "dev:server": "pnpm --filter @remote/server dev",
     "dev:agent": "pnpm --filter @remote/agent dev",
     "dev:mobile": "pnpm --filter @remote/mobile start"
