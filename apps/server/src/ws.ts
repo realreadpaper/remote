@@ -82,6 +82,18 @@ function parsePairingRequestBody(body: unknown): { pairingCode: string; mobileCl
   };
 }
 
+function parseRevokeSessionTokenBody(body: unknown): { deviceId: string; sessionToken: string } {
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    throw new Error("Request body must be an object");
+  }
+
+  const input = body as Record<string, unknown>;
+  return {
+    deviceId: readRequiredString(input, "deviceId"),
+    sessionToken: readRequiredString(input, "sessionToken")
+  };
+}
+
 function readPairingRequestIdParam(params: unknown): string {
   if (!params || typeof params !== "object" || Array.isArray(params)) {
     throw new Error("pairingRequestId is required");
@@ -130,6 +142,13 @@ export function registerWsRoutes(app: FastifyInstance, config: ServerConfig): vo
   app.get("/health", async () => ({ ok: true }));
   app.get("/devices", async () => ({ devices: registry.list() }));
   app.get("/pairing/bindings", async () => ({ bindings: pairing.listBindings() }));
+  app.post("/session-tokens/revoke", async (request, reply) => {
+    try {
+      return sessionTokens.revokeSessionToken(parseRevokeSessionTokenBody(request.body));
+    } catch (error) {
+      return reply.code(400).send({ error: messageText(error) });
+    }
+  });
   app.get("/pairing/requests/:pairingRequestId", async (request, reply) => {
     try {
       const pairingRequestId = readPairingRequestIdParam(request.params);

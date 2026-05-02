@@ -49,6 +49,15 @@ export interface WaitForApprovalOptions {
   timeoutMs?: number;
 }
 
+export interface RevokeSessionTokenInput {
+  deviceId: string;
+  sessionToken: string;
+}
+
+export interface RevokeSessionTokenResult {
+  revoked: boolean;
+}
+
 export class PairingClient {
   private readonly apiBaseUrl: string;
   private readonly fetchImpl: typeof fetch;
@@ -109,6 +118,21 @@ export class PairingClient {
     }
 
     throw new Error("Pairing approval timed out.");
+  }
+
+  async revokeSessionToken(input: RevokeSessionTokenInput): Promise<RevokeSessionTokenResult> {
+    const response = await this.fetchImpl(`${this.apiBaseUrl}/session-tokens/revoke`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input)
+    });
+    const body = await response.json();
+
+    if (!response.ok) {
+      throw new Error(readErrorMessage(body, `Session token revoke failed with status ${response.status}.`));
+    }
+
+    return parseRevokeSessionTokenResult(body);
   }
 }
 
@@ -233,4 +257,17 @@ function readErrorMessage(input: unknown, fallback: string): string {
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function parseRevokeSessionTokenResult(input: unknown): RevokeSessionTokenResult {
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    throw new Error("Invalid revoke response.");
+  }
+
+  const revoked = (input as Record<string, unknown>).revoked;
+  if (typeof revoked !== "boolean") {
+    throw new Error("Invalid revoke response.");
+  }
+
+  return { revoked };
 }

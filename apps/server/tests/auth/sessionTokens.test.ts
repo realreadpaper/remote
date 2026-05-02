@@ -113,6 +113,38 @@ describe("MemorySessionTokenStore", () => {
     ).toEqual({ ok: false, reason: "Session token is not valid for device mac-2" });
   });
 
+  it("revokes a token so it can no longer be verified", () => {
+    const store = new MemorySessionTokenStore({
+      generateToken: () => "token-1"
+    });
+    store.issueSessionToken({
+      bindingId: "binding-1",
+      deviceId: "mac-1",
+      mobileClientId: "mobile-1"
+    });
+
+    expect(store.revokeSessionToken({ sessionToken: "token-1", deviceId: "mac-1" })).toEqual({ revoked: true });
+    expect(store.verifySessionToken({ sessionToken: "token-1", deviceId: "mac-1" })).toEqual({
+      ok: false,
+      reason: "Invalid session token"
+    });
+  });
+
+  it("rejects revoke when the token belongs to another device", () => {
+    const store = new MemorySessionTokenStore({
+      generateToken: () => "token-1"
+    });
+    store.issueSessionToken({
+      bindingId: "binding-1",
+      deviceId: "mac-1",
+      mobileClientId: "mobile-1"
+    });
+
+    expect(() => store.revokeSessionToken({ sessionToken: "token-1", deviceId: "mac-2" })).toThrow(
+      "Session token is not valid for device mac-2"
+    );
+  });
+
   it("persists session tokens across store instances", () => {
     const filePath = tempFile();
     const first = new JsonFileSessionTokenStore(filePath, {
@@ -168,5 +200,27 @@ describe("MemorySessionTokenStore", () => {
     writeFileSync(filePath, "{", "utf8");
 
     expect(() => new JsonFileSessionTokenStore(filePath)).toThrow("Session token store file is invalid");
+  });
+
+  it("persists token revocation across JSON store instances", () => {
+    const filePath = tempFile();
+    const first = new JsonFileSessionTokenStore(filePath, {
+      now: () => new Date("2026-05-03T00:00:00.000Z"),
+      generateToken: () => "token-1",
+      tokenTtlMs: 60_000
+    });
+    first.issueSessionToken({
+      bindingId: "binding-1",
+      deviceId: "mac-1",
+      mobileClientId: "mobile-1"
+    });
+    first.revokeSessionToken({ sessionToken: "token-1", deviceId: "mac-1" });
+
+    const second = new JsonFileSessionTokenStore(filePath);
+
+    expect(second.verifySessionToken({ sessionToken: "token-1", deviceId: "mac-1" })).toEqual({
+      ok: false,
+      reason: "Invalid session token"
+    });
   });
 });

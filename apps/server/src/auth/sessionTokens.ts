@@ -33,10 +33,16 @@ export interface FindTokenForBindingInput {
   now?: Date;
 }
 
+export interface RevokeSessionTokenInput {
+  sessionToken: string;
+  deviceId: string;
+}
+
 export interface SessionTokenStore {
   issueSessionToken(input: IssueSessionTokenInput): SessionTokenRecord;
   verifySessionToken(input: VerifySessionTokenInput): SessionTokenVerificationResult;
   findTokenForBinding(input: FindTokenForBindingInput): SessionTokenRecord | undefined;
+  revokeSessionToken(input: RevokeSessionTokenInput): { revoked: boolean };
 }
 
 export interface MemorySessionTokenStoreOptions {
@@ -106,6 +112,20 @@ export class MemorySessionTokenStore implements SessionTokenStore {
     return candidates[0] ? cloneRecord(candidates[0]) : undefined;
   }
 
+  revokeSessionToken(input: RevokeSessionTokenInput): { revoked: boolean } {
+    const record = this.tokens.get(input.sessionToken);
+    if (!record) {
+      return { revoked: false };
+    }
+
+    if (record.deviceId !== input.deviceId) {
+      throw new Error(`Session token is not valid for device ${input.deviceId}`);
+    }
+
+    this.tokens.delete(input.sessionToken);
+    return { revoked: true };
+  }
+
   snapshot(): SessionTokenRecord[] {
     return [...this.tokens.values()].map((record) => cloneRecord(record));
   }
@@ -133,6 +153,15 @@ export class JsonFileSessionTokenStore implements SessionTokenStore {
 
   findTokenForBinding(input: FindTokenForBindingInput): SessionTokenRecord | undefined {
     return this.memory.findTokenForBinding(input);
+  }
+
+  revokeSessionToken(input: RevokeSessionTokenInput): { revoked: boolean } {
+    const result = this.memory.revokeSessionToken(input);
+    if (result.revoked) {
+      this.persist();
+    }
+
+    return result;
   }
 
   private persist(): void {

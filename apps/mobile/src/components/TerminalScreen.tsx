@@ -127,6 +127,22 @@ export function TerminalScreen() {
   }, [pairingTokenStorage]);
 
   const handleForgetPairing = async () => {
+    const tokenToRevoke = sessionToken;
+    const deviceToRevoke = pairedDeviceId;
+
+    try {
+      if (tokenToRevoke && deviceToRevoke) {
+        const client = new PairingClient({ apiBaseUrl: runtimeConfig.apiBaseUrl });
+        await client.revokeSessionToken({
+          deviceId: deviceToRevoke,
+          sessionToken: tokenToRevoke
+        });
+      }
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "Session token revoke failed.";
+      appendLocalLine(`Session token revoke failed: ${reason}`);
+    }
+
     try {
       await clearPairingToken(pairingTokenStorage);
       closeCurrentClient();

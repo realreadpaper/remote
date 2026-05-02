@@ -608,6 +608,36 @@ describe("server websocket API", () => {
     mobile.terminate();
   });
 
+  it("revokes a session token so it cannot open another session", async () => {
+    const agent = await registerAgent(app);
+    const { sessionToken } = await approvePairingRequest(app, agent);
+
+    const revokeResponse = await app.inject({
+      method: "POST",
+      url: "/session-tokens/revoke",
+      payload: {
+        deviceId: "mac-1",
+        sessionToken
+      }
+    });
+    expect(revokeResponse.statusCode).toBe(200);
+    expect(revokeResponse.json()).toEqual({ revoked: true });
+
+    const mobile = await app.injectWS("/ws/mobile");
+    const errorMessage = nextJson(mobile);
+    mobile.send(JSON.stringify({ type: "session.open", deviceId: "mac-1", sessionToken }));
+
+    expect(await errorMessage).toEqual({
+      type: "session.error",
+      code: "SESSION_ERROR",
+      message: "Invalid session token"
+    });
+    await noJson(agent);
+
+    agent.terminate();
+    mobile.terminate();
+  });
+
   it("returns session.error when mobile opens another device with a valid token", async () => {
     const firstAgent = await registerAgent(app, "mac-1");
     const secondAgent = await registerAgent(app, "mac-2");

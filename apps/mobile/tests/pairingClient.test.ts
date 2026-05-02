@@ -186,6 +186,30 @@ describe("PairingClient", () => {
     ).rejects.toThrow("Pairing rejected: not now");
   });
 
+  it("revokes a session token", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ revoked: true }));
+    const client = new PairingClient({
+      apiBaseUrl: "http://127.0.0.1:8787",
+      fetchImpl: fetchMock
+    });
+
+    await expect(
+      client.revokeSessionToken({
+        deviceId: "mac-1",
+        sessionToken: "session-token-1"
+      })
+    ).resolves.toEqual({ revoked: true });
+
+    expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:8787/session-tokens/revoke", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        deviceId: "mac-1",
+        sessionToken: "session-token-1"
+      })
+    });
+  });
+
   it("uses the server error message when pairing fails", async () => {
     const client = new PairingClient({
       apiBaseUrl: "http://127.0.0.1:8787",
