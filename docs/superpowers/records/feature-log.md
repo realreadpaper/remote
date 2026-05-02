@@ -381,3 +381,68 @@
 - 增加 Agent 端二维码展示，Mobile 支持扫码。
 - 实现 macOS Agent 桌面壳和本地确认 UI。
 - 实现绑定持久化与短期 session token，让终端连接真正依赖配对绑定。
+
+## 2026-05-03 Session Token 绑定鉴权
+
+**状态：** completed
+
+**提交：**
+- `e907bd7` `docs: design session token binding enforcement`
+- `a5202a0` `docs: plan session token binding enforcement`
+- `364998e` `feat: enforce session token binding on server`
+- `3f919e9` `feat: carry session token from mobile pairing`
+
+**实现内容：**
+- Server 新增内存 `MemorySessionTokenStore`，支持发放、校验、过期判断和设备匹配判断。
+- Agent 发送 `pairing.approved` 后，Server 创建 binding 并发放短期 `sessionToken`。
+- Server 新增 `GET /pairing/requests/:pairingRequestId`，返回 pending、rejected 或 approved 状态。
+- approved 状态返回 `auth.sessionToken`，Mobile 可用它打开终端会话。
+- `/ws/mobile` 的 `session.open` 开始强制校验 `sessionToken`。
+- 未携带 token、错误 token、过期 token、设备不匹配 token 都会返回 `session.error`。
+- Mobile `PairingClient` 支持查询配对状态和等待批准。
+- Mobile `SessionClient` 支持在 `session.open` 中携带 token。
+- `TerminalScreen` 在提交配对后等待批准，拿到 token 后存入内存状态，并在 Connect 时传给 `SessionClient`。
+
+**涉及文件：**
+- `docs/superpowers/specs/2026-05-03-session-token-binding-enforcement-design.md`
+- `docs/superpowers/plans/2026-05-03-session-token-binding-enforcement-plan.md`
+- `apps/server/src/auth/sessionTokens.ts`
+- `apps/server/src/pairing/pairingService.ts`
+- `apps/server/src/ws.ts`
+- `apps/server/tests/auth/sessionTokens.test.ts`
+- `apps/server/tests/ws.test.ts`
+- `apps/mobile/src/protocol/pairingClient.ts`
+- `apps/mobile/src/protocol/sessionClient.ts`
+- `apps/mobile/src/components/TerminalScreen.tsx`
+- `apps/mobile/tests/pairingClient.test.ts`
+- `apps/mobile/tests/sessionClient.test.ts`
+
+**TDD 记录：**
+- Server 红灯 1：`PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test` 失败，原因是 `sessionTokens.ts` 不存在。
+- Server 绿灯 1：实现 token store 后 Server 测试通过，60 tests passed。
+- Server 红灯 2：新增状态接口和 `session.open` 鉴权测试后失败，状态接口 404，且无 token 仍能打开 session。
+- Server 绿灯 2：实现状态接口和 token 校验后 Server 测试通过，66 tests passed。
+- Mobile 红灯：`PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile test` 失败，原因是缺少 `getPairingRequest()`、`waitForApproval()`，且 `session.open` 未携带 token。
+- Mobile 绿灯：实现后 Mobile 测试通过，35 tests passed。
+
+**验证：**
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test`: pass，66 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile test`: pass，35 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm test`: pass，150 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm build`: pass。
+
+**已知风险：**
+- token 和 binding 仍在 Server 内存中，Server 重启会失效。
+- Mobile token 只保存在组件内存中，App 重启需要重新配对。
+- token 没有 refresh 和 revoke 机制。
+- 当前没有账号系统和设备列表，配对仍依赖配对码和 Agent 本地批准。
+- `auth.sessionToken.sessionId` 在配对阶段固定为 `pending`，真实终端 session 仍以 `session.opened.sessionId` 为准。
+
+**后续：**
+- 将 binding/token 持久化到数据库或云中转存储。
+- Mobile 使用 SecureStore 保存短期 token。
+- 增加设备列表，只展示已绑定设备。
+- 增加撤销绑定和 token revoke。
+- 开始 macOS Agent 安装版和菜单栏确认 UI。
