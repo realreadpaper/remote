@@ -159,6 +159,8 @@ MVP 的第一成功目标不是完整桌面远控，而是：
 - server 重启后长期设备绑定不丢失。
 - 断线后 Agent 和 Mobile 可以自动重连。
 
+外网接入和家庭网络地址转换的详细设计见 `docs/superpowers/specs/2026-05-02-external-network-access-design.md`。产品默认不要求用户把家里地址暴露成公网地址，而是让 macOS Agent 和 Mobile App 都主动连接云端；家庭公网 IP、DDNS、端口映射只作为高级自托管模式。
+
 ## 5. 系统架构
 
 ```text
