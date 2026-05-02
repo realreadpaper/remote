@@ -140,7 +140,7 @@ async function openMobileSession(
 async function createPairingRequest(
   app: FastifyInstance,
   agent: WebSocket,
-  input: { deviceId?: string; mobileClientId?: string; mobileName?: string } = {}
+  input: { deviceId?: string; mobileClientId?: string; mobileName?: string; devToken?: string } = {}
 ): Promise<{ pairingRequestId: string; deviceId: string }> {
   const deviceId = input.deviceId ?? "mac-1";
   const pairingCreated = nextJson(agent);
@@ -151,6 +151,7 @@ async function createPairingRequest(
   const response = await app.inject({
     method: "POST",
     url: "/pairing/requests",
+    headers: input.devToken ? { authorization: `Bearer ${input.devToken}` } : undefined,
     payload: {
       pairingCode: created.pairingCode,
       mobileClientId: input.mobileClientId ?? "mobile-1",
@@ -169,7 +170,7 @@ async function createPairingRequest(
 async function approvePairingRequest(
   app: FastifyInstance,
   agent: WebSocket,
-  input: { deviceId?: string; mobileClientId?: string; mobileName?: string } = {}
+  input: { deviceId?: string; mobileClientId?: string; mobileName?: string; devToken?: string } = {}
 ): Promise<{ pairingRequestId: string; deviceId: string; sessionToken: string }> {
   const request = await createPairingRequest(app, agent, input);
   agent.send(
@@ -183,7 +184,8 @@ async function approvePairingRequest(
 
   const statusResponse = await app.inject({
     method: "GET",
-    url: `/pairing/requests/${request.pairingRequestId}`
+    url: `/pairing/requests/${request.pairingRequestId}`,
+    headers: input.devToken ? { authorization: `Bearer ${input.devToken}` } : undefined
   });
   expect(statusResponse.statusCode).toBe(200);
   const status = statusResponse.json() as { auth: { sessionToken: string } };
@@ -268,7 +270,7 @@ describe("server websocket API", () => {
       type: "device.registered",
       deviceId: "mac-1"
     });
-    const { sessionToken } = await approvePairingRequest(app, agent);
+    const { sessionToken } = await approvePairingRequest(app, agent, { devToken: "secret" });
 
     const mobile = await app.injectWS("/ws/mobile?token=secret");
     const agentOpened = nextJson(agent);
@@ -286,6 +288,92 @@ describe("server websocket API", () => {
 
     agent.terminate();
     mobile.terminate();
+  });
+
+  it("rejects HTTP pairing and revoke routes without token when dev token is required", async () => {
+    await app.close();
+    app = await createServer({ logger: false }, tokenServerConfig);
+    await app.ready();
+
+    const pairingResponse = await app.inject({
+      method: "POST",
+      url: "/pairing/requests",
+      payload: {
+        pairingCode: "123456",
+        mobileClientId: "mobile-1",
+        mobileName: "iPhone"
+      }
+    });
+    const statusResponse = await app.inject({ method: "GET", url: "/pairing/requests/request-1" });
+    const revokeResponse = await app.inject({
+      method: "POST",
+      url: "/session-tokens/revoke",
+      payload: {
+        deviceId: "mac-1",
+        sessionToken: "token-1"
+      }
+    });
+
+    expect(pairingResponse.statusCode).toBe(401);
+    expect(statusResponse.statusCode).toBe(401);
+    expect(revokeResponse.statusCode).toBe(401);
+  });
+
+  it("allows HTTP pairing and revoke routes with a correct dev token", async () => {
+    await app.close();
+    app = await createServer({ logger: false }, tokenServerConfig);
+    await app.ready();
+    const agent = await app.injectWS("/ws/agent?token=secret");
+    agent.send(
+      JSON.stringify({
+        type: "device.register",
+        deviceId: "mac-1",
+        deviceName: "MacBook Pro",
+        capabilities: ["terminal"]
+      })
+    );
+    await nextJson(agent);
+    const pairingCreated = nextJson(agent);
+    agent.send(JSON.stringify({ type: "pairing.create", deviceId: "mac-1" }));
+    const created = (await pairingCreated) as { pairingCode: string };
+    const pairingRequested = nextJson(agent);
+
+    const pairingResponse = await app.inject({
+      method: "POST",
+      url: "/pairing/requests",
+      headers: { authorization: "Bearer secret" },
+      payload: {
+        pairingCode: created.pairingCode,
+        mobileClientId: "mobile-1",
+        mobileName: "iPhone"
+      }
+    });
+
+    expect(pairingResponse.statusCode).toBe(202);
+    const requested = (await pairingRequested) as { pairingRequestId: string };
+    agent.send(JSON.stringify({ type: "pairing.approved", pairingRequestId: requested.pairingRequestId, deviceId: "mac-1" }));
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    const statusResponse = await app.inject({
+      method: "GET",
+      url: `/pairing/requests/${requested.pairingRequestId}`,
+      headers: { authorization: "Bearer secret" }
+    });
+    expect(statusResponse.statusCode).toBe(200);
+    const sessionToken = (statusResponse.json() as { auth: { sessionToken: string } }).auth.sessionToken;
+
+    const revokeResponse = await app.inject({
+      method: "POST",
+      url: "/session-tokens/revoke?token=secret",
+      payload: {
+        deviceId: "mac-1",
+        sessionToken
+      }
+    });
+    expect(revokeResponse.statusCode).toBe(200);
+    expect(revokeResponse.json()).toEqual({ revoked: true });
+
+    agent.terminate();
   });
 
   it("creates a pairing code when a registered agent requests one", async () => {

@@ -2,6 +2,7 @@ import type { ServerMessage } from "@remote/protocol";
 
 export interface PairingClientOptions {
   apiBaseUrl: string;
+  devToken?: string | null;
   fetchImpl?: typeof fetch;
 }
 
@@ -60,17 +61,19 @@ export interface RevokeSessionTokenResult {
 
 export class PairingClient {
   private readonly apiBaseUrl: string;
+  private readonly devToken: string | null;
   private readonly fetchImpl: typeof fetch;
 
   constructor(options: PairingClientOptions) {
     this.apiBaseUrl = options.apiBaseUrl.replace(/\/$/, "");
+    this.devToken = options.devToken ?? null;
     this.fetchImpl = options.fetchImpl ?? fetch;
   }
 
   async requestPairing(input: PairingRequestInput): Promise<PairingRequestResult> {
     const response = await this.fetchImpl(`${this.apiBaseUrl}/pairing/requests`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: this.buildJsonHeaders(),
       body: JSON.stringify(input)
     });
     const body = await response.json();
@@ -83,9 +86,10 @@ export class PairingClient {
   }
 
   async getPairingRequest(pairingRequestId: string): Promise<PairingRequestStatusResult> {
-    const response = await this.fetchImpl(
-      `${this.apiBaseUrl}/pairing/requests/${encodeURIComponent(pairingRequestId)}`
-    );
+    const url = `${this.apiBaseUrl}/pairing/requests/${encodeURIComponent(pairingRequestId)}`;
+    const response = this.devToken
+      ? await this.fetchImpl(url, { headers: this.buildHeaders() })
+      : await this.fetchImpl(url);
     const body = await response.json();
 
     if (!response.ok) {
@@ -123,7 +127,7 @@ export class PairingClient {
   async revokeSessionToken(input: RevokeSessionTokenInput): Promise<RevokeSessionTokenResult> {
     const response = await this.fetchImpl(`${this.apiBaseUrl}/session-tokens/revoke`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: this.buildJsonHeaders(),
       body: JSON.stringify(input)
     });
     const body = await response.json();
@@ -133,6 +137,17 @@ export class PairingClient {
     }
 
     return parseRevokeSessionTokenResult(body);
+  }
+
+  private buildJsonHeaders(): Record<string, string> {
+    return {
+      "Content-Type": "application/json",
+      ...this.buildHeaders()
+    };
+  }
+
+  private buildHeaders(): Record<string, string> {
+    return this.devToken ? { Authorization: `Bearer ${this.devToken}` } : {};
   }
 }
 

@@ -46,6 +46,37 @@ describe("PairingClient", () => {
     });
   });
 
+  it("adds authorization when posting a pairing request with a dev token", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse({
+        pairingRequestId: "request-1",
+        deviceId: "device-1",
+        status: "pending"
+      })
+    );
+    const client = new PairingClient({
+      apiBaseUrl: "http://127.0.0.1:8787",
+      devToken: "secret",
+      fetchImpl: fetchMock
+    });
+
+    await client.requestPairing({
+      pairingCode: "123456",
+      mobileClientId: "mobile-1",
+      mobileName: "Alice iPhone"
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:8787/pairing/requests", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer secret" },
+      body: JSON.stringify({
+        pairingCode: "123456",
+        mobileClientId: "mobile-1",
+        mobileName: "Alice iPhone"
+      })
+    });
+  });
+
   it("gets pending pairing request status", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       jsonResponse({
@@ -66,6 +97,27 @@ describe("PairingClient", () => {
     });
 
     expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:8787/pairing/requests/request-1");
+  });
+
+  it("adds authorization when getting pairing request status with a dev token", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse({
+        pairingRequestId: "request-1",
+        deviceId: "device-1",
+        status: "pending"
+      })
+    );
+    const client = new PairingClient({
+      apiBaseUrl: "http://127.0.0.1:8787",
+      devToken: "secret",
+      fetchImpl: fetchMock
+    });
+
+    await client.getPairingRequest("request-1");
+
+    expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:8787/pairing/requests/request-1", {
+      headers: { Authorization: "Bearer secret" }
+    });
   });
 
   it("gets approved pairing request status with an auth session token", async () => {
@@ -203,6 +255,29 @@ describe("PairingClient", () => {
     expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:8787/session-tokens/revoke", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        deviceId: "mac-1",
+        sessionToken: "session-token-1"
+      })
+    });
+  });
+
+  it("adds authorization when revoking a session token with a dev token", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ revoked: true }));
+    const client = new PairingClient({
+      apiBaseUrl: "http://127.0.0.1:8787",
+      devToken: "secret",
+      fetchImpl: fetchMock
+    });
+
+    await client.revokeSessionToken({
+      deviceId: "mac-1",
+      sessionToken: "session-token-1"
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:8787/session-tokens/revoke", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer secret" },
       body: JSON.stringify({
         deviceId: "mac-1",
         sessionToken: "session-token-1"

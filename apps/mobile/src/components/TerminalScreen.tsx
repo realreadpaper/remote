@@ -63,7 +63,10 @@ export function TerminalScreen() {
     setSessionToken(null);
     setPairedDeviceId(null);
     try {
-      const client = new PairingClient({ apiBaseUrl: runtimeConfig.apiBaseUrl });
+      const client = new PairingClient({
+        apiBaseUrl: runtimeConfig.apiBaseUrl,
+        devToken: runtimeConfig.devToken
+      });
       const result = await client.requestPairing({
         pairingCode: normalizedCode,
         mobileClientId: runtimeConfig.mobileClientId,
@@ -132,7 +135,10 @@ export function TerminalScreen() {
 
     try {
       if (tokenToRevoke && deviceToRevoke) {
-        const client = new PairingClient({ apiBaseUrl: runtimeConfig.apiBaseUrl });
+        const client = new PairingClient({
+          apiBaseUrl: runtimeConfig.apiBaseUrl,
+          devToken: runtimeConfig.devToken
+        });
         await client.revokeSessionToken({
           deviceId: deviceToRevoke,
           sessionToken: tokenToRevoke

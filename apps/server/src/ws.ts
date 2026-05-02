@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import type { FastifyReply, FastifyRequest } from "fastify";
 import { WebSocket, type RawData } from "ws";
 import {
   encodeMessage,
@@ -115,6 +116,15 @@ function isAuthorizedWebSocket(
   return false;
 }
 
+function isAuthorizedHttpRequest(request: FastifyRequest, reply: FastifyReply, config: ServerConfig): boolean {
+  if (validateDevToken(config, getProvidedDevToken({ url: request.url, headers: request.headers }))) {
+    return true;
+  }
+
+  reply.code(401).send({ error: "Unauthorized" });
+  return false;
+}
+
 function isMobileRoutableMessage(message: ClientMessage): message is MobileRoutableMessage {
   return message.type === "terminal.input" || message.type === "terminal.resize";
 }
@@ -141,8 +151,18 @@ export function registerWsRoutes(app: FastifyInstance, config: ServerConfig): vo
 
   app.get("/health", async () => ({ ok: true }));
   app.get("/devices", async () => ({ devices: registry.list() }));
-  app.get("/pairing/bindings", async () => ({ bindings: pairing.listBindings() }));
+  app.get("/pairing/bindings", async (request, reply) => {
+    if (!isAuthorizedHttpRequest(request, reply, config)) {
+      return reply;
+    }
+
+    return { bindings: pairing.listBindings() };
+  });
   app.post("/session-tokens/revoke", async (request, reply) => {
+    if (!isAuthorizedHttpRequest(request, reply, config)) {
+      return reply;
+    }
+
     try {
       return sessionTokens.revokeSessionToken(parseRevokeSessionTokenBody(request.body));
     } catch (error) {
@@ -150,6 +170,10 @@ export function registerWsRoutes(app: FastifyInstance, config: ServerConfig): vo
     }
   });
   app.get("/pairing/requests/:pairingRequestId", async (request, reply) => {
+    if (!isAuthorizedHttpRequest(request, reply, config)) {
+      return reply;
+    }
+
     try {
       const pairingRequestId = readPairingRequestIdParam(request.params);
       const pairingRequest = pairing.getPairingRequest(pairingRequestId);
@@ -199,6 +223,10 @@ export function registerWsRoutes(app: FastifyInstance, config: ServerConfig): vo
     }
   });
   app.post("/pairing/requests", async (request, reply) => {
+    if (!isAuthorizedHttpRequest(request, reply, config)) {
+      return reply;
+    }
+
     try {
       const pairingRequest = pairing.requestPairing(parsePairingRequestBody(request.body));
       const agentSend = agentOwners.get(pairingRequest.deviceId);
