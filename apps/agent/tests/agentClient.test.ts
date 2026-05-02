@@ -178,6 +178,37 @@ describe("AgentClient", () => {
     expect(terminals.get("session-1")?.resizes).toEqual([{ cols: 120, rows: 40 }]);
   });
 
+  it("closes and removes a session when receiving terminal.close", () => {
+    const { socket, terminals } = createHarness();
+
+    socket.emit(
+      "message",
+      encodeMessage({ type: "session.opened", sessionId: "session-1", deviceId: "device-1" })
+    );
+    socket.emit("message", encodeMessage({ type: "terminal.close", sessionId: "session-1" }));
+
+    expect(terminals.get("session-1")?.close).toHaveBeenCalledOnce();
+    socket.emit(
+      "message",
+      encodeMessage({ type: "terminal.input", sessionId: "session-1", data: "ignored" })
+    );
+    expect(terminals.get("session-1")?.writes).toEqual([]);
+  });
+
+  it("does not send terminal.exit when terminal.close closes the session", () => {
+    const { socket, terminals } = createHarness();
+
+    socket.emit(
+      "message",
+      encodeMessage({ type: "session.opened", sessionId: "session-1", deviceId: "device-1" })
+    );
+    const terminal = terminals.get("session-1");
+    socket.emit("message", encodeMessage({ type: "terminal.close", sessionId: "session-1" }));
+    terminal?.emitExit(0);
+
+    expect(socket.sent).toEqual([]);
+  });
+
   it("sends terminal.output when a terminal emits output", () => {
     const { socket, terminals } = createHarness();
 

@@ -4,7 +4,7 @@ import type { ClientMessage, ServerMessage } from "@remote/protocol";
 type AgentSend = (
   message:
     | Extract<ServerMessage, { type: "session.opened" }>
-    | Extract<ClientMessage, { type: "terminal.input" | "terminal.resize" }>
+    | Extract<ClientMessage, { type: "terminal.input" | "terminal.resize" | "terminal.close" }>
 ) => void;
 type MobileSend = (message: Extract<ServerMessage, { type: "terminal.output" | "terminal.exit" }>) => void;
 
@@ -84,10 +84,17 @@ export class SessionHub {
     agentSend(message);
   }
 
-  routeFromAgent(deviceId: string, message: Extract<ServerMessage, { type: "terminal.output" | "terminal.exit" }>): void {
+  routeFromAgent(
+    deviceId: string,
+    agentSend: AgentSend,
+    message: Extract<ServerMessage, { type: "terminal.output" | "terminal.exit" }>
+  ): void {
     const session = this.sessions.get(message.sessionId);
     if (!session || session.deviceId !== deviceId) {
       throw new Error(`Unknown session ${message.sessionId} for device ${deviceId}`);
+    }
+    if (this.agents.get(deviceId) !== agentSend) {
+      throw new Error(`Agent sender is not attached for device ${deviceId}`);
     }
 
     session.mobileSend(message);
@@ -102,6 +109,18 @@ export class SessionHub {
     for (const [sessionId, session] of this.sessions) {
       if (session.mobileSend !== mobileSend) {
         continue;
+      }
+
+      const agentSend = this.agents.get(session.deviceId);
+      if (agentSend) {
+        try {
+          agentSend({
+            type: "terminal.close",
+            sessionId
+          });
+        } catch {
+          // Cleanup should not depend on the current agent socket accepting the close message.
+        }
       }
 
       this.sessions.delete(sessionId);

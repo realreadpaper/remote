@@ -138,6 +138,9 @@ export class AgentClient {
         case "terminal.resize":
           this.handleTerminalResize(parseClientMessage(payload));
           return;
+        case "terminal.close":
+          this.handleTerminalClose(parseClientMessage(payload));
+          return;
         case "device.registered":
           parseServerMessage(payload);
           return;
@@ -206,6 +209,24 @@ export class AgentClient {
     }
 
     this.sessions.get(message.sessionId)?.resize(message.cols, message.rows);
+  }
+
+  private handleTerminalClose(message: ClientMessage): void {
+    if (message.type !== "terminal.close") {
+      return;
+    }
+
+    const session = this.sessions.get(message.sessionId);
+    if (!session) {
+      return;
+    }
+
+    this.sessions.delete(message.sessionId);
+    try {
+      session.close();
+    } catch (error) {
+      console.error("Failed to close terminal session", error);
+    }
   }
 
   private sendMessage(message: ClientMessage | AgentOutboundMessage): void {

@@ -299,6 +299,40 @@ describe("server websocket API", () => {
     mobile.terminate();
   });
 
+  it("rejects terminal output from a stale same-device agent socket", async () => {
+    const oldAgent = await registerAgent(app);
+    const newAgent = await registerAgent(app);
+
+    const mobile = await app.injectWS("/ws/mobile");
+    const newAgentOpened = nextJson(newAgent);
+    const mobileOpened = nextJson(mobile);
+    mobile.send(JSON.stringify({ type: "session.open", deviceId: "mac-1" }));
+
+    await newAgentOpened;
+    const opened = (await mobileOpened) as { sessionId: string };
+    const oldAgentError = nextJson(oldAgent);
+
+    oldAgent.send(
+      JSON.stringify({
+        type: "terminal.output",
+        sessionId: opened.sessionId,
+        stream: "stdout",
+        data: "stale\n"
+      })
+    );
+
+    expect(await oldAgentError).toEqual({
+      type: "session.error",
+      code: "SESSION_ERROR",
+      message: "Agent sender is not attached for device mac-1"
+    });
+    await noJson(mobile);
+
+    oldAgent.terminate();
+    newAgent.terminate();
+    mobile.terminate();
+  });
+
   it("returns session.error when mobile routes an unknown session", async () => {
     const mobile = await app.injectWS("/ws/mobile");
     const errorMessage = nextJson(mobile);

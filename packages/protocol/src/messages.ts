@@ -23,6 +23,10 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
     sessionId: z.string().min(1),
     cols: z.number().int().positive(),
     rows: z.number().int().positive()
+  }),
+  message({
+    type: z.literal("terminal.close"),
+    sessionId: z.string().min(1)
   })
 ]);
 

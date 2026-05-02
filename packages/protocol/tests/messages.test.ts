@@ -33,6 +33,28 @@ describe("protocol messages", () => {
     ).toThrow();
   });
 
+  it("parses terminal close from server to agent", () => {
+    const message = parseClientMessage({
+      type: "terminal.close",
+      sessionId: "session-1"
+    });
+
+    expect(message).toEqual({
+      type: "terminal.close",
+      sessionId: "session-1"
+    });
+  });
+
+  it("rejects extra fields on terminal close", () => {
+    expect(() =>
+      parseClientMessage({
+        type: "terminal.close",
+        sessionId: "session-1",
+        unexpected: true
+      })
+    ).toThrow();
+  });
+
   it("parses terminal output from agent", () => {
     const message = parseServerMessage({
       type: "terminal.output",

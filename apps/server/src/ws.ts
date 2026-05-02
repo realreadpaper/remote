@@ -15,7 +15,7 @@ type AgentRoutableMessage = Extract<ServerMessage, { type: "terminal.output" | "
 type AgentSendCallback = (
   message:
     | Extract<ServerMessage, { type: "session.opened" }>
-    | Extract<ClientMessage, { type: "terminal.input" | "terminal.resize" }>
+    | Extract<ClientMessage, { type: "terminal.input" | "terminal.resize" | "terminal.close" }>
 ) => void;
 
 function messageText(error: unknown): string {
@@ -106,7 +106,7 @@ export function registerWsRoutes(app: FastifyInstance): void {
           throw new Error(`Unsupported agent message type ${message.type}`);
         }
 
-        hub.routeFromAgent(attachedDeviceId, message);
+        hub.routeFromAgent(attachedDeviceId, agentSend, message);
       } catch (error) {
         sendSessionError(socket, messageText(error));
       }

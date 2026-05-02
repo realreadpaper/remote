@@ -126,10 +126,11 @@ Verify the local vertical slice:
 
    const ws = new WebSocket("ws://127.0.0.1:8787/ws/mobile");
    const timeout = setTimeout(() => {
-     console.error("Timed out waiting for terminal output.");
+     console.error("Timed out waiting for __PWD__ marker output.");
      ws.close();
      process.exit(1);
    }, 5000);
+   let buffer = "";
 
    ws.on("open", () => {
      ws.send(JSON.stringify({ type: "session.open", deviceId: "mac-dev" }));
@@ -140,13 +141,20 @@ Verify the local vertical slice:
      console.log(message);
 
      if (message.type === "session.opened") {
-       ws.send(JSON.stringify({ type: "terminal.input", sessionId: message.sessionId, data: "pwd\n" }));
+       ws.send(JSON.stringify({
+         type: "terminal.input",
+         sessionId: message.sessionId,
+         data: "printf \"__PWD__%s\\n\" \"$PWD\"\n"
+       }));
        return;
      }
 
      if (message.type === "terminal.output") {
-       clearTimeout(timeout);
-       ws.close();
+       buffer += message.data;
+       if (/__PWD__\/[^\r\n]+/.test(buffer)) {
+         clearTimeout(timeout);
+         ws.close();
+       }
      }
    });
 
@@ -157,6 +165,8 @@ Verify the local vertical slice:
    });
    EOF
    ```
+
+   The Agent PTY starts in `$HOME` by default, so the marker commonly prints `__PWD__/Users/<name>` on macOS.
 
 6. Verify the Expo command does not fail immediately:
 

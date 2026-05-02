@@ -89,7 +89,7 @@ describe("SessionHub", () => {
 
     hub.attachAgent("mac-1", agentSend);
     const session = hub.openSession("mac-1", mobileSend);
-    hub.routeFromAgent("mac-1", {
+    hub.routeFromAgent("mac-1", agentSend, {
       type: "terminal.output",
       sessionId: session.sessionId,
       stream: "stdout",
@@ -187,7 +187,7 @@ describe("SessionHub", () => {
     const session = hub.openSession("mac-1", mobileSend);
 
     expect(() =>
-      hub.routeFromAgent("mac-2", {
+      hub.routeFromAgent("mac-2", agentSend, {
         type: "terminal.output",
         sessionId: session.sessionId,
         stream: "stdout",
@@ -204,7 +204,7 @@ describe("SessionHub", () => {
 
     hub.attachAgent("mac-1", agentSend);
     const session = hub.openSession("mac-1", mobileSend);
-    hub.routeFromAgent("mac-1", {
+    hub.routeFromAgent("mac-1", agentSend, {
       type: "terminal.exit",
       sessionId: session.sessionId,
       exitCode: 0
@@ -224,7 +224,45 @@ describe("SessionHub", () => {
     ).toThrow(`Unknown session ${session.sessionId}`);
   });
 
-  it("closes all sessions owned by a mobile sender", () => {
+  it("throws when a stale same-device agent sender routes terminal output", () => {
+    const hub = new SessionHub();
+    const oldAgentSend = vi.fn();
+    const newAgentSend = vi.fn();
+    const mobileSend = vi.fn();
+
+    hub.attachAgent("mac-1", oldAgentSend);
+    hub.attachAgent("mac-1", newAgentSend);
+    const session = hub.openSession("mac-1", mobileSend);
+
+    expect(() =>
+      hub.routeFromAgent("mac-1", oldAgentSend, {
+        type: "terminal.output",
+        sessionId: session.sessionId,
+        stream: "stdout",
+        data: "stale\n"
+      })
+    ).toThrow("Agent sender is not attached for device mac-1");
+    expect(mobileSend).not.toHaveBeenCalled();
+  });
+
+  it("sends terminal.close for all sessions owned by a mobile sender", () => {
+    const hub = new SessionHub();
+    const agentSend = vi.fn();
+    const mobileSend = vi.fn();
+
+    hub.attachAgent("mac-1", agentSend);
+    const session = hub.openSession("mac-1", mobileSend);
+    agentSend.mockClear();
+
+    hub.closeMobile(mobileSend);
+
+    expect(agentSend).toHaveBeenCalledWith({
+      type: "terminal.close",
+      sessionId: session.sessionId
+    });
+  });
+
+  it("removes mobile-owned sessions after closing them", () => {
     const hub = new SessionHub();
     const agentSend = vi.fn();
     const mobileSend = vi.fn();
@@ -235,7 +273,56 @@ describe("SessionHub", () => {
     hub.closeMobile(mobileSend);
 
     expect(() =>
-      hub.routeFromAgent("mac-1", {
+      hub.routeFromMobile(mobileSend, {
+        type: "terminal.input",
+        sessionId: session.sessionId,
+        data: "late\n"
+      })
+    ).toThrow(`Unknown session ${session.sessionId}`);
+    expect(() =>
+      hub.routeFromAgent("mac-1", agentSend, {
+        type: "terminal.output",
+        sessionId: session.sessionId,
+        stream: "stdout",
+        data: "late\n"
+      })
+    ).toThrow(`Unknown session ${session.sessionId} for device mac-1`);
+    expect(mobileSend).not.toHaveBeenCalled();
+  });
+
+  it("removes mobile-owned sessions when terminal.close send fails", () => {
+    const hub = new SessionHub();
+    const agentSend = vi.fn();
+    const mobileSend = vi.fn();
+
+    hub.attachAgent("mac-1", agentSend);
+    const session = hub.openSession("mac-1", mobileSend);
+    agentSend.mockImplementation(() => {
+      throw new Error("send failed");
+    });
+
+    expect(hub.closeMobile(mobileSend)).toBe(1);
+    expect(() =>
+      hub.routeFromMobile(mobileSend, {
+        type: "terminal.input",
+        sessionId: session.sessionId,
+        data: "late\n"
+      })
+    ).toThrow(`Unknown session ${session.sessionId}`);
+  });
+
+  it("ignores missing agents while closing mobile-owned sessions", () => {
+    const hub = new SessionHub();
+    const agentSend = vi.fn();
+    const mobileSend = vi.fn();
+
+    hub.attachAgent("mac-1", agentSend);
+    const session = hub.openSession("mac-1", mobileSend);
+    hub.detachAgent("mac-1", agentSend);
+
+    expect(hub.closeMobile(mobileSend)).toBe(1);
+    expect(() =>
+      hub.routeFromAgent("mac-1", agentSend, {
         type: "terminal.output",
         sessionId: session.sessionId,
         stream: "stdout",
