@@ -22,6 +22,17 @@ describe("protocol messages", () => {
     ).toThrow();
   });
 
+  it("rejects extra fields on known client messages", () => {
+    expect(() =>
+      parseClientMessage({
+        type: "terminal.input",
+        sessionId: "session-1",
+        data: "pwd\n",
+        unexpected: true
+      })
+    ).toThrow();
+  });
+
   it("parses terminal output from agent", () => {
     const message = parseServerMessage({
       type: "terminal.output",
@@ -32,5 +43,17 @@ describe("protocol messages", () => {
 
     expect(message.type).toBe("terminal.output");
     expect(message.stream).toBe("stdout");
+  });
+
+  it("rejects extra fields on known server messages", () => {
+    expect(() =>
+      parseServerMessage({
+        type: "terminal.output",
+        sessionId: "session-1",
+        stream: "stdout",
+        data: "/Users/me\n",
+        unexpected: true
+      })
+    ).toThrow();
   });
 });
