@@ -335,3 +335,49 @@
 - 增加 Agent 本地配对码展示和 approve/reject 操作。
 - 增加 Mobile 扫码入口和 secure storage。
 - 实现会话短期 token，让终端连接真正依赖绑定关系。
+
+## 2026-05-03 Agent CLI 配对码展示和确认
+
+**状态：** completed
+
+**提交：**
+- `d88297a` `docs: plan agent cli pairing approval`
+- `70dca9c` `feat: add agent cli pairing approval`
+
+**实现内容：**
+- Agent 收到 `device.registered` 后自动发送 `pairing.create`，不再需要手写 WebSocket probe 创建配对码。
+- 新增 `apps/agent/src/pairing.ts`，封装配对码控制台展示和本机确认提示。
+- Agent 收到 `pairing.created` 后打印 pairing code、device、server、expiresAt。
+- Agent 收到 `pairing.requested` 后调用本机确认函数。
+- 本机输入 `y` 或 `yes` 时发送 `pairing.approved`。
+- 本机拒绝、非交互环境、确认函数抛错时发送 `pairing.rejected`，并带拒绝原因。
+- `AgentClient` 支持注入 `displayPairingCode` 和 `approvePairingRequest`，便于测试和后续 macOS GUI 替换。
+- 现有终端会话输入、resize、close、output、exit 行为保持不变。
+
+**涉及文件：**
+- `docs/superpowers/specs/2026-05-03-agent-cli-pairing-approval-design.md`
+- `docs/superpowers/plans/2026-05-03-agent-cli-pairing-approval-plan.md`
+- `apps/agent/src/pairing.ts`
+- `apps/agent/src/agentClient.ts`
+- `apps/agent/tests/agentClient.test.ts`
+
+**TDD 记录：**
+- 红灯：`PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent test` 失败，4 个新增配对行为测试失败，原因是 AgentClient 尚未处理配对消息。
+- 绿灯：实现后 `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent test` 通过，4 files passed，32 tests passed。
+
+**验证：**
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent test`: pass，32 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm test`: pass，133 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm build`: pass。
+
+**已知风险：**
+- CLI prompt 只是开发态能力，macOS 安装版需要改成菜单栏或原生弹窗确认。
+- 非 TTY 环境默认拒绝配对，后台服务模式需要明确的本地 UI 或策略配置。
+- 当前只打印文本配对码，还没有二维码。
+- 绑定关系仍未持久化，也尚未用于 `session.open` 鉴权。
+
+**后续：**
+- 增加 Agent 端二维码展示，Mobile 支持扫码。
+- 实现 macOS Agent 桌面壳和本地确认 UI。
+- 实现绑定持久化与短期 session token，让终端连接真正依赖配对绑定。
