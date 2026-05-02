@@ -9,6 +9,7 @@ import {
 } from "@remote/protocol";
 import { DeviceRegistry } from "./deviceRegistry.js";
 import { SessionHub } from "./sessionHub.js";
+import type { ServerConfig } from "./config.js";
 
 type MobileRoutableMessage = Extract<ClientMessage, { type: "terminal.input" | "terminal.resize" }>;
 type AgentRoutableMessage = Extract<ServerMessage, { type: "terminal.output" | "terminal.exit" }>;
@@ -60,7 +61,7 @@ function isAgentRoutableMessage(message: ServerMessage): message is AgentRoutabl
   return message.type === "terminal.output" || message.type === "terminal.exit";
 }
 
-export function registerWsRoutes(app: FastifyInstance): void {
+export function registerWsRoutes(app: FastifyInstance, _config?: ServerConfig): void {
   const registry = new DeviceRegistry();
   const hub = new SessionHub();
   const agentOwners = new Map<string, AgentSendCallback>();
