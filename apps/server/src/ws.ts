@@ -11,6 +11,7 @@ import { DeviceRegistry } from "./deviceRegistry.js";
 import { SessionHub } from "./sessionHub.js";
 import type { ServerConfig } from "./config.js";
 import { getProvidedDevToken, validateDevToken } from "./auth/devToken.js";
+import { MemorySessionTokenStore, type SessionTokenRecord } from "./auth/sessionTokens.js";
 import { MemoryPairingStore } from "./pairing/pairingStore.js";
 import { PairingService } from "./pairing/pairingService.js";
 
@@ -80,6 +81,14 @@ function parsePairingRequestBody(body: unknown): { pairingCode: string; mobileCl
   };
 }
 
+function readPairingRequestIdParam(params: unknown): string {
+  if (!params || typeof params !== "object" || Array.isArray(params)) {
+    throw new Error("pairingRequestId is required");
+  }
+
+  return readRequiredString(params as Record<string, unknown>, "pairingRequestId");
+}
+
 function isAuthorizedWebSocket(
   socket: WebSocket,
   request: { url: string; headers: Record<string, unknown> },
@@ -113,11 +122,59 @@ export function registerWsRoutes(app: FastifyInstance, config: ServerConfig): vo
   const registry = new DeviceRegistry();
   const hub = new SessionHub();
   const pairing = new PairingService(new MemoryPairingStore());
+  const sessionTokens = new MemorySessionTokenStore();
   const agentOwners = new Map<string, AgentSendCallback>();
+  const tokensByPairingRequestId = new Map<string, SessionTokenRecord>();
 
   app.get("/health", async () => ({ ok: true }));
   app.get("/devices", async () => ({ devices: registry.list() }));
   app.get("/pairing/bindings", async () => ({ bindings: pairing.listBindings() }));
+  app.get("/pairing/requests/:pairingRequestId", async (request, reply) => {
+    try {
+      const pairingRequestId = readPairingRequestIdParam(request.params);
+      const pairingRequest = pairing.getPairingRequest(pairingRequestId);
+      if (!pairingRequest) {
+        return reply.code(404).send({ error: `Pairing request ${pairingRequestId} was not found` });
+      }
+
+      if (pairingRequest.status === "approved") {
+        const token = tokensByPairingRequestId.get(pairingRequestId);
+        if (!token) {
+          throw new Error(`Session token for pairing request ${pairingRequestId} was not found`);
+        }
+
+        return {
+          pairingRequestId,
+          deviceId: pairingRequest.deviceId,
+          status: "approved",
+          auth: {
+            type: "auth.sessionToken",
+            sessionId: "pending",
+            deviceId: token.deviceId,
+            sessionToken: token.sessionToken,
+            expiresAt: token.expiresAt
+          }
+        };
+      }
+
+      if (pairingRequest.status === "rejected") {
+        return {
+          pairingRequestId,
+          deviceId: pairingRequest.deviceId,
+          status: "rejected",
+          reason: pairingRequest.reason ?? "Pairing rejected"
+        };
+      }
+
+      return {
+        pairingRequestId,
+        deviceId: pairingRequest.deviceId,
+        status: "pending"
+      };
+    } catch (error) {
+      return reply.code(400).send({ error: messageText(error) });
+    }
+  });
   app.post("/pairing/requests", async (request, reply) => {
     try {
       const pairingRequest = pairing.requestPairing(parsePairingRequestBody(request.body));
@@ -202,10 +259,16 @@ export function registerWsRoutes(app: FastifyInstance, config: ServerConfig): vo
           }
 
           if (message.type === "pairing.approved") {
-            pairing.approvePairingRequest({
+            const binding = pairing.approvePairingRequest({
               pairingRequestId: message.pairingRequestId,
               deviceId: message.deviceId
             });
+            const sessionToken = sessionTokens.issueSessionToken({
+              bindingId: binding.bindingId,
+              deviceId: binding.deviceId,
+              mobileClientId: binding.mobileClientId
+            });
+            tokensByPairingRequestId.set(message.pairingRequestId, sessionToken);
             return;
           }
 
@@ -260,6 +323,18 @@ export function registerWsRoutes(app: FastifyInstance, config: ServerConfig): vo
         sessionId = "sessionId" in message ? message.sessionId : undefined;
 
         if (message.type === "session.open") {
+          if (!message.sessionToken) {
+            throw new Error("Missing session token");
+          }
+
+          const tokenResult = sessionTokens.verifySessionToken({
+            sessionToken: message.sessionToken,
+            deviceId: message.deviceId
+          });
+          if (!tokenResult.ok) {
+            throw new Error(tokenResult.reason);
+          }
+
           const session = hub.openSession(message.deviceId, mobileSend);
           sendJson(socket, {
             type: "session.opened",

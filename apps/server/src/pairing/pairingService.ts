@@ -153,6 +153,10 @@ export class PairingService {
     return rejectedRequest;
   }
 
+  getPairingRequest(pairingRequestId: string): PairingRequestRecord | undefined {
+    return this.store.getRequest(pairingRequestId);
+  }
+
   listBindings(): DeviceBindingRecord[] {
     return this.store.listBindings();
   }

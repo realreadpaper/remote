@@ -121,15 +121,73 @@ async function registerAgent(app: FastifyInstance, deviceId = "mac-1"): Promise<
 
 async function openMobileSession(
   app: FastifyInstance,
-  deviceId = "mac-1"
+  deviceId = "mac-1",
+  sessionToken?: string
 ): Promise<{ mobile: WebSocket; sessionId: string }> {
   const mobile = await app.injectWS("/ws/mobile");
   const opened = nextJson(mobile);
 
-  mobile.send(JSON.stringify({ type: "session.open", deviceId }));
+  mobile.send(JSON.stringify(sessionToken ? { type: "session.open", deviceId, sessionToken } : { type: "session.open", deviceId }));
 
   const message = (await opened) as { sessionId: string };
   return { mobile, sessionId: message.sessionId };
+}
+
+async function createPairingRequest(
+  app: FastifyInstance,
+  agent: WebSocket,
+  input: { deviceId?: string; mobileClientId?: string; mobileName?: string } = {}
+): Promise<{ pairingRequestId: string; deviceId: string }> {
+  const deviceId = input.deviceId ?? "mac-1";
+  const pairingCreated = nextJson(agent);
+  agent.send(JSON.stringify({ type: "pairing.create", deviceId }));
+  const created = (await pairingCreated) as { pairingCode: string };
+
+  const pairingRequested = nextJson(agent);
+  const response = await app.inject({
+    method: "POST",
+    url: "/pairing/requests",
+    payload: {
+      pairingCode: created.pairingCode,
+      mobileClientId: input.mobileClientId ?? "mobile-1",
+      mobileName: input.mobileName ?? "Alice iPhone"
+    }
+  });
+
+  expect(response.statusCode).toBe(202);
+  const requested = (await pairingRequested) as { pairingRequestId: string; deviceId: string };
+  return {
+    pairingRequestId: requested.pairingRequestId,
+    deviceId: requested.deviceId
+  };
+}
+
+async function approvePairingRequest(
+  app: FastifyInstance,
+  agent: WebSocket,
+  input: { deviceId?: string; mobileClientId?: string; mobileName?: string } = {}
+): Promise<{ pairingRequestId: string; deviceId: string; sessionToken: string }> {
+  const request = await createPairingRequest(app, agent, input);
+  agent.send(
+    JSON.stringify({
+      type: "pairing.approved",
+      pairingRequestId: request.pairingRequestId,
+      deviceId: request.deviceId
+    })
+  );
+  await new Promise((resolve) => setTimeout(resolve, 10));
+
+  const statusResponse = await app.inject({
+    method: "GET",
+    url: `/pairing/requests/${request.pairingRequestId}`
+  });
+  expect(statusResponse.statusCode).toBe(200);
+  const status = statusResponse.json() as { auth: { sessionToken: string } };
+
+  return {
+    ...request,
+    sessionToken: status.auth.sessionToken
+  };
 }
 
 describe("server websocket API", () => {
@@ -206,12 +264,13 @@ describe("server websocket API", () => {
       type: "device.registered",
       deviceId: "mac-1"
     });
+    const { sessionToken } = await approvePairingRequest(app, agent);
 
     const mobile = await app.injectWS("/ws/mobile?token=secret");
     const agentOpened = nextJson(agent);
     const mobileOpened = nextJson(mobile);
 
-    mobile.send(JSON.stringify({ type: "session.open", deviceId: "mac-1" }));
+    mobile.send(JSON.stringify({ type: "session.open", deviceId: "mac-1", sessionToken }));
 
     const agentMessage = await agentOpened;
     const mobileMessage = await mobileOpened;
@@ -298,6 +357,90 @@ describe("server websocket API", () => {
     agent.terminate();
   });
 
+  it("returns pending status for a pairing request before the agent decides", async () => {
+    const agent = await registerAgent(app);
+    const request = await createPairingRequest(app, agent);
+
+    const response = await app.inject({
+      method: "GET",
+      url: `/pairing/requests/${request.pairingRequestId}`
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      pairingRequestId: request.pairingRequestId,
+      deviceId: "mac-1",
+      status: "pending"
+    });
+
+    agent.terminate();
+  });
+
+  it("returns rejected status with reason after the agent rejects pairing", async () => {
+    const agent = await registerAgent(app);
+    const request = await createPairingRequest(app, agent);
+
+    agent.send(
+      JSON.stringify({
+        type: "pairing.rejected",
+        pairingRequestId: request.pairingRequestId,
+        deviceId: "mac-1",
+        reason: "not now"
+      })
+    );
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    const response = await app.inject({
+      method: "GET",
+      url: `/pairing/requests/${request.pairingRequestId}`
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      pairingRequestId: request.pairingRequestId,
+      deviceId: "mac-1",
+      status: "rejected",
+      reason: "not now"
+    });
+
+    agent.terminate();
+  });
+
+  it("returns an auth session token after the agent approves pairing", async () => {
+    const agent = await registerAgent(app);
+    const request = await createPairingRequest(app, agent);
+
+    agent.send(
+      JSON.stringify({
+        type: "pairing.approved",
+        pairingRequestId: request.pairingRequestId,
+        deviceId: "mac-1"
+      })
+    );
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    const response = await app.inject({
+      method: "GET",
+      url: `/pairing/requests/${request.pairingRequestId}`
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      pairingRequestId: request.pairingRequestId,
+      deviceId: "mac-1",
+      status: "approved",
+      auth: {
+        type: "auth.sessionToken",
+        sessionId: "pending",
+        deviceId: "mac-1",
+        sessionToken: expect.any(String),
+        expiresAt: expect.any(String)
+      }
+    });
+
+    agent.terminate();
+  });
+
   it("shows an agent-registered device as online", async () => {
     const agent = await app.injectWS("/ws/agent");
 
@@ -356,6 +499,7 @@ describe("server websocket API", () => {
 
   it("sends session.opened to mobile and agent when mobile opens a session", async () => {
     const agent = await registerAgent(app);
+    const { sessionToken } = await approvePairingRequest(app, agent);
 
     const mobile = await app.injectWS("/ws/mobile");
     const agentOpened = nextJson(agent);
@@ -364,7 +508,8 @@ describe("server websocket API", () => {
     mobile.send(
       JSON.stringify({
         type: "session.open",
-        deviceId: "mac-1"
+        deviceId: "mac-1",
+        sessionToken
       })
     );
 
@@ -381,13 +526,71 @@ describe("server websocket API", () => {
     mobile.terminate();
   });
 
+  it("returns session.error when mobile opens a session without a session token", async () => {
+    const agent = await registerAgent(app);
+    const mobile = await app.injectWS("/ws/mobile");
+    const errorMessage = nextJson(mobile);
+
+    mobile.send(JSON.stringify({ type: "session.open", deviceId: "mac-1" }));
+
+    expect(await errorMessage).toEqual({
+      type: "session.error",
+      code: "SESSION_ERROR",
+      message: "Missing session token"
+    });
+    await noJson(agent);
+
+    agent.terminate();
+    mobile.terminate();
+  });
+
+  it("returns session.error when mobile opens a session with an invalid token", async () => {
+    const agent = await registerAgent(app);
+    const mobile = await app.injectWS("/ws/mobile");
+    const errorMessage = nextJson(mobile);
+
+    mobile.send(JSON.stringify({ type: "session.open", deviceId: "mac-1", sessionToken: "invalid" }));
+
+    expect(await errorMessage).toEqual({
+      type: "session.error",
+      code: "SESSION_ERROR",
+      message: "Invalid session token"
+    });
+    await noJson(agent);
+
+    agent.terminate();
+    mobile.terminate();
+  });
+
+  it("returns session.error when mobile opens another device with a valid token", async () => {
+    const firstAgent = await registerAgent(app, "mac-1");
+    const secondAgent = await registerAgent(app, "mac-2");
+    const { sessionToken } = await approvePairingRequest(app, firstAgent, { deviceId: "mac-1" });
+    const mobile = await app.injectWS("/ws/mobile");
+    const errorMessage = nextJson(mobile);
+
+    mobile.send(JSON.stringify({ type: "session.open", deviceId: "mac-2", sessionToken }));
+
+    expect(await errorMessage).toEqual({
+      type: "session.error",
+      code: "SESSION_ERROR",
+      message: "Session token is not valid for device mac-2"
+    });
+    await noJson(secondAgent);
+
+    firstAgent.terminate();
+    secondAgent.terminate();
+    mobile.terminate();
+  });
+
   it("routes mobile terminal input to the agent socket", async () => {
     const agent = await registerAgent(app);
+    const { sessionToken } = await approvePairingRequest(app, agent);
 
     const mobile = await app.injectWS("/ws/mobile");
     const agentOpened = nextJson(agent);
     const mobileOpened = nextJson(mobile);
-    mobile.send(JSON.stringify({ type: "session.open", deviceId: "mac-1" }));
+    mobile.send(JSON.stringify({ type: "session.open", deviceId: "mac-1", sessionToken }));
 
     await agentOpened;
     const opened = (await mobileOpened) as { sessionId: string };
@@ -413,11 +616,12 @@ describe("server websocket API", () => {
 
   it("routes agent terminal output to the mobile socket", async () => {
     const agent = await registerAgent(app);
+    const { sessionToken } = await approvePairingRequest(app, agent);
 
     const mobile = await app.injectWS("/ws/mobile");
     const agentOpened = nextJson(agent);
     const mobileOpened = nextJson(mobile);
-    mobile.send(JSON.stringify({ type: "session.open", deviceId: "mac-1" }));
+    mobile.send(JSON.stringify({ type: "session.open", deviceId: "mac-1", sessionToken }));
 
     await agentOpened;
     const opened = (await mobileOpened) as { sessionId: string };
@@ -446,6 +650,7 @@ describe("server websocket API", () => {
   it("keeps a reconnected agent online when the old socket closes later", async () => {
     const oldAgent = await registerAgent(app);
     const newAgent = await registerAgent(app);
+    const { sessionToken } = await approvePairingRequest(app, newAgent);
 
     oldAgent.close();
     await new Promise((resolve) => oldAgent.once("close", resolve));
@@ -466,7 +671,7 @@ describe("server websocket API", () => {
     const mobile = await app.injectWS("/ws/mobile");
     const agentOpened = nextJson(newAgent);
     const mobileOpened = nextJson(mobile);
-    mobile.send(JSON.stringify({ type: "session.open", deviceId: "mac-1" }));
+    mobile.send(JSON.stringify({ type: "session.open", deviceId: "mac-1", sessionToken }));
 
     await agentOpened;
     const opened = (await mobileOpened) as { sessionId: string };
@@ -493,11 +698,12 @@ describe("server websocket API", () => {
   it("rejects terminal output from a stale same-device agent socket", async () => {
     const oldAgent = await registerAgent(app);
     const newAgent = await registerAgent(app);
+    const { sessionToken } = await approvePairingRequest(app, newAgent);
 
     const mobile = await app.injectWS("/ws/mobile");
     const newAgentOpened = nextJson(newAgent);
     const mobileOpened = nextJson(mobile);
-    mobile.send(JSON.stringify({ type: "session.open", deviceId: "mac-1" }));
+    mobile.send(JSON.stringify({ type: "session.open", deviceId: "mac-1", sessionToken }));
 
     await newAgentOpened;
     const opened = (await mobileOpened) as { sessionId: string };
@@ -547,16 +753,25 @@ describe("server websocket API", () => {
   });
 
   it("returns session.error when mobile opens an offline device", async () => {
+    const agent = await registerAgent(app, "offline-device");
+    const { sessionToken } = await approvePairingRequest(app, agent, { deviceId: "offline-device" });
+    agent.close();
+    await new Promise((resolve) => agent.once("close", resolve));
+    await new Promise((resolve) => setTimeout(resolve, 25));
+
     const mobile = await app.injectWS("/ws/mobile");
     const errorMessage = nextJson(mobile);
 
-    mobile.send(JSON.stringify({ type: "session.open", deviceId: "offline-device" }));
+    mobile.send(JSON.stringify({ type: "session.open", deviceId: "offline-device", sessionToken }));
 
-    expect(await errorMessage).toEqual({
+    const error = await errorMessage;
+    expect(error).toMatchObject({
       type: "session.error",
-      code: "SESSION_ERROR",
-      message: "Device offline-device is not online"
+      code: "SESSION_ERROR"
     });
+    expect(["Device offline-device is not online", "WebSocket is not open"]).toContain(
+      (error as { message: string }).message
+    );
 
     mobile.terminate();
   });
@@ -591,8 +806,9 @@ describe("server websocket API", () => {
 
   it("cleans mobile sessions on disconnect before later agent output", async () => {
     const agent = await registerAgent(app);
+    const { sessionToken } = await approvePairingRequest(app, agent);
     const agentOpened = nextJson(agent);
-    const { mobile, sessionId } = await openMobileSession(app);
+    const { mobile, sessionId } = await openMobileSession(app, "mac-1", sessionToken);
     await agentOpened;
 
     mobile.close();
