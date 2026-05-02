@@ -498,3 +498,61 @@
 - Mobile 增加多设备列表和 Forget device。
 - 增加 token refresh/revoke。
 - 推进 macOS Agent 安装版和菜单栏确认 UI。
+
+## 2026-05-03 Server 持久配对与 token 存储
+
+**状态：** completed
+
+**提交：**
+- `574c947` `docs: design server persistent pairing storage`
+- `8859781` `docs: plan server persistent pairing storage`
+- `b842dc2` `feat: persist server pairing storage`
+
+**实现内容：**
+- Server 配置新增 `REMOTE_DATA_DIR` / `ServerConfig.dataDir`。
+- 未配置 `REMOTE_DATA_DIR` 时继续使用内存 store，保持本地测试和快速开发行为。
+- 配置 `REMOTE_DATA_DIR` 时，Server 使用 JSON 文件保存 pairing code、pairing request、binding 和 session token。
+- 新增 `JsonFilePairingStore`，支持保存/恢复 code、request、binding。
+- 新增 `JsonFileSessionTokenStore`，支持保存/恢复 token，并按 device/mobile 查找最新有效 token。
+- `PairingService` 改为依赖 `PairingStore` interface，不再写死内存 store。
+- `registerWsRoutes()` 根据 `dataDir` 自动选择内存或 JSON 文件 store。
+- `GET /pairing/requests/:id` 在 approved 状态下从 token store 查找 token，Server 重启后也能返回/校验 token。
+- 新增重启验收测试：同一 `dataDir` 下重建 Server，重新上线 Agent 后，Mobile 使用旧 token 能打开 terminal session。
+
+**涉及文件：**
+- `docs/superpowers/specs/2026-05-03-server-persistent-pairing-storage-design.md`
+- `docs/superpowers/plans/2026-05-03-server-persistent-pairing-storage-plan.md`
+- `apps/server/src/config.ts`
+- `apps/server/src/pairing/pairingStore.ts`
+- `apps/server/src/pairing/pairingService.ts`
+- `apps/server/src/auth/sessionTokens.ts`
+- `apps/server/src/ws.ts`
+- `apps/server/tests/config.test.ts`
+- `apps/server/tests/pairing/pairingStore.test.ts`
+- `apps/server/tests/auth/sessionTokens.test.ts`
+- `apps/server/tests/ws.test.ts`
+
+**TDD 记录：**
+- Config 红灯：ServerConfig 缺少 `dataDir`，config tests 失败。
+- Pairing store 红灯：`JsonFilePairingStore` 不存在，pairing store tests 失败。
+- Token store 红灯：`JsonFileSessionTokenStore` 和 `findTokenForBinding()` 不存在，session token tests 失败。
+- Route 红灯：配置同一 `dataDir` 重启 Server 后，旧 token 无法打开 session。
+- 绿灯：实现文件 store 和 route 接入后，Server 测试通过，72 tests passed。
+
+**验证：**
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test`: pass，72 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm test`: pass，161 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm build`: pass。
+
+**已知风险：**
+- JSON 文件 store 只适合单进程 MVP，不适合多实例云部署。
+- token 仍以明文保存在 JSON 文件中，正式生产需要 hash 或加密。
+- 没有文件锁，多进程写入可能丢数据。
+- 没有 refresh/revoke。
+
+**后续：**
+- 增加 Mobile 多设备列表和 Forget device。
+- 增加 token revoke/refresh。
+- 后续云中转迁移到 SQLite 或 Postgres。
+- 推进 macOS Agent 安装版和菜单栏确认 UI。
