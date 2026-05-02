@@ -651,3 +651,55 @@
 - 增加多设备列表和设备切换。
 - 给 HTTP pairing/revoke 接口补齐 dev token 或正式登录鉴权。
 - 增加 token refresh。
+
+## 2026-05-03 HTTP Pairing Dev Token Guard
+
+**状态：** completed
+
+**提交：**
+- `f65572b` `docs: plan http pairing dev token guard`
+- `f6a4843` `feat: guard http pairing with dev token`
+
+**实现内容：**
+- Server 为 HTTP pairing/status/bindings/revoke 增加统一 dev token guard。
+- 当 `REMOTE_REQUIRE_DEV_TOKEN=1` 时，无 token 或错误 token 的 HTTP pairing/revoke 请求返回 401。
+- 受保护路由包括 `GET /pairing/bindings`、`POST /pairing/requests`、`GET /pairing/requests/:pairingRequestId`、`POST /session-tokens/revoke`。
+- HTTP guard 复用现有 `getProvidedDevToken()` 和 `validateDevToken()`，与 WebSocket 鉴权规则保持一致。
+- Mobile `PairingClient` 增加 `devToken?: string | null` option。
+- `requestPairing()`、`getPairingRequest()`、`revokeSessionToken()` 在配置 dev token 后自动携带 `Authorization: Bearer <token>`。
+- `TerminalScreen` 从 `runtimeConfig.devToken` 传入 `PairingClient`，保证 iOS 模拟器/真机在开启 dev token 时仍可完成配对和 Forget revoke。
+
+**涉及文件：**
+- `docs/superpowers/specs/2026-05-03-http-pairing-dev-token-guard-design.md`
+- `docs/superpowers/plans/2026-05-03-http-pairing-dev-token-guard-plan.md`
+- `apps/server/src/ws.ts`
+- `apps/server/tests/ws.test.ts`
+- `apps/mobile/src/protocol/pairingClient.ts`
+- `apps/mobile/src/components/TerminalScreen.tsx`
+- `apps/mobile/tests/pairingClient.test.ts`
+
+**TDD 记录：**
+- Server 红灯：`PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test` 失败，HTTP pairing/revoke 无 token 时返回 400/404 而不是 401。
+- Server 绿灯：增加 `isAuthorizedHttpRequest()` 并保护 HTTP 路由后，Server 测试通过，78 tests passed。
+- Mobile 红灯：`PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile test` 失败，`PairingClient` 未发送 `Authorization` header。
+- Mobile 中间失败：无 dev token 的 `getPairingRequest()` 多传了 `undefined` fetch options，破坏旧行为断言；拆分有 token/无 token 调用后恢复兼容。
+- Mobile 绿灯：实现 `devToken` option、统一 header 构造和 `TerminalScreen` 传参后，Mobile 测试通过，45 tests passed。
+
+**验证：**
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test`: pass，78 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile test`: pass，45 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm test`: pass，172 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm build`: pass。
+
+**已知风险：**
+- dev token 只是开发期边界，不是正式账号登录和设备归属鉴权。
+- 当前仍支持 query token，高级调试方便但可能进入代理或访问日志；生产环境应优先只用 header。
+- pairing/revoke 路由还没有速率限制，公网云中转前需要补齐防爆破和滥用控制。
+
+**后续：**
+- 增加正式登录、账号绑定和设备归属校验。
+- 给 pairing/status/revoke 接口增加 rate limit。
+- 生产配置中逐步移除 query token，保留 `Authorization` header。
+- 继续推进多设备列表、设备切换和外网默认云中转链路。
