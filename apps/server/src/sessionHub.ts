@@ -1,7 +1,12 @@
 import { nanoid } from "nanoid";
 import type { ClientMessage, ServerMessage } from "@remote/protocol";
 
-type SendJson = (message: ClientMessage | ServerMessage) => void;
+type AgentSend = (
+  message:
+    | Extract<ServerMessage, { type: "session.opened" }>
+    | Extract<ClientMessage, { type: "terminal.input" | "terminal.resize" }>
+) => void;
+type MobileSend = (message: Extract<ServerMessage, { type: "terminal.output" | "terminal.exit" }>) => void;
 
 export interface RemoteSession {
   sessionId: string;
@@ -9,14 +14,14 @@ export interface RemoteSession {
 }
 
 interface SessionRecord extends RemoteSession {
-  mobileSend: SendJson;
+  mobileSend: MobileSend;
 }
 
 export class SessionHub {
-  private readonly agents = new Map<string, SendJson>();
+  private readonly agents = new Map<string, AgentSend>();
   private readonly sessions = new Map<string, SessionRecord>();
 
-  attachAgent(deviceId: string, send: SendJson): void {
+  attachAgent(deviceId: string, send: AgentSend): void {
     this.agents.set(deviceId, send);
   }
 
@@ -24,7 +29,7 @@ export class SessionHub {
     this.agents.delete(deviceId);
   }
 
-  openSession(deviceId: string, mobileSend: SendJson): RemoteSession {
+  openSession(deviceId: string, mobileSend: MobileSend): RemoteSession {
     const agentSend = this.agents.get(deviceId);
     if (!agentSend) {
       throw new Error(`Device ${deviceId} is not online`);
@@ -49,10 +54,16 @@ export class SessionHub {
     };
   }
 
-  routeFromMobile(message: Extract<ClientMessage, { type: "terminal.input" | "terminal.resize" }>): void {
+  routeFromMobile(
+    mobileSend: MobileSend,
+    message: Extract<ClientMessage, { type: "terminal.input" | "terminal.resize" }>
+  ): void {
     const session = this.sessions.get(message.sessionId);
     if (!session) {
       throw new Error(`Unknown session ${message.sessionId}`);
+    }
+    if (session.mobileSend !== mobileSend) {
+      throw new Error(`Mobile client does not own session ${message.sessionId}`);
     }
 
     const agentSend = this.agents.get(session.deviceId);
@@ -70,5 +81,8 @@ export class SessionHub {
     }
 
     session.mobileSend(message);
+    if (message.type === "terminal.exit") {
+      this.sessions.delete(message.sessionId);
+    }
   }
 }
