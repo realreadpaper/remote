@@ -110,3 +110,56 @@
 
 **后续：**
 - 实现服务端最小外网安全边界。
+
+## 2026-05-02 服务端最小外网安全边界
+
+**状态：** completed
+
+**提交：**
+- `2d48508` `docs: plan minimal external security implementation`
+- `7bbc768` `feat: add server runtime config`
+- `d41630d` `feat: guard websocket relay with dev token`
+- `f84f362` `feat: support agent dev token relay auth`
+- `2c06221` `feat: support mobile dev token relay auth`
+
+**实现内容：**
+- Server 增加运行配置：`HOST`、`PORT`、`REMOTE_REQUIRE_DEV_TOKEN`、`REMOTE_DEV_TOKEN`、`REMOTE_PUBLIC_BASE_URL`。
+- Server 在 `/ws/agent` 和 `/ws/mobile` WebSocket 入口增加 dev token 校验。
+- token 支持 query：`?token=<secret>`。
+- token 支持 header：`Authorization: Bearer <secret>`。
+- Agent 支持 `REMOTE_DEV_TOKEN`，连接时自动追加到 WebSocket URL。
+- Mobile 支持 `EXPO_PUBLIC_REMOTE_DEV_TOKEN`，真实连接 URL 带 token，界面展示 URL 脱敏。
+- 本地默认不启用 token，不影响模拟器和局域网开发链路。
+
+**涉及文件：**
+- `apps/server/src/config.ts`
+- `apps/server/src/auth/devToken.ts`
+- `apps/server/src/ws.ts`
+- `apps/agent/src/config.ts`
+- `apps/agent/src/agentClient.ts`
+- `apps/mobile/src/config/runtimeConfig.ts`
+- `apps/mobile/src/components/TerminalScreen.tsx`
+- `apps/server/tests/config.test.ts`
+- `apps/server/tests/auth/devToken.test.ts`
+- `apps/server/tests/ws.test.ts`
+- `apps/agent/tests/config.test.ts`
+- `apps/agent/tests/agentClient.test.ts`
+- `apps/mobile/tests/runtimeConfig.test.ts`
+
+**验证：**
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm test`: pass，103 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm build`: pass。
+- 无 token 本地 smoke：`HOST=127.0.0.1 PORT=8791 node apps/server/dist/index.js` + `REMOTE_SERVER_URL=ws://127.0.0.1:8791/ws/agent REMOTE_DEVICE_ID=smoke-mac node apps/agent/dist/index.js`，WebSocket probe 收到 `__LOCAL__/Users/hejianglong`。
+- token 模式 smoke：`HOST=127.0.0.1 PORT=8792 REMOTE_REQUIRE_DEV_TOKEN=1 REMOTE_DEV_TOKEN=secret node apps/server/dist/index.js` + `REMOTE_SERVER_URL=ws://127.0.0.1:8792/ws/agent REMOTE_DEV_TOKEN=secret REMOTE_DEVICE_ID=token-mac node apps/agent/dist/index.js`，WebSocket probe 使用 `ws://127.0.0.1:8792/ws/mobile?token=secret` 收到 `__TOKEN__/Users/hejianglong`。
+
+**已知风险：**
+- dev token 是临时外网开发边界，不是正式账号体系。
+- query token 可能出现在代理访问日志中；正式云中转应优先使用短期 session token 或 header，并配合 WSS。
+- Server 设备状态和会话仍在内存中，进程重启会丢失连接状态。
+- 还没有设备绑定、用户权限、审计日志、限流和封禁策略。
+
+**后续：**
+- 实现默认云中转部署入口和 WSS 反向代理配置。
+- 增加正式账号、设备绑定和短期 session token。
+- 增加外网 smoke runbook，覆盖云中转、DDNS、端口映射、IPv6、反向隧道高级选项。
