@@ -246,3 +246,47 @@
 - 实现 Server 配对状态机，使用 `deviceId` 和 `publicKey` 建立绑定关系。
 - 实现 Agent 配对码请求和本地确认/拒绝。
 - 实现 Mobile 扫码或手动输入配对码。
+
+## 2026-05-03 Server 配对状态机
+
+**状态：** completed
+
+**提交：**
+- `d4575fb` `docs: plan server pairing state machine`
+- `065b951` `feat: add device pairing state machine`
+
+**实现内容：**
+- 新增内存配对状态机，支持创建配对码、提交配对请求、Agent approve/reject、绑定记录。
+- Agent 注册后可通过 WebSocket 发送 `pairing.create`，Server 返回 `pairing.created`。
+- Mobile 可通过 `POST /pairing/requests` 提交 `pairingCode`、`mobileClientId`、`mobileName`。
+- Server 将 `pairing.requested` 推送给对应在线 Agent。
+- Agent 发送 `pairing.approved` 后，Server 创建内存 binding。
+- Agent 发送 `pairing.rejected` 后，Server 标记请求 rejected，不创建 binding。
+- 新增 `GET /pairing/bindings`，用于开发期查看绑定结果。
+- 配对码使用 SHA-256 hash 存储，具备过期和一次性使用保护。
+
+**涉及文件：**
+- `docs/superpowers/specs/2026-05-03-server-pairing-state-machine-design.md`
+- `docs/superpowers/plans/2026-05-03-server-pairing-state-machine-plan.md`
+- `apps/server/src/pairing/pairingStore.ts`
+- `apps/server/src/pairing/pairingService.ts`
+- `apps/server/src/ws.ts`
+- `apps/server/tests/pairing/pairingService.test.ts`
+- `apps/server/tests/ws.test.ts`
+
+**验证：**
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test`: pass，55 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm test`: pass，125 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm build`: pass。
+
+**已知风险：**
+- 当前绑定关系仍是内存态，Server 重启后丢失。
+- `POST /pairing/requests` 还没有正式账号登录鉴权，公网产品化前必须补上。
+- Agent 还没有 UI 展示配对码和确认弹窗；当前只能通过 WebSocket 消息完成。
+- 绑定关系尚未用于 `session.open` 鉴权，未绑定 Mobile 仍可打开终端；下一步需要短期 session token。
+
+**后续：**
+- 实现 Mobile 配对入口，先支持手动输入配对码，再接扫码。
+- 实现 Agent 本地配对确认/拒绝交互。
+- 实现会话短期 token，让未绑定 Mobile 无法打开终端。
