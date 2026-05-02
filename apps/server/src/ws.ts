@@ -15,6 +15,7 @@ import { getProvidedDevToken, validateDevToken } from "./auth/devToken.js";
 import { JsonFileSessionTokenStore, MemorySessionTokenStore, type SessionTokenStore } from "./auth/sessionTokens.js";
 import { JsonFilePairingStore, MemoryPairingStore, type PairingStore } from "./pairing/pairingStore.js";
 import { PairingService } from "./pairing/pairingService.js";
+import { MemoryRateLimiter } from "./rateLimit.js";
 import { join } from "node:path";
 
 type MobileRoutableMessage = Extract<ClientMessage, { type: "terminal.input" | "terminal.resize" }>;
@@ -125,6 +126,35 @@ function isAuthorizedHttpRequest(request: FastifyRequest, reply: FastifyReply, c
   return false;
 }
 
+function isAllowedHttpRate(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  limiter: MemoryRateLimiter,
+  scope: string
+): boolean {
+  const result = limiter.check(`${scope}:${clientKey(request)}`);
+  if (result.allowed) {
+    return true;
+  }
+
+  reply.header("Retry-After", String(Math.ceil(result.retryAfterMs / 1_000)));
+  reply.code(429).send({ error: "Rate limit exceeded", retryAfterMs: result.retryAfterMs });
+  return false;
+}
+
+function clientKey(request: FastifyRequest): string {
+  const forwardedFor = request.headers["x-forwarded-for"];
+  if (typeof forwardedFor === "string" && forwardedFor.trim().length > 0) {
+    return forwardedFor.split(",")[0]?.trim() || "unknown";
+  }
+
+  if (Array.isArray(forwardedFor) && forwardedFor.length > 0) {
+    return forwardedFor[0]?.split(",")[0]?.trim() || "unknown";
+  }
+
+  return request.ip || "unknown";
+}
+
 function isMobileRoutableMessage(message: ClientMessage): message is MobileRoutableMessage {
   return message.type === "terminal.input" || message.type === "terminal.resize";
 }
@@ -148,6 +178,10 @@ export function registerWsRoutes(app: FastifyInstance, config: ServerConfig): vo
   const sessionTokens = createSessionTokenStore(config);
   const pairing = new PairingService(pairingStore);
   const agentOwners = new Map<string, AgentSendCallback>();
+  const httpRateLimiter = new MemoryRateLimiter({
+    windowMs: config.rateLimitWindowMs,
+    maxRequests: config.rateLimitMaxRequests
+  });
 
   app.get("/health", async () => ({ ok: true }));
   app.get("/devices", async () => ({ devices: registry.list() }));
@@ -155,11 +189,17 @@ export function registerWsRoutes(app: FastifyInstance, config: ServerConfig): vo
     if (!isAuthorizedHttpRequest(request, reply, config)) {
       return reply;
     }
+    if (!isAllowedHttpRate(request, reply, httpRateLimiter, "pairing.bindings")) {
+      return reply;
+    }
 
     return { bindings: pairing.listBindings() };
   });
   app.post("/session-tokens/revoke", async (request, reply) => {
     if (!isAuthorizedHttpRequest(request, reply, config)) {
+      return reply;
+    }
+    if (!isAllowedHttpRate(request, reply, httpRateLimiter, "session-tokens.revoke")) {
       return reply;
     }
 
@@ -171,6 +211,9 @@ export function registerWsRoutes(app: FastifyInstance, config: ServerConfig): vo
   });
   app.get("/pairing/requests/:pairingRequestId", async (request, reply) => {
     if (!isAuthorizedHttpRequest(request, reply, config)) {
+      return reply;
+    }
+    if (!isAllowedHttpRate(request, reply, httpRateLimiter, "pairing.requests.status")) {
       return reply;
     }
 
@@ -224,6 +267,9 @@ export function registerWsRoutes(app: FastifyInstance, config: ServerConfig): vo
   });
   app.post("/pairing/requests", async (request, reply) => {
     if (!isAuthorizedHttpRequest(request, reply, config)) {
+      return reply;
+    }
+    if (!isAllowedHttpRate(request, reply, httpRateLimiter, "pairing.requests.create")) {
       return reply;
     }
 

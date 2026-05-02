@@ -104,7 +104,9 @@ const tokenServerConfig: ServerConfig = {
   requireDevToken: true,
   devToken: "secret",
   publicBaseUrl: null,
-  dataDir: null
+  dataDir: null,
+  rateLimitWindowMs: 60_000,
+  rateLimitMaxRequests: 120
 };
 
 async function registerAgent(app: FastifyInstance, deviceId = "mac-1"): Promise<WebSocket> {
@@ -374,6 +376,81 @@ describe("server websocket API", () => {
     expect(revokeResponse.json()).toEqual({ revoked: true });
 
     agent.terminate();
+  });
+
+  it("rate limits authorized HTTP pairing requests by client IP", async () => {
+    await app.close();
+    app = await createServer({ logger: false }, { ...tokenServerConfig, rateLimitMaxRequests: 2 });
+    await app.ready();
+
+    const payload = {
+      pairingCode: "000000",
+      mobileClientId: "mobile-1",
+      mobileName: "iPhone"
+    };
+
+    const first = await app.inject({
+      method: "POST",
+      url: "/pairing/requests",
+      headers: { authorization: "Bearer secret", "x-forwarded-for": "203.0.113.10" },
+      payload
+    });
+    const second = await app.inject({
+      method: "POST",
+      url: "/pairing/requests",
+      headers: { authorization: "Bearer secret", "x-forwarded-for": "203.0.113.10" },
+      payload
+    });
+    const third = await app.inject({
+      method: "POST",
+      url: "/pairing/requests",
+      headers: { authorization: "Bearer secret", "x-forwarded-for": "203.0.113.10" },
+      payload
+    });
+
+    expect(first.statusCode).toBe(400);
+    expect(second.statusCode).toBe(400);
+    expect(third.statusCode).toBe(429);
+    expect(Number(third.headers["retry-after"])).toBeGreaterThan(0);
+    expect(Number(third.headers["retry-after"])).toBeLessThanOrEqual(60);
+    expect(third.json()).toMatchObject({ error: "Rate limit exceeded" });
+    expect((third.json() as { retryAfterMs: number }).retryAfterMs).toBeGreaterThan(0);
+    expect((third.json() as { retryAfterMs: number }).retryAfterMs).toBeLessThanOrEqual(60_000);
+  });
+
+  it("keeps HTTP rate limit buckets separate by forwarded client IP", async () => {
+    await app.close();
+    app = await createServer({ logger: false }, { ...tokenServerConfig, rateLimitMaxRequests: 1 });
+    await app.ready();
+
+    const payload = {
+      pairingCode: "000000",
+      mobileClientId: "mobile-1",
+      mobileName: "iPhone"
+    };
+
+    const first = await app.inject({
+      method: "POST",
+      url: "/pairing/requests",
+      headers: { authorization: "Bearer secret", "x-forwarded-for": "203.0.113.10" },
+      payload
+    });
+    const secondSameIp = await app.inject({
+      method: "POST",
+      url: "/pairing/requests",
+      headers: { authorization: "Bearer secret", "x-forwarded-for": "203.0.113.10" },
+      payload
+    });
+    const firstOtherIp = await app.inject({
+      method: "POST",
+      url: "/pairing/requests",
+      headers: { authorization: "Bearer secret", "x-forwarded-for": "203.0.113.11" },
+      payload
+    });
+
+    expect(first.statusCode).toBe(400);
+    expect(secondSameIp.statusCode).toBe(429);
+    expect(firstOtherIp.statusCode).toBe(400);
   });
 
   it("creates a pairing code when a registered agent requests one", async () => {

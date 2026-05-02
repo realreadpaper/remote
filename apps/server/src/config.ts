@@ -5,6 +5,8 @@ export interface ServerConfig {
   devToken: string | null;
   publicBaseUrl: string | null;
   dataDir: string | null;
+  rateLimitWindowMs: number;
+  rateLimitMaxRequests: number;
 }
 
 type ServerEnv = Record<string, string | undefined>;
@@ -24,7 +26,14 @@ export function loadServerConfig(env: ServerEnv = process.env): ServerConfig {
     requireDevToken,
     devToken,
     publicBaseUrl: normalizeOptional(env.REMOTE_PUBLIC_BASE_URL),
-    dataDir: normalizeOptional(env.REMOTE_DATA_DIR)
+    dataDir: normalizeOptional(env.REMOTE_DATA_DIR),
+    rateLimitWindowMs: parseIntegerEnv(
+      env.REMOTE_HTTP_RATE_LIMIT_WINDOW_MS,
+      60_000,
+      "REMOTE_HTTP_RATE_LIMIT_WINDOW_MS",
+      1_000
+    ),
+    rateLimitMaxRequests: parseIntegerEnv(env.REMOTE_HTTP_RATE_LIMIT_MAX, 120, "REMOTE_HTTP_RATE_LIMIT_MAX", 1)
   };
 }
 
@@ -44,4 +53,26 @@ function parsePort(rawPort: string | undefined): number {
 function normalizeOptional(value: string | undefined): string | null {
   const normalized = value?.trim();
   return normalized && normalized.length > 0 ? normalized : null;
+}
+
+function parseIntegerEnv(
+  rawValue: string | undefined,
+  defaultValue: number,
+  envName: string,
+  minimum: number
+): number {
+  const normalized = normalizeOptional(rawValue);
+  if (!normalized) {
+    return defaultValue;
+  }
+
+  const value = Number(normalized);
+  if (!Number.isInteger(value) || value < minimum) {
+    if (minimum === 1) {
+      throw new Error(`${envName} must be a positive integer`);
+    }
+    throw new Error(`${envName} must be an integer greater than or equal to ${minimum}`);
+  }
+
+  return value;
 }

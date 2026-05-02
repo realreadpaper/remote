@@ -9,7 +9,9 @@ describe("loadServerConfig", () => {
       requireDevToken: false,
       devToken: null,
       publicBaseUrl: null,
-      dataDir: null
+      dataDir: null,
+      rateLimitWindowMs: 60_000,
+      rateLimitMaxRequests: 120
     });
   });
 
@@ -21,7 +23,9 @@ describe("loadServerConfig", () => {
         REMOTE_REQUIRE_DEV_TOKEN: "1",
         REMOTE_DEV_TOKEN: "secret",
         REMOTE_PUBLIC_BASE_URL: "https://dev-api.example.com",
-        REMOTE_DATA_DIR: "/var/lib/remote"
+        REMOTE_DATA_DIR: "/var/lib/remote",
+        REMOTE_HTTP_RATE_LIMIT_WINDOW_MS: "30000",
+        REMOTE_HTTP_RATE_LIMIT_MAX: "30"
       })
     ).toEqual({
       host: "0.0.0.0",
@@ -29,7 +33,9 @@ describe("loadServerConfig", () => {
       requireDevToken: true,
       devToken: "secret",
       publicBaseUrl: "https://dev-api.example.com",
-      dataDir: "/var/lib/remote"
+      dataDir: "/var/lib/remote",
+      rateLimitWindowMs: 30_000,
+      rateLimitMaxRequests: 30
     });
   });
 
@@ -41,6 +47,21 @@ describe("loadServerConfig", () => {
   it("requires REMOTE_DEV_TOKEN when dev token guard is enabled", () => {
     expect(() => loadServerConfig({ REMOTE_REQUIRE_DEV_TOKEN: "1" })).toThrow(
       "REMOTE_DEV_TOKEN is required when REMOTE_REQUIRE_DEV_TOKEN=1"
+    );
+  });
+
+  it("rejects invalid HTTP rate limit config", () => {
+    expect(() => loadServerConfig({ REMOTE_HTTP_RATE_LIMIT_WINDOW_MS: "999" })).toThrow(
+      "REMOTE_HTTP_RATE_LIMIT_WINDOW_MS must be an integer greater than or equal to 1000"
+    );
+    expect(() => loadServerConfig({ REMOTE_HTTP_RATE_LIMIT_WINDOW_MS: "abc" })).toThrow(
+      "REMOTE_HTTP_RATE_LIMIT_WINDOW_MS must be an integer greater than or equal to 1000"
+    );
+    expect(() => loadServerConfig({ REMOTE_HTTP_RATE_LIMIT_MAX: "0" })).toThrow(
+      "REMOTE_HTTP_RATE_LIMIT_MAX must be a positive integer"
+    );
+    expect(() => loadServerConfig({ REMOTE_HTTP_RATE_LIMIT_MAX: "abc" })).toThrow(
+      "REMOTE_HTTP_RATE_LIMIT_MAX must be a positive integer"
     );
   });
 });
