@@ -11,9 +11,10 @@ import { DeviceRegistry } from "./deviceRegistry.js";
 import { SessionHub } from "./sessionHub.js";
 import type { ServerConfig } from "./config.js";
 import { getProvidedDevToken, validateDevToken } from "./auth/devToken.js";
-import { MemorySessionTokenStore, type SessionTokenRecord } from "./auth/sessionTokens.js";
-import { MemoryPairingStore } from "./pairing/pairingStore.js";
+import { JsonFileSessionTokenStore, MemorySessionTokenStore, type SessionTokenStore } from "./auth/sessionTokens.js";
+import { JsonFilePairingStore, MemoryPairingStore, type PairingStore } from "./pairing/pairingStore.js";
 import { PairingService } from "./pairing/pairingService.js";
+import { join } from "node:path";
 
 type MobileRoutableMessage = Extract<ClientMessage, { type: "terminal.input" | "terminal.resize" }>;
 type AgentRoutableMessage = Extract<ServerMessage, { type: "terminal.output" | "terminal.exit" }>;
@@ -121,10 +122,10 @@ function serverBaseUrl(config: ServerConfig): string {
 export function registerWsRoutes(app: FastifyInstance, config: ServerConfig): void {
   const registry = new DeviceRegistry();
   const hub = new SessionHub();
-  const pairing = new PairingService(new MemoryPairingStore());
-  const sessionTokens = new MemorySessionTokenStore();
+  const pairingStore = createPairingStore(config);
+  const sessionTokens = createSessionTokenStore(config);
+  const pairing = new PairingService(pairingStore);
   const agentOwners = new Map<string, AgentSendCallback>();
-  const tokensByPairingRequestId = new Map<string, SessionTokenRecord>();
 
   app.get("/health", async () => ({ ok: true }));
   app.get("/devices", async () => ({ devices: registry.list() }));
@@ -138,7 +139,10 @@ export function registerWsRoutes(app: FastifyInstance, config: ServerConfig): vo
       }
 
       if (pairingRequest.status === "approved") {
-        const token = tokensByPairingRequestId.get(pairingRequestId);
+        const token = sessionTokens.findTokenForBinding({
+          deviceId: pairingRequest.deviceId,
+          mobileClientId: pairingRequest.mobileClientId
+        });
         if (!token) {
           throw new Error(`Session token for pairing request ${pairingRequestId} was not found`);
         }
@@ -268,7 +272,6 @@ export function registerWsRoutes(app: FastifyInstance, config: ServerConfig): vo
               deviceId: binding.deviceId,
               mobileClientId: binding.mobileClientId
             });
-            tokensByPairingRequestId.set(message.pairingRequestId, sessionToken);
             return;
           }
 
@@ -358,4 +361,16 @@ export function registerWsRoutes(app: FastifyInstance, config: ServerConfig): vo
       hub.closeMobile(mobileSend);
     });
   });
+}
+
+function createPairingStore(config: ServerConfig): PairingStore {
+  return config.dataDir
+    ? new JsonFilePairingStore(join(config.dataDir, "pairing-store.json"))
+    : new MemoryPairingStore();
+}
+
+function createSessionTokenStore(config: ServerConfig): SessionTokenStore {
+  return config.dataDir
+    ? new JsonFileSessionTokenStore(join(config.dataDir, "session-tokens.json"))
+    : new MemorySessionTokenStore();
 }

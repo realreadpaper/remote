@@ -1,3 +1,6 @@
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { FastifyInstance } from "fastify";
 import type { WebSocket } from "ws";
@@ -100,7 +103,8 @@ const tokenServerConfig: ServerConfig = {
   port: 8787,
   requireDevToken: true,
   devToken: "secret",
-  publicBaseUrl: null
+  publicBaseUrl: null,
+  dataDir: null
 };
 
 async function registerAgent(app: FastifyInstance, deviceId = "mac-1"): Promise<WebSocket> {
@@ -439,6 +443,48 @@ describe("server websocket API", () => {
     });
 
     agent.terminate();
+  });
+
+  it("keeps approved binding and session token after server restart when dataDir is configured", async () => {
+    const dataDir = mkdtempSync(join(tmpdir(), "remote-server-data-"));
+    await app.close();
+
+    app = await createServer({ logger: false }, { ...tokenServerConfig, requireDevToken: false, devToken: null, dataDir });
+    await app.ready();
+    const firstAgent = await registerAgent(app);
+    const { sessionToken } = await approvePairingRequest(app, firstAgent);
+    firstAgent.terminate();
+    await app.close();
+
+    app = await createServer({ logger: false }, { ...tokenServerConfig, requireDevToken: false, devToken: null, dataDir });
+    await app.ready();
+    const secondAgent = await registerAgent(app);
+    const mobile = await app.injectWS("/ws/mobile");
+    const agentOpened = nextJson(secondAgent);
+    const mobileOpened = nextJson(mobile);
+
+    mobile.send(JSON.stringify({ type: "session.open", deviceId: "mac-1", sessionToken }));
+
+    const agentMessage = await agentOpened;
+    const mobileMessage = await mobileOpened;
+    expect(agentMessage).toMatchObject({
+      type: "session.opened",
+      deviceId: "mac-1"
+    });
+    expect(mobileMessage).toEqual(agentMessage);
+
+    const bindingsResponse = await app.inject({ method: "GET", url: "/pairing/bindings" });
+    expect(bindingsResponse.json()).toEqual({
+      bindings: [
+        expect.objectContaining({
+          deviceId: "mac-1",
+          mobileClientId: "mobile-1"
+        })
+      ]
+    });
+
+    secondAgent.terminate();
+    mobile.terminate();
   });
 
   it("shows an agent-registered device as online", async () => {

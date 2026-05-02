@@ -8,7 +8,8 @@ describe("loadServerConfig", () => {
       port: 8787,
       requireDevToken: false,
       devToken: null,
-      publicBaseUrl: null
+      publicBaseUrl: null,
+      dataDir: null
     });
   });
 
@@ -19,14 +20,16 @@ describe("loadServerConfig", () => {
         PORT: "9443",
         REMOTE_REQUIRE_DEV_TOKEN: "1",
         REMOTE_DEV_TOKEN: "secret",
-        REMOTE_PUBLIC_BASE_URL: "https://dev-api.example.com"
+        REMOTE_PUBLIC_BASE_URL: "https://dev-api.example.com",
+        REMOTE_DATA_DIR: "/var/lib/remote"
       })
     ).toEqual({
       host: "0.0.0.0",
       port: 9443,
       requireDevToken: true,
       devToken: "secret",
-      publicBaseUrl: "https://dev-api.example.com"
+      publicBaseUrl: "https://dev-api.example.com",
+      dataDir: "/var/lib/remote"
     });
   });
 

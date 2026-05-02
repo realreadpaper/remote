@@ -2,7 +2,7 @@ import { createHash, randomInt, randomUUID } from "node:crypto";
 import type { ServerMessage } from "@remote/protocol";
 import {
   type DeviceBindingRecord,
-  MemoryPairingStore,
+  type PairingStore,
   type PairingRequestRecord
 } from "./pairingStore.js";
 
@@ -44,7 +44,7 @@ export class PairingService {
   private readonly pairingTtlMs: number;
 
   constructor(
-    private readonly store: MemoryPairingStore,
+    private readonly store: PairingStore,
     options: PairingServiceOptions = {}
   ) {
     this.now = options.now ?? (() => new Date());

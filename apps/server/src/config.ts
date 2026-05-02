@@ -4,6 +4,7 @@ export interface ServerConfig {
   requireDevToken: boolean;
   devToken: string | null;
   publicBaseUrl: string | null;
+  dataDir: string | null;
 }
 
 type ServerEnv = Record<string, string | undefined>;
@@ -22,7 +23,8 @@ export function loadServerConfig(env: ServerEnv = process.env): ServerConfig {
     port,
     requireDevToken,
     devToken,
-    publicBaseUrl: normalizeOptional(env.REMOTE_PUBLIC_BASE_URL)
+    publicBaseUrl: normalizeOptional(env.REMOTE_PUBLIC_BASE_URL),
+    dataDir: normalizeOptional(env.REMOTE_DATA_DIR)
   };
 }
 
