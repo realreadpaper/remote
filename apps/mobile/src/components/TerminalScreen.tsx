@@ -14,6 +14,7 @@ import { loadMobileRuntimeConfig } from "../config/runtimeConfig";
 import { PairingClient } from "../protocol/pairingClient";
 import { SessionClient } from "../protocol/sessionClient";
 import {
+  clearPairingToken,
   createSecureStorePairingTokenStorage,
   loadPairingToken,
   savePairingToken
@@ -31,6 +32,7 @@ export function TerminalScreen() {
   const [pairingStatus, setPairingStatus] = useState<string | null>(null);
   const [pairingSubmitting, setPairingSubmitting] = useState(false);
   const [sessionToken, setSessionToken] = useState<string | null>(null);
+  const [pairedDeviceId, setPairedDeviceId] = useState<string | null>(null);
   const clientRef = useRef<SessionClient | undefined>(undefined);
   const autoConnectAttemptedRef = useRef(false);
   const scrollRef = useRef<ScrollView | null>(null);
@@ -59,6 +61,7 @@ export function TerminalScreen() {
     setPairingSubmitting(true);
     setPairingStatus("sending");
     setSessionToken(null);
+    setPairedDeviceId(null);
     try {
       const client = new PairingClient({ apiBaseUrl: runtimeConfig.apiBaseUrl });
       const result = await client.requestPairing({
@@ -70,6 +73,7 @@ export function TerminalScreen() {
       appendLocalLine(`Pairing request pending for ${result.deviceId}.`);
       const auth = await client.waitForApproval(result.pairingRequestId);
       setSessionToken(auth.sessionToken);
+      setPairedDeviceId(auth.deviceId);
       setPairingStatus(`paired until ${auth.expiresAt}`);
       await savePairingToken(pairingTokenStorage, {
         deviceId: auth.deviceId,
@@ -103,6 +107,7 @@ export function TerminalScreen() {
         }
 
         setSessionToken(token.sessionToken);
+        setPairedDeviceId(token.deviceId);
         setPairingStatus(`paired ${token.deviceId} until ${token.expiresAt}`);
         appendLocalLine(`Restored pairing for ${token.deviceId}.`);
       })
@@ -120,6 +125,23 @@ export function TerminalScreen() {
       active = false;
     };
   }, [pairingTokenStorage]);
+
+  const handleForgetPairing = async () => {
+    try {
+      await clearPairingToken(pairingTokenStorage);
+      closeCurrentClient();
+      setSessionToken(null);
+      setPairedDeviceId(null);
+      setPairingStatus("not paired");
+      terminalState.setConnected(false);
+      setConnecting(false);
+      appendLocalLine("Forgot paired device.");
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "Forget device failed.";
+      setPairingStatus(reason);
+      appendLocalLine(`Forget device failed: ${reason}`);
+    }
+  };
 
   const handleConnect = () => {
     if (snapshot.connected || connecting) {
@@ -368,6 +390,20 @@ export function TerminalScreen() {
               {pairingStatus}
             </Text>
           ) : null}
+          {pairedDeviceId ? (
+            <View style={styles.pairedDeviceRow}>
+              <Text numberOfLines={1} style={styles.pairedDeviceText}>
+                Paired {pairedDeviceId}
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                onPress={handleForgetPairing}
+                style={({ pressed }) => [styles.forgetButton, pressed && styles.forgetButtonPressed]}
+              >
+                <Text style={styles.forgetButtonText}>Forget</Text>
+              </Pressable>
+            </View>
+          ) : null}
         </View>
 
         <ScrollView
@@ -605,6 +641,40 @@ const styles = StyleSheet.create({
     color: "#b9c2b6",
     fontSize: 12,
     fontFamily: Platform.select({ ios: "Menlo", android: "monospace", default: "monospace" })
+  },
+  pairedDeviceRow: {
+    minHeight: 32,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8
+  },
+  pairedDeviceText: {
+    flex: 1,
+    minWidth: 0,
+    color: "#9ed29a",
+    fontSize: 12,
+    fontWeight: "700",
+    fontFamily: Platform.select({ ios: "Menlo", android: "monospace", default: "monospace" })
+  },
+  forgetButton: {
+    minHeight: 30,
+    minWidth: 64,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#51433a",
+    backgroundColor: "#1f1815",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 10
+  },
+  forgetButtonPressed: {
+    backgroundColor: "#2d211c"
+  },
+  forgetButtonText: {
+    color: "#e5b99a",
+    fontSize: 12,
+    fontWeight: "800"
   },
   outputContent: {
     flexGrow: 1,

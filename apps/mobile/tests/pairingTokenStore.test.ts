@@ -82,4 +82,13 @@ describe("pairingTokenStore", () => {
     expect(storage.values.has(PAIRING_TOKEN_STORAGE_KEY)).toBe(false);
     expect(storage.deletedKeys).toEqual([PAIRING_TOKEN_STORAGE_KEY]);
   });
+
+  it("can clear the pairing token more than once", async () => {
+    const storage = new FakePairingTokenStorage();
+
+    await clearPairingToken(storage);
+    await clearPairingToken(storage);
+
+    expect(storage.deletedKeys).toEqual([PAIRING_TOKEN_STORAGE_KEY, PAIRING_TOKEN_STORAGE_KEY]);
+  });
 });
