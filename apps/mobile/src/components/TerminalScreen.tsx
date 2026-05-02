@@ -219,7 +219,7 @@ export function TerminalScreen() {
               </Text>
             </View>
             <Text numberOfLines={1} style={styles.configText}>
-              {runtimeConfig.deviceId} · {runtimeConfig.sessionUrl}
+              {runtimeConfig.deviceId} · {runtimeConfig.displaySessionUrl}
             </Text>
           </View>
 
