@@ -163,3 +163,44 @@
 - 实现默认云中转部署入口和 WSS 反向代理配置。
 - 增加正式账号、设备绑定和短期 session token。
 - 增加外网 smoke runbook，覆盖云中转、DDNS、端口映射、IPv6、反向隧道高级选项。
+
+## 2026-05-03 配对与鉴权协议消息
+
+**状态：** completed
+
+**提交：**
+- `0795edc` `docs: plan pairing auth protocol messages`
+- `0f65517` `feat: add pairing and auth protocol messages`
+
+**实现内容：**
+- 明确当前状态：Agent 仍是 Node CLI，不是多平台安装包；macOS 是当前主路径，Windows/Linux 只在协议字段上预留。
+- 明确当前 iOS 状态：Expo 开发链路可用，模拟器/局域网链路可验证；真机需要按 `docs/runbooks/physical-iphone-to-mac.md` 在同一 Wi-Fi 手动验收；还不是 TestFlight。
+- 新增协议消息：`pairing.create`、`pairing.approved`、`pairing.rejected`。
+- `session.open` 增加可选 `sessionToken`。
+- 新增协议消息：`terminal.snapshot.request`、`terminal.snapshot`。
+- 新增协议消息：`pairing.created`、`pairing.requested`、`auth.sessionToken`、`device.status`。
+- 继续保持 Zod strict schema，未知类型、多余字段、缺失关键字段都会解析失败。
+
+**涉及文件：**
+- `docs/superpowers/specs/2026-05-03-pairing-auth-protocol-messages-design.md`
+- `docs/superpowers/plans/2026-05-03-pairing-auth-protocol-messages-plan.md`
+- `packages/protocol/src/messages.ts`
+- `packages/protocol/tests/messages.test.ts`
+
+**验证：**
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm test`: pass，113 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm build`: pass。
+- iOS/移动端链路 WebSocket smoke：`HOST=127.0.0.1 PORT=8793 node apps/server/dist/index.js` + `REMOTE_SERVER_URL=ws://127.0.0.1:8793/ws/agent REMOTE_DEVICE_ID=ios-check-mac node apps/agent/dist/index.js`，WebSocket probe 收到 `__IOS_CHECK__/Users/hejianglong`。
+
+**已知风险：**
+- 本功能只定义协议，不实现配对状态机、账号登录、数据库、Agent GUI 或 TestFlight。
+- `sessionToken` 只是协议字段，Server 尚未生成或校验正式短期 token。
+- Agent 还没有 macOS `.dmg/.pkg` 安装版，也没有 Windows 安装版。
+- iOS 真机链路未在本次自动化中实际打开 iPhone，只验证了底层 WebSocket 会话链路。
+
+**后续：**
+- 实现 Server 配对状态机。
+- 实现 Agent 持久设备身份，避免安装/重启后设备 ID 改变。
+- 实现 Mobile 扫码/手动输入配对码。
+- 再推进 macOS Agent 安装包和 iOS TestFlight。
