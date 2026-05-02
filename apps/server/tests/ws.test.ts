@@ -31,6 +31,63 @@ function nextJson(socket: WebSocket): Promise<unknown> {
   });
 }
 
+function noJson(socket: WebSocket, timeoutMs = 100): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      cleanup();
+      resolve();
+    }, timeoutMs);
+
+    const cleanup = (): void => {
+      clearTimeout(timeout);
+      socket.off("message", onMessage);
+      socket.off("error", onError);
+    };
+
+    const onMessage = (data: WebSocket.RawData): void => {
+      cleanup();
+      reject(new Error(`Unexpected websocket message: ${data.toString()}`));
+    };
+
+    const onError = (error: Error): void => {
+      cleanup();
+      reject(error);
+    };
+
+    socket.once("message", onMessage);
+    socket.once("error", onError);
+  });
+}
+
+async function registerAgent(app: FastifyInstance, deviceId = "mac-1"): Promise<WebSocket> {
+  const agent = await app.injectWS("/ws/agent");
+
+  agent.send(
+    JSON.stringify({
+      type: "device.register",
+      deviceId,
+      deviceName: "MacBook Pro",
+      capabilities: ["terminal"]
+    })
+  );
+  await nextJson(agent);
+
+  return agent;
+}
+
+async function openMobileSession(
+  app: FastifyInstance,
+  deviceId = "mac-1"
+): Promise<{ mobile: WebSocket; sessionId: string }> {
+  const mobile = await app.injectWS("/ws/mobile");
+  const opened = nextJson(mobile);
+
+  mobile.send(JSON.stringify({ type: "session.open", deviceId }));
+
+  const message = (await opened) as { sessionId: string };
+  return { mobile, sessionId: message.sessionId };
+}
+
 describe("server websocket API", () => {
   let app: FastifyInstance;
 
@@ -107,16 +164,7 @@ describe("server websocket API", () => {
   });
 
   it("sends session.opened to mobile and agent when mobile opens a session", async () => {
-    const agent = await app.injectWS("/ws/agent");
-    agent.send(
-      JSON.stringify({
-        type: "device.register",
-        deviceId: "mac-1",
-        deviceName: "MacBook Pro",
-        capabilities: ["terminal"]
-      })
-    );
-    await nextJson(agent);
+    const agent = await registerAgent(app);
 
     const mobile = await app.injectWS("/ws/mobile");
     const agentOpened = nextJson(agent);
@@ -143,16 +191,7 @@ describe("server websocket API", () => {
   });
 
   it("routes mobile terminal input to the agent socket", async () => {
-    const agent = await app.injectWS("/ws/agent");
-    agent.send(
-      JSON.stringify({
-        type: "device.register",
-        deviceId: "mac-1",
-        deviceName: "MacBook Pro",
-        capabilities: ["terminal"]
-      })
-    );
-    await nextJson(agent);
+    const agent = await registerAgent(app);
 
     const mobile = await app.injectWS("/ws/mobile");
     const agentOpened = nextJson(agent);
@@ -182,16 +221,7 @@ describe("server websocket API", () => {
   });
 
   it("routes agent terminal output to the mobile socket", async () => {
-    const agent = await app.injectWS("/ws/agent");
-    agent.send(
-      JSON.stringify({
-        type: "device.register",
-        deviceId: "mac-1",
-        deviceName: "MacBook Pro",
-        capabilities: ["terminal"]
-      })
-    );
-    await nextJson(agent);
+    const agent = await registerAgent(app);
 
     const mobile = await app.injectWS("/ws/mobile");
     const agentOpened = nextJson(agent);
@@ -220,5 +250,149 @@ describe("server websocket API", () => {
 
     agent.terminate();
     mobile.terminate();
+  });
+
+  it("keeps a reconnected agent online when the old socket closes later", async () => {
+    const oldAgent = await registerAgent(app);
+    const newAgent = await registerAgent(app);
+
+    oldAgent.close();
+    await new Promise((resolve) => oldAgent.once("close", resolve));
+    await new Promise((resolve) => setTimeout(resolve, 25));
+
+    const devicesResponse = await app.inject({ method: "GET", url: "/devices" });
+    expect(devicesResponse.json()).toEqual({
+      devices: [
+        {
+          deviceId: "mac-1",
+          deviceName: "MacBook Pro",
+          capabilities: ["terminal"],
+          online: true
+        }
+      ]
+    });
+
+    const mobile = await app.injectWS("/ws/mobile");
+    const agentOpened = nextJson(newAgent);
+    const mobileOpened = nextJson(mobile);
+    mobile.send(JSON.stringify({ type: "session.open", deviceId: "mac-1" }));
+
+    await agentOpened;
+    const opened = (await mobileOpened) as { sessionId: string };
+    const routedInput = nextJson(newAgent);
+
+    mobile.send(
+      JSON.stringify({
+        type: "terminal.input",
+        sessionId: opened.sessionId,
+        data: "whoami\n"
+      })
+    );
+
+    expect(await routedInput).toEqual({
+      type: "terminal.input",
+      sessionId: opened.sessionId,
+      data: "whoami\n"
+    });
+
+    newAgent.terminate();
+    mobile.terminate();
+  });
+
+  it("returns session.error when mobile routes an unknown session", async () => {
+    const mobile = await app.injectWS("/ws/mobile");
+    const errorMessage = nextJson(mobile);
+
+    mobile.send(
+      JSON.stringify({
+        type: "terminal.input",
+        sessionId: "missing-session",
+        data: "pwd\n"
+      })
+    );
+
+    expect(await errorMessage).toEqual({
+      type: "session.error",
+      code: "SESSION_ERROR",
+      message: "Unknown session missing-session",
+      sessionId: "missing-session"
+    });
+
+    mobile.terminate();
+  });
+
+  it("returns session.error when mobile opens an offline device", async () => {
+    const mobile = await app.injectWS("/ws/mobile");
+    const errorMessage = nextJson(mobile);
+
+    mobile.send(JSON.stringify({ type: "session.open", deviceId: "offline-device" }));
+
+    expect(await errorMessage).toEqual({
+      type: "session.error",
+      code: "SESSION_ERROR",
+      message: "Device offline-device is not online"
+    });
+
+    mobile.terminate();
+  });
+
+  it("returns session.error for invalid JSON without crashing", async () => {
+    const mobile = await app.injectWS("/ws/mobile");
+    const errorMessage = nextJson(mobile);
+
+    mobile.send("{");
+
+    expect(await errorMessage).toMatchObject({
+      type: "session.error",
+      code: "SESSION_ERROR"
+    });
+
+    mobile.terminate();
+  });
+
+  it("returns session.error for invalid schema without crashing", async () => {
+    const mobile = await app.injectWS("/ws/mobile");
+    const errorMessage = nextJson(mobile);
+
+    mobile.send(JSON.stringify({ type: "session.open", deviceId: "" }));
+
+    expect(await errorMessage).toMatchObject({
+      type: "session.error",
+      code: "SESSION_ERROR"
+    });
+
+    mobile.terminate();
+  });
+
+  it("cleans mobile sessions on disconnect before later agent output", async () => {
+    const agent = await registerAgent(app);
+    const agentOpened = nextJson(agent);
+    const { mobile, sessionId } = await openMobileSession(app);
+    await agentOpened;
+
+    mobile.close();
+    await new Promise((resolve) => mobile.once("close", resolve));
+
+    const agentError = nextJson(agent);
+    agent.send(
+      JSON.stringify({
+        type: "terminal.output",
+        sessionId,
+        stream: "stdout",
+        data: "late\n"
+      })
+    );
+
+    const error = await agentError;
+    expect(error).toMatchObject({
+      type: "session.error",
+      code: "SESSION_ERROR"
+    });
+    expect([`Unknown session ${sessionId} for device mac-1`, "WebSocket is not open"]).toContain(
+      (error as { message: string }).message
+    );
+    await noJson(mobile);
+
+    agent.terminate();
   });
 });

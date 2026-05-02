@@ -25,8 +25,13 @@ export class SessionHub {
     this.agents.set(deviceId, send);
   }
 
-  detachAgent(deviceId: string): void {
+  detachAgent(deviceId: string, send: AgentSend): boolean {
+    if (this.agents.get(deviceId) !== send) {
+      return false;
+    }
+
     this.agents.delete(deviceId);
+    return true;
   }
 
   openSession(deviceId: string, mobileSend: MobileSend): RemoteSession {
@@ -84,5 +89,20 @@ export class SessionHub {
     if (message.type === "terminal.exit") {
       this.sessions.delete(message.sessionId);
     }
+  }
+
+  closeMobile(mobileSend: MobileSend): number {
+    let closedSessions = 0;
+
+    for (const [sessionId, session] of this.sessions) {
+      if (session.mobileSend !== mobileSend) {
+        continue;
+      }
+
+      this.sessions.delete(sessionId);
+      closedSessions++;
+    }
+
+    return closedSessions;
   }
 }

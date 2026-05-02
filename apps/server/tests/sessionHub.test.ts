@@ -102,7 +102,7 @@ describe("SessionHub", () => {
 
     hub.attachAgent("mac-1", agentSend);
     const session = hub.openSession("mac-1", mobileSend);
-    hub.detachAgent("mac-1");
+    hub.detachAgent("mac-1", agentSend);
     agentSend.mockClear();
 
     expect(() =>
@@ -113,6 +113,26 @@ describe("SessionHub", () => {
       })
     ).toThrow("Device mac-1 is not online");
     expect(agentSend).not.toHaveBeenCalled();
+  });
+
+  it("does not detach a newer agent connection when an old sender detaches", () => {
+    const hub = new SessionHub();
+    const oldAgentSend = vi.fn();
+    const newAgentSend = vi.fn();
+    const mobileSend = vi.fn();
+
+    hub.attachAgent("mac-1", oldAgentSend);
+    hub.attachAgent("mac-1", newAgentSend);
+    hub.detachAgent("mac-1", oldAgentSend);
+
+    const session = hub.openSession("mac-1", mobileSend);
+
+    expect(oldAgentSend).not.toHaveBeenCalled();
+    expect(newAgentSend).toHaveBeenCalledWith({
+      type: "session.opened",
+      sessionId: session.sessionId,
+      deviceId: "mac-1"
+    });
   });
 
   it("throws when the mobile client does not own the session", () => {
@@ -180,5 +200,26 @@ describe("SessionHub", () => {
         data: "pwd\n"
       })
     ).toThrow(`Unknown session ${session.sessionId}`);
+  });
+
+  it("closes all sessions owned by a mobile sender", () => {
+    const hub = new SessionHub();
+    const agentSend = vi.fn();
+    const mobileSend = vi.fn();
+
+    hub.attachAgent("mac-1", agentSend);
+    const session = hub.openSession("mac-1", mobileSend);
+
+    hub.closeMobile(mobileSend);
+
+    expect(() =>
+      hub.routeFromAgent("mac-1", {
+        type: "terminal.output",
+        sessionId: session.sessionId,
+        stream: "stdout",
+        data: "late\n"
+      })
+    ).toThrow(`Unknown session ${session.sessionId} for device mac-1`);
+    expect(mobileSend).not.toHaveBeenCalled();
   });
 });

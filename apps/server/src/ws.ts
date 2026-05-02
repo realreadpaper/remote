@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import type { RawData, WebSocket } from "ws";
+import { WebSocket, type RawData } from "ws";
 import {
   encodeMessage,
   parseClientMessage,
@@ -12,6 +12,11 @@ import { SessionHub } from "./sessionHub.js";
 
 type MobileRoutableMessage = Extract<ClientMessage, { type: "terminal.input" | "terminal.resize" }>;
 type AgentRoutableMessage = Extract<ServerMessage, { type: "terminal.output" | "terminal.exit" }>;
+type AgentSendCallback = (
+  message:
+    | Extract<ServerMessage, { type: "session.opened" }>
+    | Extract<ClientMessage, { type: "terminal.input" | "terminal.resize" }>
+) => void;
 
 function messageText(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -31,11 +36,20 @@ function messageType(payload: unknown): string | undefined {
 }
 
 function sendJson(socket: WebSocket, message: ClientMessage | ServerMessage): void {
+  if (socket.readyState !== WebSocket.OPEN) {
+    throw new Error("WebSocket is not open");
+  }
+
   socket.send(encodeMessage(message));
 }
 
-function sendSessionError(socket: WebSocket, message: string, sessionId?: string): void {
+function sendSessionError(socket: WebSocket, message: string, sessionId?: string): boolean {
+  if (socket.readyState !== WebSocket.OPEN) {
+    return false;
+  }
+
   sendJson(socket, { type: "session.error", code: "SESSION_ERROR", message, sessionId });
+  return true;
 }
 
 function isMobileRoutableMessage(message: ClientMessage): message is MobileRoutableMessage {
@@ -49,6 +63,7 @@ function isAgentRoutableMessage(message: ServerMessage): message is AgentRoutabl
 export function registerWsRoutes(app: FastifyInstance): void {
   const registry = new DeviceRegistry();
   const hub = new SessionHub();
+  const agentOwners = new Map<string, AgentSendCallback>();
 
   app.get("/health", async () => ({ ok: true }));
   app.get("/devices", async () => ({ devices: registry.list() }));
@@ -56,11 +71,7 @@ export function registerWsRoutes(app: FastifyInstance): void {
   app.get("/ws/agent", { websocket: true }, (socket) => {
     let attachedDeviceId: string | undefined;
 
-    const agentSend = (
-      message:
-        | Extract<ServerMessage, { type: "session.opened" }>
-        | Extract<ClientMessage, { type: "terminal.input" | "terminal.resize" }>
-    ): void => {
+    const agentSend: AgentSendCallback = (message): void => {
       sendJson(socket, message);
     };
 
@@ -85,6 +96,7 @@ export function registerWsRoutes(app: FastifyInstance): void {
           });
           attachedDeviceId = message.deviceId;
           hub.attachAgent(message.deviceId, agentSend);
+          agentOwners.set(message.deviceId, agentSend);
           sendJson(socket, { type: "device.registered", deviceId: message.deviceId });
           return;
         }
@@ -105,8 +117,13 @@ export function registerWsRoutes(app: FastifyInstance): void {
         return;
       }
 
+      if (agentOwners.get(attachedDeviceId) !== agentSend) {
+        return;
+      }
+
+      agentOwners.delete(attachedDeviceId);
       registry.markOffline(attachedDeviceId);
-      hub.detachAgent(attachedDeviceId);
+      hub.detachAgent(attachedDeviceId, agentSend);
     });
   });
 
@@ -140,6 +157,10 @@ export function registerWsRoutes(app: FastifyInstance): void {
       } catch (error) {
         sendSessionError(socket, messageText(error), sessionId);
       }
+    });
+
+    socket.on("close", () => {
+      hub.closeMobile(mobileSend);
     });
   });
 }
