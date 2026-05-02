@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { FastifyInstance } from "fastify";
 import type { WebSocket } from "ws";
 import { createServer } from "../src/index.js";
+import type { ServerConfig } from "../src/config.js";
 
 function nextJson(socket: WebSocket): Promise<unknown> {
   return new Promise((resolve, reject) => {
@@ -59,6 +60,49 @@ function noJson(socket: WebSocket, timeoutMs = 100): Promise<void> {
   });
 }
 
+function firstSocketOutcome(socket: WebSocket): Promise<"closed" | { message: unknown }> {
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      cleanup();
+      reject(new Error("Timed out waiting for websocket close or message"));
+    }, 1_000);
+
+    const cleanup = (): void => {
+      clearTimeout(timeout);
+      socket.off("close", onClose);
+      socket.off("message", onMessage);
+      socket.off("error", onError);
+    };
+
+    const onClose = (): void => {
+      cleanup();
+      resolve("closed");
+    };
+
+    const onMessage = (data: WebSocket.RawData): void => {
+      cleanup();
+      resolve({ message: JSON.parse(data.toString()) });
+    };
+
+    const onError = (error: Error): void => {
+      cleanup();
+      reject(error);
+    };
+
+    socket.once("close", onClose);
+    socket.once("message", onMessage);
+    socket.once("error", onError);
+  });
+}
+
+const tokenServerConfig: ServerConfig = {
+  host: "127.0.0.1",
+  port: 8787,
+  requireDevToken: true,
+  devToken: "secret",
+  publicBaseUrl: null
+};
+
 async function registerAgent(app: FastifyInstance, deviceId = "mac-1"): Promise<WebSocket> {
   const agent = await app.injectWS("/ws/agent");
 
@@ -105,6 +149,80 @@ describe("server websocket API", () => {
 
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({ ok: true });
+  });
+
+  it("rejects an agent websocket without token when dev token is required", async () => {
+    await app.close();
+    app = await createServer({ logger: false }, tokenServerConfig);
+    await app.ready();
+
+    const agent = await app.injectWS("/ws/agent");
+    const outcome = firstSocketOutcome(agent);
+
+    agent.send(
+      JSON.stringify({
+        type: "device.register",
+        deviceId: "mac-1",
+        deviceName: "MacBook Pro",
+        capabilities: ["terminal"]
+      })
+    );
+
+    expect(await outcome).toBe("closed");
+
+    const response = await app.inject({ method: "GET", url: "/devices" });
+    expect(response.json()).toEqual({ devices: [] });
+  });
+
+  it("rejects a mobile websocket without token when dev token is required", async () => {
+    await app.close();
+    app = await createServer({ logger: false }, tokenServerConfig);
+    await app.ready();
+
+    const mobile = await app.injectWS("/ws/mobile");
+    const outcome = firstSocketOutcome(mobile);
+
+    mobile.send(JSON.stringify({ type: "session.open", deviceId: "mac-1" }));
+
+    expect(await outcome).toBe("closed");
+  });
+
+  it("keeps existing websocket flow working with a correct dev token", async () => {
+    await app.close();
+    app = await createServer({ logger: false }, tokenServerConfig);
+    await app.ready();
+
+    const agent = await app.injectWS("/ws/agent?token=secret");
+
+    agent.send(
+      JSON.stringify({
+        type: "device.register",
+        deviceId: "mac-1",
+        deviceName: "MacBook Pro",
+        capabilities: ["terminal"]
+      })
+    );
+    expect(await nextJson(agent)).toEqual({
+      type: "device.registered",
+      deviceId: "mac-1"
+    });
+
+    const mobile = await app.injectWS("/ws/mobile?token=secret");
+    const agentOpened = nextJson(agent);
+    const mobileOpened = nextJson(mobile);
+
+    mobile.send(JSON.stringify({ type: "session.open", deviceId: "mac-1" }));
+
+    const agentMessage = await agentOpened;
+    const mobileMessage = await mobileOpened;
+    expect(agentMessage).toMatchObject({
+      type: "session.opened",
+      deviceId: "mac-1"
+    });
+    expect(mobileMessage).toEqual(agentMessage);
+
+    agent.terminate();
+    mobile.terminate();
   });
 
   it("shows an agent-registered device as online", async () => {

@@ -10,6 +10,7 @@ import {
 import { DeviceRegistry } from "./deviceRegistry.js";
 import { SessionHub } from "./sessionHub.js";
 import type { ServerConfig } from "./config.js";
+import { getProvidedDevToken, validateDevToken } from "./auth/devToken.js";
 
 type MobileRoutableMessage = Extract<ClientMessage, { type: "terminal.input" | "terminal.resize" }>;
 type AgentRoutableMessage = Extract<ServerMessage, { type: "terminal.output" | "terminal.exit" }>;
@@ -53,6 +54,19 @@ function sendSessionError(socket: WebSocket, message: string, sessionId?: string
   return true;
 }
 
+function isAuthorizedWebSocket(
+  socket: WebSocket,
+  request: { url: string; headers: Record<string, unknown> },
+  config: ServerConfig
+): boolean {
+  if (validateDevToken(config, getProvidedDevToken(request))) {
+    return true;
+  }
+
+  socket.close(1008, "Unauthorized");
+  return false;
+}
+
 function isMobileRoutableMessage(message: ClientMessage): message is MobileRoutableMessage {
   return message.type === "terminal.input" || message.type === "terminal.resize";
 }
@@ -61,7 +75,7 @@ function isAgentRoutableMessage(message: ServerMessage): message is AgentRoutabl
   return message.type === "terminal.output" || message.type === "terminal.exit";
 }
 
-export function registerWsRoutes(app: FastifyInstance, _config?: ServerConfig): void {
+export function registerWsRoutes(app: FastifyInstance, config: ServerConfig): void {
   const registry = new DeviceRegistry();
   const hub = new SessionHub();
   const agentOwners = new Map<string, AgentSendCallback>();
@@ -69,7 +83,11 @@ export function registerWsRoutes(app: FastifyInstance, _config?: ServerConfig): 
   app.get("/health", async () => ({ ok: true }));
   app.get("/devices", async () => ({ devices: registry.list() }));
 
-  app.get("/ws/agent", { websocket: true }, (socket) => {
+  app.get("/ws/agent", { websocket: true }, (socket, request) => {
+    if (!isAuthorizedWebSocket(socket, { url: request.url, headers: request.headers as Record<string, unknown> }, config)) {
+      return;
+    }
+
     let attachedDeviceId: string | undefined;
 
     const agentSend: AgentSendCallback = (message): void => {
@@ -128,7 +146,11 @@ export function registerWsRoutes(app: FastifyInstance, _config?: ServerConfig): 
     });
   });
 
-  app.get("/ws/mobile", { websocket: true }, (socket) => {
+  app.get("/ws/mobile", { websocket: true }, (socket, request) => {
+    if (!isAuthorizedWebSocket(socket, { url: request.url, headers: request.headers as Record<string, unknown> }, config)) {
+      return;
+    }
+
     const mobileSend = (message: Extract<ServerMessage, { type: "terminal.output" | "terminal.exit" }>): void => {
       sendJson(socket, message);
     };
