@@ -10,6 +10,7 @@
 - [Server minimal external security design](docs/superpowers/specs/2026-05-02-server-minimal-external-security-design.md)
 - [Installable MVP implementation plan](docs/superpowers/plans/2026-05-02-ios-mac-installable-mvp-plan.md)
 - [External network cloud relay plan](docs/superpowers/plans/2026-05-02-external-network-cloud-relay-plan.md)
+- [Server minimal external security plan](docs/superpowers/plans/2026-05-02-server-minimal-external-security-plan.md)
 - [Feature delivery tracking](docs/superpowers/records/feature-delivery-tracking.md)
 - [Feature log](docs/superpowers/records/feature-log.md)
 
