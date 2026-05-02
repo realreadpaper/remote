@@ -20,7 +20,7 @@ export function TerminalScreen() {
   const terminalState = useMemo(() => createTerminalState(), []);
   const [snapshot, setSnapshot] = useState(() => terminalState.getSnapshot());
   const [connecting, setConnecting] = useState(false);
-  const clientRef = useRef<SessionClient | null>(null);
+  const clientRef = useRef<SessionClient | undefined>(undefined);
   const scrollRef = useRef<ScrollView | null>(null);
 
   const refreshSnapshot = () => {
@@ -32,10 +32,14 @@ export function TerminalScreen() {
     refreshSnapshot();
   };
 
+  const closeCurrentClient = () => {
+    clientRef.current?.close();
+    clientRef.current = undefined;
+  };
+
   useEffect(() => {
     return () => {
-      clientRef.current?.close();
-      clientRef.current = null;
+      closeCurrentClient();
     };
   }, []);
 
@@ -46,10 +50,15 @@ export function TerminalScreen() {
 
     setConnecting(true);
     try {
+      closeCurrentClient();
       const client = new SessionClient({
         url: SESSION_URL,
         deviceId: DEVICE_ID,
         onMessage(message) {
+          if (clientRef.current !== client) {
+            return;
+          }
+
           if (message.type === "session.opened") {
             terminalState.setConnected(true);
             setConnecting(false);
@@ -63,6 +72,7 @@ export function TerminalScreen() {
             terminalState.appendOutput(`[server] ${message.message}\n`);
             terminalState.setConnected(false);
             setConnecting(false);
+            closeCurrentClient();
           }
 
           if (message.type === "terminal.exit") {
@@ -71,14 +81,20 @@ export function TerminalScreen() {
             );
             terminalState.setConnected(false);
             setConnecting(false);
+            closeCurrentClient();
           }
 
           refreshSnapshot();
         },
         onDisconnect(reason) {
+          if (clientRef.current !== client) {
+            return;
+          }
+
           terminalState.setConnected(false);
           setConnecting(false);
           terminalState.appendOutput(`[local] ${reason}\n`);
+          closeCurrentClient();
           refreshSnapshot();
         }
       });
@@ -86,6 +102,7 @@ export function TerminalScreen() {
       clientRef.current = client;
       client.connect();
     } catch (error) {
+      closeCurrentClient();
       terminalState.setConnected(false);
       setConnecting(false);
       appendLocalLine(error instanceof Error ? error.message : "Unable to connect.");
