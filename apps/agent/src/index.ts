@@ -1,1 +1,5 @@
-console.log("Agent client entrypoint is not implemented yet. Run Task 7 to connect the agent to the relay server.");
+import { AgentClient } from "./agentClient.js";
+import { loadAgentConfig } from "./config.js";
+
+const client = new AgentClient(loadAgentConfig());
+client.connect();
