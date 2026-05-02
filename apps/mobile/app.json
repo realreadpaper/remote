@@ -5,6 +5,12 @@
     "version": "0.1.0",
     "orientation": "portrait",
     "newArchEnabled": true,
-    "platforms": ["ios", "android"]
+    "platforms": [
+      "ios",
+      "android"
+    ],
+    "plugins": [
+      "expo-secure-store"
+    ]
   }
 }

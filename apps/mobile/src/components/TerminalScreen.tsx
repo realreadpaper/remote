@@ -13,12 +13,18 @@ import {
 import { loadMobileRuntimeConfig } from "../config/runtimeConfig";
 import { PairingClient } from "../protocol/pairingClient";
 import { SessionClient } from "../protocol/sessionClient";
+import {
+  createSecureStorePairingTokenStorage,
+  loadPairingToken,
+  savePairingToken
+} from "../state/pairingTokenStore";
 import { createTerminalState } from "../state/terminalStore";
 import { terminalShortcutPayloads } from "./terminalShortcuts";
 
 export function TerminalScreen() {
   const runtimeConfig = useMemo(() => loadMobileRuntimeConfig(), []);
   const terminalState = useMemo(() => createTerminalState(), []);
+  const pairingTokenStorage = useMemo(() => createSecureStorePairingTokenStorage(), []);
   const [snapshot, setSnapshot] = useState(() => terminalState.getSnapshot());
   const [connecting, setConnecting] = useState(false);
   const [pairingCode, setPairingCode] = useState("");
@@ -65,6 +71,12 @@ export function TerminalScreen() {
       const auth = await client.waitForApproval(result.pairingRequestId);
       setSessionToken(auth.sessionToken);
       setPairingStatus(`paired until ${auth.expiresAt}`);
+      await savePairingToken(pairingTokenStorage, {
+        deviceId: auth.deviceId,
+        sessionToken: auth.sessionToken,
+        expiresAt: auth.expiresAt,
+        pairedAt: new Date().toISOString()
+      });
       appendLocalLine(`Pairing approved for ${auth.deviceId}.`);
     } catch (error) {
       const reason = error instanceof Error ? error.message : "Pairing request failed.";
@@ -80,6 +92,34 @@ export function TerminalScreen() {
       closeCurrentClient();
     };
   }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    void loadPairingToken(pairingTokenStorage)
+      .then((token) => {
+        if (!active || !token) {
+          return;
+        }
+
+        setSessionToken(token.sessionToken);
+        setPairingStatus(`paired ${token.deviceId} until ${token.expiresAt}`);
+        appendLocalLine(`Restored pairing for ${token.deviceId}.`);
+      })
+      .catch((error) => {
+        if (!active) {
+          return;
+        }
+
+        const reason = error instanceof Error ? error.message : "Pairing restore failed.";
+        setPairingStatus(reason);
+        appendLocalLine(`Pairing restore failed: ${reason}`);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [pairingTokenStorage]);
 
   const handleConnect = () => {
     if (snapshot.connected || connecting) {
