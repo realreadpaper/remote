@@ -11,6 +11,7 @@ import {
   View
 } from "react-native";
 import { loadMobileRuntimeConfig } from "../config/runtimeConfig";
+import { PairingClient } from "../protocol/pairingClient";
 import { SessionClient } from "../protocol/sessionClient";
 import { createTerminalState } from "../state/terminalStore";
 import { terminalShortcutPayloads } from "./terminalShortcuts";
@@ -20,6 +21,9 @@ export function TerminalScreen() {
   const terminalState = useMemo(() => createTerminalState(), []);
   const [snapshot, setSnapshot] = useState(() => terminalState.getSnapshot());
   const [connecting, setConnecting] = useState(false);
+  const [pairingCode, setPairingCode] = useState("");
+  const [pairingStatus, setPairingStatus] = useState<string | null>(null);
+  const [pairingSubmitting, setPairingSubmitting] = useState(false);
   const clientRef = useRef<SessionClient | undefined>(undefined);
   const autoConnectAttemptedRef = useRef(false);
   const scrollRef = useRef<ScrollView | null>(null);
@@ -36,6 +40,33 @@ export function TerminalScreen() {
   const closeCurrentClient = () => {
     clientRef.current?.close();
     clientRef.current = undefined;
+  };
+
+  const handlePairingSubmit = async () => {
+    const normalizedCode = pairingCode.trim();
+    if (!normalizedCode || pairingSubmitting) {
+      appendLocalLine("Enter a pairing code first.");
+      return;
+    }
+
+    setPairingSubmitting(true);
+    setPairingStatus("sending");
+    try {
+      const client = new PairingClient({ apiBaseUrl: runtimeConfig.apiBaseUrl });
+      const result = await client.requestPairing({
+        pairingCode: normalizedCode,
+        mobileClientId: runtimeConfig.mobileClientId,
+        mobileName: runtimeConfig.mobileName
+      });
+      setPairingStatus(`pending ${result.pairingRequestId}`);
+      appendLocalLine(`Pairing request pending for ${result.deviceId}.`);
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "Pairing request failed.";
+      setPairingStatus(reason);
+      appendLocalLine(`Pairing request failed: ${reason}`);
+    } finally {
+      setPairingSubmitting(false);
+    }
   };
 
   useEffect(() => {
@@ -254,6 +285,44 @@ export function TerminalScreen() {
           </View>
         ) : null}
 
+        <View style={styles.pairingPanel}>
+          <View style={styles.pairingMeta}>
+            <Text style={styles.pairingTitle}>Pair device</Text>
+            <Text numberOfLines={1} style={styles.pairingApiText}>
+              {runtimeConfig.mobileClientId} · {runtimeConfig.displayApiBaseUrl}
+            </Text>
+          </View>
+          <View style={styles.pairingControls}>
+            <TextInput
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="number-pad"
+              onChangeText={setPairingCode}
+              placeholder="配对码"
+              placeholderTextColor="#6f756f"
+              style={styles.pairingInput}
+              value={pairingCode}
+            />
+            <Pressable
+              accessibilityRole="button"
+              disabled={pairingSubmitting}
+              onPress={handlePairingSubmit}
+              style={({ pressed }) => [
+                styles.pairingButton,
+                pairingSubmitting && styles.pairingButtonDisabled,
+                pressed && !pairingSubmitting && styles.pairingButtonPressed
+              ]}
+            >
+              <Text style={styles.pairingButtonText}>{pairingSubmitting ? "..." : "Pair"}</Text>
+            </Pressable>
+          </View>
+          {pairingStatus ? (
+            <Text numberOfLines={1} style={styles.pairingStatusText}>
+              {pairingStatus}
+            </Text>
+          ) : null}
+        </View>
+
         <ScrollView
           ref={scrollRef}
           contentContainerStyle={styles.outputContent}
@@ -425,6 +494,69 @@ const styles = StyleSheet.create({
     color: "#f1bf85",
     fontSize: 12,
     lineHeight: 18,
+    fontFamily: Platform.select({ ios: "Menlo", android: "monospace", default: "monospace" })
+  },
+  pairingPanel: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#242826",
+    backgroundColor: "#151816",
+    gap: 8
+  },
+  pairingMeta: {
+    gap: 2
+  },
+  pairingTitle: {
+    color: "#eef2ed",
+    fontSize: 13,
+    fontWeight: "700"
+  },
+  pairingApiText: {
+    color: "#8f978f",
+    fontSize: 11,
+    fontFamily: Platform.select({ ios: "Menlo", android: "monospace", default: "monospace" })
+  },
+  pairingControls: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8
+  },
+  pairingInput: {
+    flex: 1,
+    minHeight: 38,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#313733",
+    backgroundColor: "#101211",
+    color: "#f4f7f2",
+    paddingHorizontal: 10,
+    fontSize: 15,
+    fontFamily: Platform.select({ ios: "Menlo", android: "monospace", default: "monospace" })
+  },
+  pairingButton: {
+    minHeight: 38,
+    minWidth: 68,
+    borderRadius: 6,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#dce8cc",
+    paddingHorizontal: 12
+  },
+  pairingButtonPressed: {
+    backgroundColor: "#f2f7e9"
+  },
+  pairingButtonDisabled: {
+    backgroundColor: "#586052"
+  },
+  pairingButtonText: {
+    color: "#111312",
+    fontSize: 13,
+    fontWeight: "800"
+  },
+  pairingStatusText: {
+    color: "#b9c2b6",
+    fontSize: 12,
     fontFamily: Platform.select({ ios: "Menlo", android: "monospace", default: "monospace" })
   },
   outputContent: {

@@ -1,7 +1,11 @@
 export interface MobileRuntimeConfig {
   sessionUrl: string;
   displaySessionUrl: string;
+  apiBaseUrl: string;
+  displayApiBaseUrl: string;
   deviceId: string;
+  mobileClientId: string;
+  mobileName: string;
   devToken: string | null;
   autoConnect: boolean;
   smokeCommand: string | null;
@@ -14,11 +18,16 @@ export function loadMobileRuntimeConfig(env: RuntimeEnv = process.env): MobileRu
   const baseSessionUrl = env.EXPO_PUBLIC_REMOTE_WS_URL ?? "ws://127.0.0.1:8787/ws/mobile";
   const devToken = normalizeOptional(env.EXPO_PUBLIC_REMOTE_DEV_TOKEN);
   const sessionUrl = buildSessionUrl(baseSessionUrl, devToken);
+  const apiBaseUrl = normalizeOptional(env.EXPO_PUBLIC_REMOTE_API_URL) ?? deriveApiBaseUrl(baseSessionUrl);
 
   return {
     sessionUrl,
     displaySessionUrl: buildDisplaySessionUrl(sessionUrl, devToken),
+    apiBaseUrl,
+    displayApiBaseUrl: apiBaseUrl,
     deviceId: env.EXPO_PUBLIC_REMOTE_DEVICE_ID ?? "mac-dev",
+    mobileClientId: normalizeOptional(env.EXPO_PUBLIC_REMOTE_MOBILE_CLIENT_ID) ?? "mobile-dev",
+    mobileName: normalizeOptional(env.EXPO_PUBLIC_REMOTE_MOBILE_NAME) ?? "iPhone",
     devToken,
     autoConnect: env.EXPO_PUBLIC_REMOTE_AUTOCONNECT === "1",
     smokeCommand: smokeCommand && smokeCommand.length > 0 ? smokeCommand : null
@@ -43,6 +52,15 @@ function buildDisplaySessionUrl(sessionUrl: string, devToken: string | null): st
   const url = new URL(sessionUrl);
   url.searchParams.set("token", "redacted");
   return url.toString();
+}
+
+function deriveApiBaseUrl(sessionUrl: string): string {
+  const url = new URL(sessionUrl);
+  url.protocol = url.protocol === "wss:" ? "https:" : "http:";
+  url.pathname = "";
+  url.search = "";
+  url.hash = "";
+  return url.toString().replace(/\/$/, "");
 }
 
 function normalizeOptional(value: string | undefined): string | null {
