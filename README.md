@@ -1,5 +1,13 @@
 # Terminal-First Remote Control
 
+## Product Documents
+
+- [Product design](docs/superpowers/specs/2026-05-01-terminal-first-remote-control-prd.md)
+- [Technical design](docs/superpowers/specs/2026-05-01-terminal-first-remote-control-technical-design.md)
+- [iOS to macOS installable MVP implementation](docs/superpowers/specs/2026-05-02-ios-mac-installable-mvp-implementation.md)
+- [Feature implementation principles](docs/superpowers/specs/2026-05-02-feature-implementation-principles.md)
+- [Installable MVP implementation plan](docs/superpowers/plans/2026-05-02-ios-mac-installable-mvp-plan.md)
+
 ## Local MVP Foundation
 
 This workspace uses `pnpm` through Corepack. Set it up and install dependencies:

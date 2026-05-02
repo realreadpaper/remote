@@ -351,3 +351,15 @@ Windows：
 - 会话内容端到端加密。
 - 云中继只转发密文。
 - 会话内无广告。
+
+## 15. 当前实现推进文档
+
+当前代码已经完成本地 relay、macOS CLI Agent、Expo Mobile 终端 UI 和 PTY 命令往返。下一阶段从“本地开发可用”推进到“iOS TestFlight + 可安装 macOS Agent”。
+
+详细交付方案见：
+
+- `docs/superpowers/specs/2026-05-02-ios-mac-installable-mvp-implementation.md`
+- `docs/superpowers/specs/2026-05-02-feature-implementation-principles.md`
+- `docs/superpowers/plans/2026-05-02-ios-mac-installable-mvp-plan.md`
+
+推进顺序为：真机联调、配对鉴权、终端体验补强、macOS Agent 包装、iOS TestFlight、云端测试环境、发布前验收。

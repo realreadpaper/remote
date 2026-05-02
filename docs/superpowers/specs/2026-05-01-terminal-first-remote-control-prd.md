@@ -281,3 +281,12 @@ V2：
 - 审计报表。
 - 私有化部署。
 - 更多 Shell 和开发环境集成。
+
+## 12. 当前交付焦点
+
+当前工程已经完成本地终端远控垂直切片。下一阶段交付焦点是“iOS 可安装客户端连接 macOS Agent”，具体实现方案见：
+
+- `docs/superpowers/specs/2026-05-02-ios-mac-installable-mvp-implementation.md`
+- `docs/superpowers/plans/2026-05-02-ios-mac-installable-mvp-plan.md`
+
+该阶段坚持终端优先：用户安装后首先看到设备列表，连接成功后默认进入终端。文件、桌面、服务状态和广告在协议与架构上预留，但不阻塞第一版 iPhone 连接 Mac 执行命令。
