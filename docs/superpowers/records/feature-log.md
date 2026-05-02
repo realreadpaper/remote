@@ -598,3 +598,56 @@
 - 增加 Server revoke API。
 - Mobile Forget 调用 revoke 后再清除本地 token。
 - 增加多设备列表和设备切换。
+
+## 2026-05-03 Session Token Revoke
+
+**状态：** completed
+
+**提交：**
+- `ad2d69c` `docs: plan session token revoke`
+- `47e84de` `feat: revoke session token on forget`
+
+**实现内容：**
+- `SessionTokenStore` 增加 `revokeSessionToken()`。
+- Memory token store 支持删除指定 token。
+- JSON token store revoke 后会写回 `session-tokens.json`。
+- Server 新增 `POST /session-tokens/revoke`。
+- token 不存在时返回 `{ revoked: false }`。
+- token 存在但 deviceId 不匹配时返回 400。
+- token revoke 后再次 `session.open` 会返回 `Invalid session token`。
+- Mobile `PairingClient` 增加 `revokeSessionToken()`。
+- Mobile Forget device 会先尝试调用 Server revoke，然后清除本地 SecureStore token；revoke 失败不会阻止本地 Forget。
+
+**涉及文件：**
+- `docs/superpowers/specs/2026-05-03-session-token-revoke-design.md`
+- `docs/superpowers/plans/2026-05-03-session-token-revoke-plan.md`
+- `apps/server/src/auth/sessionTokens.ts`
+- `apps/server/src/ws.ts`
+- `apps/server/tests/auth/sessionTokens.test.ts`
+- `apps/server/tests/ws.test.ts`
+- `apps/mobile/src/protocol/pairingClient.ts`
+- `apps/mobile/src/components/TerminalScreen.tsx`
+- `apps/mobile/tests/pairingClient.test.ts`
+
+**TDD 记录：**
+- Server store 红灯：`revokeSessionToken()` 不存在，auth tests 失败。
+- Server route 红灯：`POST /session-tokens/revoke` 返回 404。
+- Mobile 红灯：`PairingClient.revokeSessionToken()` 不存在。
+- 绿灯：实现后 Server、Mobile 和全量测试通过。
+
+**验证：**
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test`: pass，76 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile test`: pass，42 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm test`: pass，167 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm build`: pass。
+
+**已知风险：**
+- Revoke API 当前只凭 token 本身授权，正式账号体系需要登录态和设备归属校验。
+- 仍没有批量撤销和多设备列表。
+- HTTP pairing/revoke 接口还没有统一 dev token/header 鉴权。
+
+**后续：**
+- 增加多设备列表和设备切换。
+- 给 HTTP pairing/revoke 接口补齐 dev token 或正式登录鉴权。
+- 增加 token refresh。
