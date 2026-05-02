@@ -556,3 +556,45 @@
 - 增加 token revoke/refresh。
 - 后续云中转迁移到 SQLite 或 Postgres。
 - 推进 macOS Agent 安装版和菜单栏确认 UI。
+
+## 2026-05-03 Mobile Forget Device
+
+**状态：** completed
+
+**提交：**
+- `1076007` `docs: plan mobile forget device`
+- `075f546` `feat: add mobile forget device action`
+
+**实现内容：**
+- Mobile 增加已配对设备状态 `pairedDeviceId`。
+- 恢复 SecureStore token 或配对批准后，UI 显示 `Paired <deviceId>`。
+- pairing panel 中新增紧凑 `Forget` 按钮。
+- 点击 Forget 后清除 SecureStore token、清空内存 `sessionToken`、关闭当前 `SessionClient`，并把 UI 状态改为 `not paired`。
+- 保留现有手动输入配对码入口，Forget 后可立即重新配对。
+
+**涉及文件：**
+- `docs/superpowers/specs/2026-05-03-mobile-forget-device-design.md`
+- `docs/superpowers/plans/2026-05-03-mobile-forget-device-plan.md`
+- `apps/mobile/src/components/TerminalScreen.tsx`
+- `apps/mobile/tests/pairingTokenStore.test.ts`
+
+**TDD 记录：**
+- 新增 `clearPairingToken()` 幂等测试，Mobile 测试通过，41 tests passed。
+- UI 接入后 Mobile test/typecheck 通过。
+
+**验证：**
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile test`: pass，41 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm test`: pass，162 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm build`: pass。
+
+**已知风险：**
+- Forget 只清除 Mobile 本机 token，不会通知 Server revoke。
+- Server token 在过期前仍存在；需要 revoke API 才能完整撤销。
+- 当前仍是单设备状态，不是多设备列表。
+
+**后续：**
+- 增加 Server revoke API。
+- Mobile Forget 调用 revoke 后再清除本地 token。
+- 增加多设备列表和设备切换。
