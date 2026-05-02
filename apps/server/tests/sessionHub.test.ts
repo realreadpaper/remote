@@ -18,6 +18,28 @@ describe("SessionHub", () => {
     });
   });
 
+  it("does not retain a session when notifying the agent fails", () => {
+    const hub = new SessionHub();
+    const mobileSend = vi.fn();
+    let openedSessionId: string | undefined;
+    const agentSend = vi.fn((message: { type: string; sessionId: string }) => {
+      openedSessionId = message.sessionId;
+      throw new Error("agent send failed");
+    });
+
+    hub.attachAgent("mac-1", agentSend);
+
+    expect(() => hub.openSession("mac-1", mobileSend)).toThrow("agent send failed");
+    expect(openedSessionId).toBeDefined();
+    expect(() =>
+      hub.routeFromMobile(mobileSend, {
+        type: "terminal.input",
+        sessionId: openedSessionId!,
+        data: "pwd\n"
+      })
+    ).toThrow(`Unknown session ${openedSessionId}`);
+  });
+
   it("routes terminal input to the agent", () => {
     const hub = new SessionHub();
     const agentSend = vi.fn();

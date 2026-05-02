@@ -47,11 +47,16 @@ export class SessionHub {
     };
     this.sessions.set(session.sessionId, session);
 
-    agentSend({
-      type: "session.opened",
-      sessionId: session.sessionId,
-      deviceId
-    });
+    try {
+      agentSend({
+        type: "session.opened",
+        sessionId: session.sessionId,
+        deviceId
+      });
+    } catch (error) {
+      this.sessions.delete(session.sessionId);
+      throw error;
+    }
 
     return {
       sessionId: session.sessionId,
