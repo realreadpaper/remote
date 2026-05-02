@@ -703,3 +703,56 @@
 - 给 pairing/status/revoke 接口增加 rate limit。
 - 生产配置中逐步移除 query token，保留 `Authorization` header。
 - 继续推进多设备列表、设备切换和外网默认云中转链路。
+
+## 2026-05-03 HTTP Rate Limit
+
+**状态：** completed
+
+**提交：**
+- `18e833d` `docs: design http rate limit`
+- `744f478` `docs: plan http rate limit`
+- `a5c4917` `feat: add http rate limit`
+
+**实现内容：**
+- Server 配置新增 `REMOTE_HTTP_RATE_LIMIT_WINDOW_MS` 和 `REMOTE_HTTP_RATE_LIMIT_MAX`。
+- 默认 HTTP 限流为 60 秒窗口、每客户端 120 次请求。
+- 新增 `MemoryRateLimiter`，使用单进程内存固定窗口算法。
+- `GET /pairing/bindings`、`POST /pairing/requests`、`GET /pairing/requests/:pairingRequestId`、`POST /session-tokens/revoke` 接入限流。
+- 限流顺序为先 dev token guard，再 rate limit，再进入业务逻辑。
+- 客户端 key 优先取 `x-forwarded-for` 第一个 IP，其次取 `request.ip`。
+- 超限返回 HTTP 429、JSON `{ error: "Rate limit exceeded", retryAfterMs }`，并设置 `Retry-After` header。
+
+**涉及文件：**
+- `docs/superpowers/specs/2026-05-03-http-rate-limit-design.md`
+- `docs/superpowers/plans/2026-05-03-http-rate-limit-plan.md`
+- `apps/server/src/config.ts`
+- `apps/server/src/rateLimit.ts`
+- `apps/server/src/ws.ts`
+- `apps/server/tests/config.test.ts`
+- `apps/server/tests/rateLimit.test.ts`
+- `apps/server/tests/ws.test.ts`
+
+**TDD 记录：**
+- Config 红灯：`PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test -- apps/server/tests/config.test.ts` 失败，`ServerConfig` 缺少 rate limit 字段，非法环境变量未抛错。
+- Config 绿灯：实现 `rateLimitWindowMs`、`rateLimitMaxRequests` 和整数解析后，Server config 测试通过。
+- RateLimiter 红灯：`PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test -- apps/server/tests/rateLimit.test.ts` 失败，`apps/server/src/rateLimit.ts` 不存在。
+- RateLimiter 绿灯：实现 `MemoryRateLimiter.check()` 后，新增 3 个限流单测通过。
+- Route 红灯：`PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test -- apps/server/tests/ws.test.ts` 失败，第三次同 IP pairing request 仍返回 400 而不是 429。
+- Route 绿灯：HTTP route 在 auth 后接入 limiter，Server 测试通过，84 tests passed。
+
+**验证：**
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test`: pass，84 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm test`: pass，178 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm build`: pass。
+
+**已知风险：**
+- 内存限流只在单个 Server 进程内生效，多实例云中转需要共享 store。
+- `x-forwarded-for` 必须来自可信代理；生产环境不能盲信客户端伪造 header。
+- IP 级限流可能误伤同一 NAT 出口下的多个用户。
+- 当前没有 WebSocket 消息级限流，terminal 输入输出仍需后续保护。
+
+**后续：**
+- 云中转多实例时实现 Redis/Postgres rate limit store。
+- 增加 WebSocket 消息级限流。
+- 增加账号级、设备级、pairing code 级组合限流。
