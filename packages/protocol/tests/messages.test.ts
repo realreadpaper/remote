@@ -45,6 +45,72 @@ describe("protocol messages", () => {
     });
   });
 
+  it("parses session.open with an optional session token", () => {
+    const message = parseClientMessage({
+      type: "session.open",
+      deviceId: "device-1",
+      sessionToken: "session-token-1"
+    });
+
+    expect(message).toEqual({
+      type: "session.open",
+      deviceId: "device-1",
+      sessionToken: "session-token-1"
+    });
+  });
+
+  it("parses agent pairing create request", () => {
+    const message = parseClientMessage({
+      type: "pairing.create",
+      deviceId: "device-1"
+    });
+
+    expect(message).toEqual({
+      type: "pairing.create",
+      deviceId: "device-1"
+    });
+  });
+
+  it("parses agent pairing approval and rejection", () => {
+    expect(
+      parseClientMessage({
+        type: "pairing.approved",
+        pairingRequestId: "request-1",
+        deviceId: "device-1"
+      })
+    ).toEqual({
+      type: "pairing.approved",
+      pairingRequestId: "request-1",
+      deviceId: "device-1"
+    });
+
+    expect(
+      parseClientMessage({
+        type: "pairing.rejected",
+        pairingRequestId: "request-2",
+        deviceId: "device-1",
+        reason: "User denied"
+      })
+    ).toEqual({
+      type: "pairing.rejected",
+      pairingRequestId: "request-2",
+      deviceId: "device-1",
+      reason: "User denied"
+    });
+  });
+
+  it("parses terminal snapshot request", () => {
+    const message = parseClientMessage({
+      type: "terminal.snapshot.request",
+      sessionId: "session-1"
+    });
+
+    expect(message).toEqual({
+      type: "terminal.snapshot.request",
+      sessionId: "session-1"
+    });
+  });
+
   it("rejects extra fields on terminal close", () => {
     expect(() =>
       parseClientMessage({
@@ -67,6 +133,110 @@ describe("protocol messages", () => {
     expect(message.stream).toBe("stdout");
   });
 
+  it("parses server pairing created response", () => {
+    const message = parseServerMessage({
+      type: "pairing.created",
+      deviceId: "device-1",
+      pairingCode: "123456",
+      expiresAt: "2026-05-03T00:30:00.000Z",
+      serverUrl: "wss://relay.example.test",
+      deviceName: "MacBook Pro"
+    });
+
+    expect(message).toEqual({
+      type: "pairing.created",
+      deviceId: "device-1",
+      pairingCode: "123456",
+      expiresAt: "2026-05-03T00:30:00.000Z",
+      serverUrl: "wss://relay.example.test",
+      deviceName: "MacBook Pro"
+    });
+  });
+
+  it("parses server pairing requested notification", () => {
+    const message = parseServerMessage({
+      type: "pairing.requested",
+      pairingRequestId: "request-1",
+      deviceId: "device-1",
+      mobileClientId: "mobile-1",
+      mobileName: "Alice iPhone",
+      requestedAt: "2026-05-03T00:31:00.000Z"
+    });
+
+    expect(message).toEqual({
+      type: "pairing.requested",
+      pairingRequestId: "request-1",
+      deviceId: "device-1",
+      mobileClientId: "mobile-1",
+      mobileName: "Alice iPhone",
+      requestedAt: "2026-05-03T00:31:00.000Z"
+    });
+  });
+
+  it("parses auth session token", () => {
+    const message = parseServerMessage({
+      type: "auth.sessionToken",
+      sessionId: "session-1",
+      deviceId: "device-1",
+      sessionToken: "session-token-1",
+      expiresAt: "2026-05-03T00:32:00.000Z"
+    });
+
+    expect(message).toEqual({
+      type: "auth.sessionToken",
+      sessionId: "session-1",
+      deviceId: "device-1",
+      sessionToken: "session-token-1",
+      expiresAt: "2026-05-03T00:32:00.000Z"
+    });
+  });
+
+  it("parses device status", () => {
+    const message = parseServerMessage({
+      type: "device.status",
+      deviceId: "device-1",
+      deviceName: "MacBook Pro",
+      platform: "macos",
+      capabilities: ["terminal"],
+      online: true,
+      lastSeenAt: "2026-05-03T00:33:00.000Z"
+    });
+
+    expect(message).toEqual({
+      type: "device.status",
+      deviceId: "device-1",
+      deviceName: "MacBook Pro",
+      platform: "macos",
+      capabilities: ["terminal"],
+      online: true,
+      lastSeenAt: "2026-05-03T00:33:00.000Z"
+    });
+  });
+
+  it("parses terminal snapshot response", () => {
+    const message = parseServerMessage({
+      type: "terminal.snapshot",
+      sessionId: "session-1",
+      deviceId: "device-1",
+      output: ["pwd\r\n", "/Users/me\r\n"],
+      alive: true,
+      exitCode: null,
+      cols: 100,
+      rows: 30
+    });
+
+    expect(message).toEqual({
+      type: "terminal.snapshot",
+      sessionId: "session-1",
+      deviceId: "device-1",
+      output: ["pwd\r\n", "/Users/me\r\n"],
+      alive: true,
+      exitCode: null,
+      cols: 100,
+      rows: 30
+    });
+  });
+
   it("rejects extra fields on known server messages", () => {
     expect(() =>
       parseServerMessage({
@@ -75,6 +245,38 @@ describe("protocol messages", () => {
         stream: "stdout",
         data: "/Users/me\n",
         unexpected: true
+      })
+    ).toThrow();
+  });
+
+  it("rejects pairing messages missing required fields", () => {
+    expect(() => parseClientMessage({ type: "pairing.create" })).toThrow();
+    expect(() =>
+      parseClientMessage({
+        type: "pairing.approved",
+        deviceId: "device-1"
+      })
+    ).toThrow();
+    expect(() =>
+      parseServerMessage({
+        type: "pairing.created",
+        deviceId: "device-1",
+        expiresAt: "2026-05-03T00:30:00.000Z",
+        serverUrl: "wss://relay.example.test",
+        deviceName: "MacBook Pro"
+      })
+    ).toThrow();
+    expect(() =>
+      parseServerMessage({
+        type: "auth.sessionToken",
+        sessionId: "session-1",
+        deviceId: "device-1",
+        expiresAt: "2026-05-03T00:32:00.000Z"
+      })
+    ).toThrow();
+    expect(() =>
+      parseClientMessage({
+        type: "terminal.snapshot.request"
       })
     ).toThrow();
   });
