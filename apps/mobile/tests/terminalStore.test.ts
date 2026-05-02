@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createTerminalState } from "../src/state/terminalStore";
+import { createTerminalState, type TerminalSnapshot } from "../src/state/terminalStore";
 
 describe("terminal store", () => {
   it("appends output chunks in order", () => {
@@ -24,5 +24,37 @@ describe("terminal store", () => {
 
     expect(command).toBe("pwd\n");
     expect(state.getSnapshot().input).toBe("");
+  });
+
+  it("keeps store state unchanged when a returned snapshot is mutated", () => {
+    const state = createTerminalState();
+    state.appendOutput("hello");
+
+    const snapshot = state.getSnapshot() as TerminalSnapshot;
+    snapshot.output = "tampered";
+
+    expect(state.getSnapshot().output).toBe("hello");
+  });
+
+  it("tracks connected state", () => {
+    const state = createTerminalState();
+    state.setConnected(true);
+
+    expect(state.getSnapshot().connected).toBe(true);
+  });
+
+  it("does not append another newline when submitted input already ends with one", () => {
+    const state = createTerminalState();
+    state.setInput("pwd\n");
+
+    expect(state.submitInput()).toBe("pwd\n");
+  });
+
+  it("returns a newline when submitting again after input is cleared", () => {
+    const state = createTerminalState();
+    state.setInput("pwd");
+    state.submitInput();
+
+    expect(state.submitInput()).toBe("\n");
   });
 });

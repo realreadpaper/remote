@@ -38,8 +38,8 @@ export function createTerminalState() {
       };
       return command;
     },
-    getSnapshot(): TerminalSnapshot {
-      return snapshot;
+    getSnapshot(): Readonly<TerminalSnapshot> {
+      return { ...snapshot };
     }
   };
 }
