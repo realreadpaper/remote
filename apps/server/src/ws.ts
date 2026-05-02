@@ -11,12 +11,16 @@ import { DeviceRegistry } from "./deviceRegistry.js";
 import { SessionHub } from "./sessionHub.js";
 import type { ServerConfig } from "./config.js";
 import { getProvidedDevToken, validateDevToken } from "./auth/devToken.js";
+import { MemoryPairingStore } from "./pairing/pairingStore.js";
+import { PairingService } from "./pairing/pairingService.js";
 
 type MobileRoutableMessage = Extract<ClientMessage, { type: "terminal.input" | "terminal.resize" }>;
 type AgentRoutableMessage = Extract<ServerMessage, { type: "terminal.output" | "terminal.exit" }>;
+type AgentPairingMessage = Extract<ClientMessage, { type: "pairing.create" | "pairing.approved" | "pairing.rejected" }>;
 type AgentSendCallback = (
   message:
     | Extract<ServerMessage, { type: "session.opened" }>
+    | Extract<ServerMessage, { type: "pairing.created" | "pairing.requested" }>
     | Extract<ClientMessage, { type: "terminal.input" | "terminal.resize" | "terminal.close" }>
 ) => void;
 
@@ -54,6 +58,28 @@ function sendSessionError(socket: WebSocket, message: string, sessionId?: string
   return true;
 }
 
+function readRequiredString(input: Record<string, unknown>, fieldName: string): string {
+  const value = input[fieldName];
+  if (typeof value !== "string" || value.trim().length === 0) {
+    throw new Error(`${fieldName} is required`);
+  }
+
+  return value;
+}
+
+function parsePairingRequestBody(body: unknown): { pairingCode: string; mobileClientId: string; mobileName: string } {
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    throw new Error("Request body must be an object");
+  }
+
+  const input = body as Record<string, unknown>;
+  return {
+    pairingCode: readRequiredString(input, "pairingCode"),
+    mobileClientId: readRequiredString(input, "mobileClientId"),
+    mobileName: readRequiredString(input, "mobileName")
+  };
+}
+
 function isAuthorizedWebSocket(
   socket: WebSocket,
   request: { url: string; headers: Record<string, unknown> },
@@ -75,13 +101,41 @@ function isAgentRoutableMessage(message: ServerMessage): message is AgentRoutabl
   return message.type === "terminal.output" || message.type === "terminal.exit";
 }
 
+function isAgentPairingMessage(message: ClientMessage): message is AgentPairingMessage {
+  return message.type === "pairing.create" || message.type === "pairing.approved" || message.type === "pairing.rejected";
+}
+
+function serverBaseUrl(config: ServerConfig): string {
+  return config.publicBaseUrl ?? `http://${config.host}:${config.port}`;
+}
+
 export function registerWsRoutes(app: FastifyInstance, config: ServerConfig): void {
   const registry = new DeviceRegistry();
   const hub = new SessionHub();
+  const pairing = new PairingService(new MemoryPairingStore());
   const agentOwners = new Map<string, AgentSendCallback>();
 
   app.get("/health", async () => ({ ok: true }));
   app.get("/devices", async () => ({ devices: registry.list() }));
+  app.get("/pairing/bindings", async () => ({ bindings: pairing.listBindings() }));
+  app.post("/pairing/requests", async (request, reply) => {
+    try {
+      const pairingRequest = pairing.requestPairing(parsePairingRequestBody(request.body));
+      const agentSend = agentOwners.get(pairingRequest.deviceId);
+      if (!agentSend) {
+        throw new Error(`Device ${pairingRequest.deviceId} is not online`);
+      }
+
+      agentSend(pairingRequest);
+      return reply.code(202).send({
+        pairingRequestId: pairingRequest.pairingRequestId,
+        deviceId: pairingRequest.deviceId,
+        status: "pending"
+      });
+    } catch (error) {
+      return reply.code(400).send({ error: messageText(error) });
+    }
+  });
 
   app.get("/ws/agent", { websocket: true }, (socket, request) => {
     if (!isAuthorizedWebSocket(socket, { url: request.url, headers: request.headers as Record<string, unknown> }, config)) {
@@ -117,6 +171,49 @@ export function registerWsRoutes(app: FastifyInstance, config: ServerConfig): vo
           hub.attachAgent(message.deviceId, agentSend);
           agentOwners.set(message.deviceId, agentSend);
           sendJson(socket, { type: "device.registered", deviceId: message.deviceId });
+          return;
+        }
+
+        if (messageType(payload)?.startsWith("pairing.")) {
+          const message = parseClientMessage(payload);
+          if (!isAgentPairingMessage(message)) {
+            throw new Error(`Unsupported agent pairing message type ${message.type}`);
+          }
+
+          if (message.deviceId !== attachedDeviceId) {
+            throw new Error(`Agent ${attachedDeviceId} cannot pair for device ${message.deviceId}`);
+          }
+
+          if (message.type === "pairing.create") {
+            const device = registry.get(message.deviceId);
+            if (!device) {
+              throw new Error(`Device ${message.deviceId} is not registered`);
+            }
+
+            sendJson(
+              socket,
+              pairing.createPairingCode({
+                deviceId: device.deviceId,
+                deviceName: device.deviceName,
+                serverUrl: serverBaseUrl(config)
+              })
+            );
+            return;
+          }
+
+          if (message.type === "pairing.approved") {
+            pairing.approvePairingRequest({
+              pairingRequestId: message.pairingRequestId,
+              deviceId: message.deviceId
+            });
+            return;
+          }
+
+          pairing.rejectPairingRequest({
+            pairingRequestId: message.pairingRequestId,
+            deviceId: message.deviceId,
+            reason: message.reason
+          });
           return;
         }
 

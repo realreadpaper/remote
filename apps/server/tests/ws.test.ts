@@ -225,6 +225,79 @@ describe("server websocket API", () => {
     mobile.terminate();
   });
 
+  it("creates a pairing code when a registered agent requests one", async () => {
+    const agent = await registerAgent(app);
+    const pairingCreated = nextJson(agent);
+
+    agent.send(JSON.stringify({ type: "pairing.create", deviceId: "mac-1" }));
+
+    expect(await pairingCreated).toMatchObject({
+      type: "pairing.created",
+      deviceId: "mac-1",
+      deviceName: "MacBook Pro",
+      pairingCode: expect.any(String),
+      expiresAt: expect.any(String),
+      serverUrl: expect.any(String)
+    });
+
+    agent.terminate();
+  });
+
+  it("pushes a mobile pairing request to the agent and records an approved binding", async () => {
+    const agent = await registerAgent(app);
+    const pairingCreated = nextJson(agent);
+    agent.send(JSON.stringify({ type: "pairing.create", deviceId: "mac-1" }));
+    const created = (await pairingCreated) as { pairingCode: string };
+
+    const pairingRequested = nextJson(agent);
+    const response = await app.inject({
+      method: "POST",
+      url: "/pairing/requests",
+      payload: {
+        pairingCode: created.pairingCode,
+        mobileClientId: "mobile-1",
+        mobileName: "Alice iPhone"
+      }
+    });
+
+    expect(response.statusCode).toBe(202);
+    const requested = (await pairingRequested) as {
+      pairingRequestId: string;
+      deviceId: string;
+      mobileClientId: string;
+      mobileName: string;
+    };
+    expect(requested).toMatchObject({
+      type: "pairing.requested",
+      deviceId: "mac-1",
+      mobileClientId: "mobile-1",
+      mobileName: "Alice iPhone"
+    });
+
+    agent.send(
+      JSON.stringify({
+        type: "pairing.approved",
+        pairingRequestId: requested.pairingRequestId,
+        deviceId: "mac-1"
+      })
+    );
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    const bindingsResponse = await app.inject({ method: "GET", url: "/pairing/bindings" });
+    expect(bindingsResponse.statusCode).toBe(200);
+    expect(bindingsResponse.json()).toEqual({
+      bindings: [
+        expect.objectContaining({
+          deviceId: "mac-1",
+          mobileClientId: "mobile-1",
+          mobileName: "Alice iPhone"
+        })
+      ]
+    });
+
+    agent.terminate();
+  });
+
   it("shows an agent-registered device as online", async () => {
     const agent = await app.injectWS("/ws/agent");
 
