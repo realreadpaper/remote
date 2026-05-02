@@ -27,6 +27,7 @@ export interface ConnectionIssue {
 export interface SessionClientOptions {
   url: string;
   deviceId: string;
+  sessionToken?: string | null;
   onMessage(message: ServerMessage): void;
   onDisconnect?(reason: string): void;
   onConnectionIssue?(issue: ConnectionIssue): void;
@@ -54,7 +55,13 @@ export class SessionClient {
       }
 
       try {
-        socket.send(encodeMessage({ type: "session.open", deviceId: this.options.deviceId }));
+        socket.send(
+          encodeMessage(
+            this.options.sessionToken
+              ? { type: "session.open", deviceId: this.options.deviceId, sessionToken: this.options.sessionToken }
+              : { type: "session.open", deviceId: this.options.deviceId }
+          )
+        );
       } catch (error) {
         console.error("Failed to open remote terminal session.", error);
         this.handleDisconnect(socket, this.reasonFromError(error, "Failed to open remote terminal session."));

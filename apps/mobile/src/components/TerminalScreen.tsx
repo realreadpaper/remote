@@ -24,6 +24,7 @@ export function TerminalScreen() {
   const [pairingCode, setPairingCode] = useState("");
   const [pairingStatus, setPairingStatus] = useState<string | null>(null);
   const [pairingSubmitting, setPairingSubmitting] = useState(false);
+  const [sessionToken, setSessionToken] = useState<string | null>(null);
   const clientRef = useRef<SessionClient | undefined>(undefined);
   const autoConnectAttemptedRef = useRef(false);
   const scrollRef = useRef<ScrollView | null>(null);
@@ -51,6 +52,7 @@ export function TerminalScreen() {
 
     setPairingSubmitting(true);
     setPairingStatus("sending");
+    setSessionToken(null);
     try {
       const client = new PairingClient({ apiBaseUrl: runtimeConfig.apiBaseUrl });
       const result = await client.requestPairing({
@@ -60,6 +62,10 @@ export function TerminalScreen() {
       });
       setPairingStatus(`pending ${result.pairingRequestId}`);
       appendLocalLine(`Pairing request pending for ${result.deviceId}.`);
+      const auth = await client.waitForApproval(result.pairingRequestId);
+      setSessionToken(auth.sessionToken);
+      setPairingStatus(`paired until ${auth.expiresAt}`);
+      appendLocalLine(`Pairing approved for ${auth.deviceId}.`);
     } catch (error) {
       const reason = error instanceof Error ? error.message : "Pairing request failed.";
       setPairingStatus(reason);
@@ -87,6 +93,7 @@ export function TerminalScreen() {
       const client = new SessionClient({
         url: runtimeConfig.sessionUrl,
         deviceId: runtimeConfig.deviceId,
+        sessionToken,
         onMessage(message) {
           if (clientRef.current !== client) {
             return;

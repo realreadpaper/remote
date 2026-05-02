@@ -64,6 +64,29 @@ describe("SessionClient", () => {
     expect(socket.sent).toEqual([encodeMessage({ type: "session.open", deviceId: "device-1" })]);
   });
 
+  it("sends session.open with a session token when configured", () => {
+    const socket = new FakeSocket();
+    const onMessage = vi.fn<(message: ServerMessage) => void>();
+    const client = new SessionClient({
+      url: "ws://localhost:3000",
+      deviceId: "device-1",
+      sessionToken: "session-token-1",
+      createSocket: () => socket,
+      onMessage
+    });
+
+    client.connect();
+    socket.open();
+
+    expect(socket.sent).toEqual([
+      encodeMessage({
+        type: "session.open",
+        deviceId: "device-1",
+        sessionToken: "session-token-1"
+      })
+    ]);
+  });
+
   it("stores the sessionId and calls onMessage when session.opened is received", () => {
     const { client, socket, onMessage } = createClient();
     const opened = { type: "session.opened", sessionId: "session-1", deviceId: "device-1" } as const;
