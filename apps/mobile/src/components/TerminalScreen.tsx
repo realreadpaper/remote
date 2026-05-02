@@ -10,18 +10,18 @@ import {
   TextInput,
   View
 } from "react-native";
+import { loadMobileRuntimeConfig } from "../config/runtimeConfig";
 import { SessionClient } from "../protocol/sessionClient";
 import { createTerminalState } from "../state/terminalStore";
 import { terminalShortcutPayloads } from "./terminalShortcuts";
 
-const SESSION_URL = process.env.EXPO_PUBLIC_REMOTE_WS_URL ?? "ws://127.0.0.1:8787/ws/mobile";
-const DEVICE_ID = process.env.EXPO_PUBLIC_REMOTE_DEVICE_ID ?? "mac-dev";
-
 export function TerminalScreen() {
+  const runtimeConfig = useMemo(() => loadMobileRuntimeConfig(), []);
   const terminalState = useMemo(() => createTerminalState(), []);
   const [snapshot, setSnapshot] = useState(() => terminalState.getSnapshot());
   const [connecting, setConnecting] = useState(false);
   const clientRef = useRef<SessionClient | undefined>(undefined);
+  const autoConnectAttemptedRef = useRef(false);
   const scrollRef = useRef<ScrollView | null>(null);
 
   const refreshSnapshot = () => {
@@ -52,9 +52,10 @@ export function TerminalScreen() {
     setConnecting(true);
     try {
       closeCurrentClient();
+      let smokeCommandSent = false;
       const client = new SessionClient({
-        url: SESSION_URL,
-        deviceId: DEVICE_ID,
+        url: runtimeConfig.sessionUrl,
+        deviceId: runtimeConfig.deviceId,
         onMessage(message) {
           if (clientRef.current !== client) {
             return;
@@ -63,6 +64,13 @@ export function TerminalScreen() {
           if (message.type === "session.opened") {
             terminalState.setConnected(true);
             setConnecting(false);
+            if (runtimeConfig.smokeCommand && !smokeCommandSent) {
+              smokeCommandSent = true;
+              const command = runtimeConfig.smokeCommand.endsWith("\n")
+                ? runtimeConfig.smokeCommand
+                : `${runtimeConfig.smokeCommand}\n`;
+              client.sendTerminalInput(command);
+            }
           }
 
           if (message.type === "terminal.output") {
@@ -121,6 +129,15 @@ export function TerminalScreen() {
       appendLocalLine(reason);
     }
   };
+
+  useEffect(() => {
+    if (!runtimeConfig.autoConnect || autoConnectAttemptedRef.current) {
+      return;
+    }
+
+    autoConnectAttemptedRef.current = true;
+    handleConnect();
+  }, [runtimeConfig.autoConnect]);
 
   const handleInputChange = (input: string) => {
     terminalState.setInput(input);
@@ -198,11 +215,11 @@ export function TerminalScreen() {
                 ]}
               />
               <Text style={styles.statusText}>
-                {snapshot.connected ? "session open" : connecting ? "connecting" : DEVICE_ID}
+                {snapshot.connected ? "session open" : connecting ? "connecting" : runtimeConfig.deviceId}
               </Text>
             </View>
             <Text numberOfLines={1} style={styles.configText}>
-              {DEVICE_ID} · {SESSION_URL}
+              {runtimeConfig.deviceId} · {runtimeConfig.sessionUrl}
             </Text>
           </View>
 
@@ -245,7 +262,7 @@ export function TerminalScreen() {
           style={styles.outputPanel}
         >
           {snapshot.output.length === 0 ? (
-            <Text style={styles.emptyText}>Connect to {DEVICE_ID} to start a terminal session.</Text>
+            <Text style={styles.emptyText}>Connect to {runtimeConfig.deviceId} to start a terminal session.</Text>
           ) : (
             <Text selectable style={styles.outputText}>
               {snapshot.output}

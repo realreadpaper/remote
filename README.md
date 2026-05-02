@@ -46,6 +46,16 @@ In the mobile app, tap `Connect`, type `pwd`, and tap `发送`.
 
 Expected result: terminal output from the macOS Agent appears in the mobile terminal output panel.
 
+For automated simulator smoke testing, start mobile with explicit autoconnect and a marker command:
+
+```bash
+EXPO_PUBLIC_REMOTE_AUTOCONNECT=1 \
+EXPO_PUBLIC_REMOTE_SMOKE_COMMAND='printf "__APP_SIM__%s\n" "$PWD"' \
+pnpm --filter @remote/mobile exec expo start --ios --localhost --port 8081
+```
+
+Expected result: the simulator opens a terminal session and prints a marker like `__APP_SIM__/Users/<name>`.
+
 ### Physical Device Development
 
 Detailed iPhone steps are in [Physical iPhone to Mac Runbook](docs/runbooks/physical-iphone-to-mac.md).

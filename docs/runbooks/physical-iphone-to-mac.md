@@ -14,6 +14,18 @@ pnpm dev:mobile
 
 The simulator uses `ws://127.0.0.1:8787/ws/mobile`, so no LAN address is required.
 
+## Simulator Smoke Mode
+
+When command-line UI automation is unavailable, use the built-in development smoke mode to auto-connect and execute a marker command:
+
+```bash
+EXPO_PUBLIC_REMOTE_AUTOCONNECT=1 \
+EXPO_PUBLIC_REMOTE_SMOKE_COMMAND='printf "__APP_SIM__%s\n" "$PWD"' \
+pnpm --filter @remote/mobile exec expo start --ios --localhost --port 8081
+```
+
+Expected result: the simulator shows `session open` and terminal output containing `__APP_SIM__/Users/<name>`.
+
 ## Prerequisites
 
 - iPhone and Mac are on the same Wi-Fi network.
