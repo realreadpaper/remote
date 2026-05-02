@@ -36,9 +36,19 @@ describe("loadAgentConfig", () => {
     delete process.env.REMOTE_DEV_TOKEN;
     delete process.env.SHELL;
 
-    expect(loadAgentConfig()).toEqual({
+    expect(
+      loadAgentConfig({
+        loadIdentity: () => ({
+          version: 1,
+          deviceId: "persistent-device-id",
+          publicKey: "public-key",
+          privateKey: "private-key",
+          createdAt: "2026-05-03T00:00:00.000Z"
+        })
+      })
+    ).toEqual({
       serverUrl: "ws://127.0.0.1:8787/ws/agent",
-      deviceId: `${os.hostname()}-dev`,
+      deviceId: "persistent-device-id",
       deviceName: os.hostname(),
       devToken: null,
       shell: "/bin/zsh"
