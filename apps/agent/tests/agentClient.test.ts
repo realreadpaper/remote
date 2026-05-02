@@ -78,22 +78,29 @@ const config: AgentConfig = {
 const createHarness = () => {
   const socket = new FakeSocket();
   const terminals = new Map<string, FakeTerminalSession>();
+  const createSocket = vi.fn(() => socket);
   const createTerminal = vi.fn((sessionId: string) => {
     const terminal = new FakeTerminalSession(sessionId);
     terminals.set(sessionId, terminal);
     return terminal as unknown as TerminalSession;
   });
   const client = new AgentClient(config, {
-    createSocket: () => socket,
+    createSocket,
     createTerminal
   });
 
   client.connect();
 
-  return { client, createTerminal, socket, terminals };
+  return { client, createSocket, createTerminal, socket, terminals };
 };
 
 describe("AgentClient", () => {
+  it("passes the configured server URL to the socket factory", () => {
+    const { createSocket } = createHarness();
+
+    expect(createSocket).toHaveBeenCalledWith("ws://localhost:8787/ws/agent");
+  });
+
   it("sends device.register when the socket opens", () => {
     const { socket } = createHarness();
 
