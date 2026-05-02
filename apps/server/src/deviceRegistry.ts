@@ -13,20 +13,29 @@ export interface RegisterDeviceInput {
   capabilities: DeviceCapability[];
 }
 
+function cloneDevice(device: RegisteredDevice): RegisteredDevice {
+  return {
+    ...device,
+    capabilities: [...device.capabilities]
+  };
+}
+
 export class DeviceRegistry {
   private readonly devices = new Map<string, RegisteredDevice>();
 
   register(input: RegisterDeviceInput): RegisteredDevice {
     const device: RegisteredDevice = {
       ...input,
+      capabilities: [...input.capabilities],
       online: true
     };
     this.devices.set(input.deviceId, device);
-    return device;
+    return cloneDevice(device);
   }
 
   get(deviceId: string): RegisteredDevice | undefined {
-    return this.devices.get(deviceId);
+    const device = this.devices.get(deviceId);
+    return device ? cloneDevice(device) : undefined;
   }
 
   markOffline(deviceId: string): void {
@@ -41,6 +50,6 @@ export class DeviceRegistry {
   }
 
   list(): RegisteredDevice[] {
-    return [...this.devices.values()];
+    return [...this.devices.values()].map((device) => cloneDevice(device));
   }
 }
