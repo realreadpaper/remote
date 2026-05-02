@@ -43,6 +43,16 @@ describe("terminal store", () => {
     expect(state.getSnapshot().connected).toBe(true);
   });
 
+  it("tracks the latest connection error and clears it after reconnecting", () => {
+    const state = createTerminalState();
+
+    state.setConnectionError("Server unreachable: connect ECONNREFUSED");
+    expect(state.getSnapshot().connectionError).toBe("Server unreachable: connect ECONNREFUSED");
+
+    state.setConnected(true);
+    expect(state.getSnapshot().connectionError).toBeNull();
+  });
+
   it("does not append another newline when submitted input already ends with one", () => {
     const state = createTerminalState();
     state.setInput("pwd\n");

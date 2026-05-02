@@ -4,6 +4,7 @@
     "slug": "remote-terminal",
     "version": "0.1.0",
     "orientation": "portrait",
+    "newArchEnabled": true,
     "platforms": ["ios", "android"]
   }
 }

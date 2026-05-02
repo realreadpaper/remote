@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { SessionClient } from "../protocol/sessionClient";
 import { createTerminalState } from "../state/terminalStore";
+import { terminalShortcutPayloads } from "./terminalShortcuts";
 
 const SESSION_URL = process.env.EXPO_PUBLIC_REMOTE_WS_URL ?? "ws://127.0.0.1:8787/ws/mobile";
 const DEVICE_ID = process.env.EXPO_PUBLIC_REMOTE_DEVICE_ID ?? "mac-dev";
@@ -70,6 +71,7 @@ export function TerminalScreen() {
 
           if (message.type === "session.error") {
             terminalState.appendOutput(`[server] ${message.message}\n`);
+            terminalState.setConnectionError(message.message);
             terminalState.setConnected(false);
             setConnecting(false);
             closeCurrentClient();
@@ -93,8 +95,17 @@ export function TerminalScreen() {
 
           terminalState.setConnected(false);
           setConnecting(false);
+          terminalState.setConnectionError(reason);
           terminalState.appendOutput(`[local] ${reason}\n`);
           closeCurrentClient();
+          refreshSnapshot();
+        },
+        onConnectionIssue(issue) {
+          if (clientRef.current !== client) {
+            return;
+          }
+
+          terminalState.setConnectionError(issue.message);
           refreshSnapshot();
         }
       });
@@ -105,7 +116,9 @@ export function TerminalScreen() {
       closeCurrentClient();
       terminalState.setConnected(false);
       setConnecting(false);
-      appendLocalLine(error instanceof Error ? error.message : "Unable to connect.");
+      const reason = error instanceof Error ? error.message : "Unable to connect.";
+      terminalState.setConnectionError(reason);
+      appendLocalLine(reason);
     }
   };
 
@@ -143,6 +156,31 @@ export function TerminalScreen() {
     }
   };
 
+  const sendRawInput = (payload: string) => {
+    if (!snapshot.connected) {
+      appendLocalLine("Connect before sending terminal shortcuts.");
+      return;
+    }
+
+    try {
+      if (!clientRef.current) {
+        terminalState.setConnected(false);
+        setConnecting(false);
+        terminalState.setConnectionError("No active session client.");
+        appendLocalLine("No active session client.");
+        return;
+      }
+
+      clientRef.current.sendTerminalInput(payload);
+    } catch (error) {
+      terminalState.setConnected(false);
+      setConnecting(false);
+      const reason = error instanceof Error ? error.message : "Shortcut was not sent.";
+      terminalState.setConnectionError(reason);
+      appendLocalLine(reason);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
@@ -163,6 +201,9 @@ export function TerminalScreen() {
                 {snapshot.connected ? "session open" : connecting ? "connecting" : DEVICE_ID}
               </Text>
             </View>
+            <Text numberOfLines={1} style={styles.configText}>
+              {DEVICE_ID} · {SESSION_URL}
+            </Text>
           </View>
 
           <Pressable
@@ -188,6 +229,14 @@ export function TerminalScreen() {
           </Pressable>
         </View>
 
+        {snapshot.connectionError ? (
+          <View style={styles.errorBanner}>
+            <Text numberOfLines={2} style={styles.errorText}>
+              {snapshot.connectionError}
+            </Text>
+          </View>
+        ) : null}
+
         <ScrollView
           ref={scrollRef}
           contentContainerStyle={styles.outputContent}
@@ -202,6 +251,26 @@ export function TerminalScreen() {
               {snapshot.output}
             </Text>
           )}
+        </ScrollView>
+
+        <ScrollView
+          horizontal
+          keyboardShouldPersistTaps="handled"
+          showsHorizontalScrollIndicator={false}
+          style={styles.shortcutRail}
+          contentContainerStyle={styles.shortcutContent}
+        >
+          {terminalShortcutPayloads.map((shortcut) => (
+            <Pressable
+              accessibilityLabel={`Send ${shortcut.label}`}
+              accessibilityRole="button"
+              key={shortcut.label}
+              onPress={() => sendRawInput(shortcut.payload)}
+              style={({ pressed }) => [styles.shortcutButton, pressed && styles.shortcutButtonPressed]}
+            >
+              <Text style={styles.shortcutText}>{shortcut.label}</Text>
+            </Pressable>
+          ))}
         </ScrollView>
 
         <View style={styles.inputRow}>
@@ -283,6 +352,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: Platform.select({ ios: "Menlo", android: "monospace", default: "monospace" })
   },
+  configText: {
+    marginTop: 4,
+    color: "#68716a",
+    fontSize: 11,
+    lineHeight: 15,
+    fontFamily: Platform.select({ ios: "Menlo", android: "monospace", default: "monospace" })
+  },
   connectButton: {
     minWidth: 96,
     minHeight: 40,
@@ -320,6 +396,20 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#080a09"
   },
+  errorBanner: {
+    minHeight: 36,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#4f3929",
+    backgroundColor: "#211710"
+  },
+  errorText: {
+    color: "#f1bf85",
+    fontSize: 12,
+    lineHeight: 18,
+    fontFamily: Platform.select({ ios: "Menlo", android: "monospace", default: "monospace" })
+  },
   outputContent: {
     flexGrow: 1,
     paddingHorizontal: 14,
@@ -335,6 +425,37 @@ const styles = StyleSheet.create({
     color: "#7f877f",
     fontSize: 13,
     lineHeight: 19,
+    fontFamily: Platform.select({ ios: "Menlo", android: "monospace", default: "monospace" })
+  },
+  shortcutRail: {
+    maxHeight: 48,
+    borderTopWidth: 1,
+    borderTopColor: "#202522",
+    backgroundColor: "#101311"
+  },
+  shortcutContent: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    gap: 8
+  },
+  shortcutButton: {
+    minWidth: 54,
+    height: 32,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#2f3933",
+    backgroundColor: "#171d19",
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  shortcutButtonPressed: {
+    backgroundColor: "#233029"
+  },
+  shortcutText: {
+    color: "#d7ddd4",
+    fontSize: 13,
+    fontWeight: "700",
     fontFamily: Platform.select({ ios: "Menlo", android: "monospace", default: "monospace" })
   },
   inputRow: {

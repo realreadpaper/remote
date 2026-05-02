@@ -48,6 +48,8 @@ Expected result: terminal output from the macOS Agent appears in the mobile term
 
 ### Physical Device Development
 
+Detailed iPhone steps are in [Physical iPhone to Mac Runbook](docs/runbooks/physical-iphone-to-mac.md).
+
 Start the server on all network interfaces:
 
 ```bash

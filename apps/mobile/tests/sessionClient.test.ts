@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { encodeMessage, type ServerMessage } from "@remote/protocol";
-import { SessionClient, type WebSocketLike } from "../src/protocol/sessionClient";
+import { SessionClient, type ConnectionIssue, type WebSocketLike } from "../src/protocol/sessionClient";
 
 class FakeSocket implements WebSocketLike {
   static readonly OPEN = 1;
@@ -41,15 +41,17 @@ class FakeSocket implements WebSocketLike {
 function createClient(socket = new FakeSocket()) {
   const onMessage = vi.fn<(message: ServerMessage) => void>();
   const onDisconnect = vi.fn<(reason: string) => void>();
+  const onConnectionIssue = vi.fn<(issue: ConnectionIssue) => void>();
   const client = new SessionClient({
     url: "ws://localhost:3000",
     deviceId: "device-1",
     createSocket: () => socket,
     onMessage,
-    onDisconnect
+    onDisconnect,
+    onConnectionIssue
   });
 
-  return { client, socket, onMessage, onDisconnect };
+  return { client, socket, onMessage, onDisconnect, onConnectionIssue };
 }
 
 describe("SessionClient", () => {
@@ -99,8 +101,8 @@ describe("SessionClient", () => {
     expect(() => client.sendTerminalInput("pwd\n")).toThrow("terminal session is not open");
   });
 
-  it("logs and continues when a server message is invalid", () => {
-    const { client, socket, onMessage } = createClient();
+  it("closes the socket and reports a protocol error when a server message is invalid", () => {
+    const { client, socket, onMessage, onDisconnect, onConnectionIssue } = createClient();
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
 
     client.connect();
@@ -108,6 +110,12 @@ describe("SessionClient", () => {
     expect(() => socket.receive("{bad json")).not.toThrow();
     expect(onMessage).not.toHaveBeenCalled();
     expect(errorSpy).toHaveBeenCalled();
+    expect(onDisconnect).toHaveBeenCalledWith("Protocol error: invalid server message.");
+    expect(onConnectionIssue).toHaveBeenCalledWith({
+      kind: "protocol-error",
+      message: "Protocol error: invalid server message."
+    });
+    expect(socket.closeCalls).toBe(1);
 
     errorSpy.mockRestore();
   });
@@ -186,6 +194,37 @@ describe("SessionClient", () => {
 
     expect(onDisconnect).toHaveBeenCalledWith("network down");
     expect(() => client.sendTerminalInput("pwd\n")).toThrow("terminal session is not open");
+  });
+
+  it("classifies socket errors before a session opens as server unreachable", () => {
+    const { client, socket, onDisconnect, onConnectionIssue } = createClient();
+
+    client.connect();
+    socket.error(new Error("connect ECONNREFUSED"));
+
+    expect(onDisconnect).toHaveBeenCalledWith("Server unreachable: connect ECONNREFUSED");
+    expect(onConnectionIssue).toHaveBeenCalledWith({
+      kind: "server-unreachable",
+      message: "Server unreachable: connect ECONNREFUSED"
+    });
+  });
+
+  it("classifies session errors for offline devices", () => {
+    const { client, socket, onMessage, onConnectionIssue } = createClient();
+    const error = {
+      type: "session.error",
+      code: "SESSION_ERROR",
+      message: "Device mac-dev is not online"
+    } as const;
+
+    client.connect();
+    socket.receive(JSON.stringify(error));
+
+    expect(onMessage).toHaveBeenCalledWith(error);
+    expect(onConnectionIssue).toHaveBeenCalledWith({
+      kind: "device-offline",
+      message: "Device mac-dev is not online"
+    });
   });
 
   it("throws before sending terminal input after close", () => {

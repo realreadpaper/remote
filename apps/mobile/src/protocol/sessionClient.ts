@@ -12,11 +12,24 @@ export interface WebSocketLike {
   close(): void;
 }
 
+export type ConnectionIssueKind =
+  | "server-unreachable"
+  | "device-offline"
+  | "session-rejected"
+  | "protocol-error"
+  | "socket-closed";
+
+export interface ConnectionIssue {
+  kind: ConnectionIssueKind;
+  message: string;
+}
+
 export interface SessionClientOptions {
   url: string;
   deviceId: string;
   onMessage(message: ServerMessage): void;
   onDisconnect?(reason: string): void;
+  onConnectionIssue?(issue: ConnectionIssue): void;
   createSocket?: (url: string) => WebSocketLike;
 }
 
@@ -61,7 +74,12 @@ export class SessionClient {
     };
 
     socket.onerror = (event) => {
-      this.handleDisconnect(socket, this.reasonFromError(event, "Socket error."));
+      const rawReason = this.reasonFromError(event, "Socket error.");
+      const issue: ConnectionIssue = this.sessionId
+        ? { kind: "socket-closed", message: rawReason }
+        : { kind: "server-unreachable", message: `Server unreachable: ${rawReason}` };
+      this.reportIssue(issue);
+      this.handleDisconnect(socket, issue.message);
     };
   }
 
@@ -118,9 +136,19 @@ export class SessionClient {
         this.sessionId = message.sessionId;
       }
 
+      if (message.type === "session.error") {
+        this.reportIssue(classifySessionError(message));
+      }
+
       this.options.onMessage(message);
     } catch (error) {
       console.error("Invalid server message ignored.", error);
+      const issue: ConnectionIssue = {
+        kind: "protocol-error",
+        message: "Protocol error: invalid server message."
+      };
+      this.reportIssue(issue);
+      this.closeSocketAfterProtocolError(socket, issue.message);
     }
   }
 
@@ -136,6 +164,26 @@ export class SessionClient {
     this.sessionId = null;
     this.detachSocket(socket);
     this.socket = null;
+    this.options.onDisconnect?.(reason);
+  }
+
+  private reportIssue(issue: ConnectionIssue): void {
+    this.options.onConnectionIssue?.(issue);
+  }
+
+  private closeSocketAfterProtocolError(socket: WebSocketLike, reason: string): void {
+    if (!this.isCurrentSocket(socket)) {
+      return;
+    }
+
+    this.sessionId = null;
+    this.detachSocket(socket);
+    this.socket = null;
+    try {
+      socket.close();
+    } catch (error) {
+      console.error("Failed to close protocol-error socket.", error);
+    }
     this.options.onDisconnect?.(reason);
   }
 
@@ -168,4 +216,21 @@ export class SessionClient {
   private reasonFromError(error: unknown, fallback: string): string {
     return error instanceof Error ? error.message : fallback;
   }
+}
+
+function classifySessionError(message: Extract<ServerMessage, { type: "session.error" }>): ConnectionIssue {
+  const normalizedCode = message.code.toUpperCase();
+  const normalizedMessage = message.message.toLowerCase();
+
+  if (normalizedCode.includes("DEVICE_OFFLINE") || normalizedMessage.includes("not online")) {
+    return {
+      kind: "device-offline",
+      message: message.message
+    };
+  }
+
+  return {
+    kind: "session-rejected",
+    message: message.message
+  };
 }

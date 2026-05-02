@@ -67,13 +67,13 @@ docs/runbooks/macos-agent-package.md
 - Create: `docs/runbooks/physical-iphone-to-mac.md`
 - Modify: `README.md`
 
-- [ ] 写入真机前置条件：iPhone 和 Mac 在同一局域网、Mac 防火墙允许本地 server、Expo Go 已安装。
-- [ ] 写入 server 启动命令：`HOST=0.0.0.0 pnpm dev:server`。
-- [ ] 写入 Agent 启动命令：`REMOTE_SERVER_URL=ws://127.0.0.1:8787/ws/agent REMOTE_DEVICE_ID=mac-dev pnpm dev:agent`。
-- [ ] 写入 Mobile 启动命令：`EXPO_PUBLIC_REMOTE_WS_URL=ws://<mac-lan-ip>:8787/ws/mobile pnpm dev:mobile`。
-- [ ] 写入验收命令：在 iPhone 输入 `pwd`、`printf "__PHONE__%s\n" "$PWD"`、`ping 127.0.0.1` 后点 `Ctrl+C`。
-- [ ] 运行 `pnpm test`、`pnpm typecheck`、`pnpm build`。
-- [ ] 提交：`git commit -m "docs: add physical iphone mac runbook"`。
+- [x] 写入真机前置条件：iPhone 和 Mac 在同一局域网、Mac 防火墙允许本地 server、Expo Go 已安装。
+- [x] 写入 server 启动命令：`HOST=0.0.0.0 pnpm dev:server`。
+- [x] 写入 Agent 启动命令：`REMOTE_SERVER_URL=ws://127.0.0.1:8787/ws/agent REMOTE_DEVICE_ID=mac-dev pnpm dev:agent`。
+- [x] 写入 Mobile 启动命令：`EXPO_PUBLIC_REMOTE_WS_URL=ws://<mac-lan-ip>:8787/ws/mobile pnpm dev:mobile`。
+- [x] 写入验收命令：在 iPhone 输入 `pwd`、`printf "__PHONE__%s\n" "$PWD"`、`ping 127.0.0.1` 后点 `Ctrl+C`。
+- [x] 运行 `pnpm test`、`pnpm typecheck`、`pnpm build`。
+- [x] 提交：`git commit -m "docs: add physical iphone mac runbook"`。
 
 ### Task 2: 修正移动端连接配置体验
 
@@ -82,11 +82,11 @@ docs/runbooks/macos-agent-package.md
 - Modify: `apps/mobile/App.tsx`
 - Test: `apps/mobile/tests/sessionClient.test.ts`
 
-- [ ] 增加连接失败错误分类：server unreachable、device offline、session rejected、protocol error。
-- [ ] 在 UI 中展示当前 WebSocket URL 和设备 ID，便于真机调试。
-- [ ] 增加测试：当 socket 无法打开时，store 进入明确错误状态。
-- [ ] 运行：`pnpm --filter @remote/mobile test`。
-- [ ] 提交：`git commit -m "feat: improve mobile connection diagnostics"`。
+- [x] 增加连接失败错误分类：server unreachable、device offline、session rejected、protocol error。
+- [x] 在 UI 中展示当前 WebSocket URL 和设备 ID，便于真机调试。
+- [x] 增加测试：当 socket 无法打开时，store 进入明确错误状态。
+- [x] 运行：`pnpm --filter @remote/mobile test`。
+- [x] 提交：`git commit -m "feat: improve mobile connection diagnostics"`。
 
 ## Phase 2: 设备身份、配对与鉴权
 

@@ -2,13 +2,15 @@ export interface TerminalSnapshot {
   output: string;
   input: string;
   connected: boolean;
+  connectionError: string | null;
 }
 
 export function createTerminalState() {
   let snapshot: TerminalSnapshot = {
     output: "",
     input: "",
-    connected: false
+    connected: false,
+    connectionError: null
   };
 
   return {
@@ -27,7 +29,14 @@ export function createTerminalState() {
     setConnected(connected: boolean): void {
       snapshot = {
         ...snapshot,
-        connected
+        connected,
+        connectionError: connected ? null : snapshot.connectionError
+      };
+    },
+    setConnectionError(connectionError: string | null): void {
+      snapshot = {
+        ...snapshot,
+        connectionError
       };
     },
     submitInput(): string {
