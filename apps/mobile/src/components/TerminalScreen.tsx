@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -19,6 +19,7 @@ const DEVICE_ID = process.env.EXPO_PUBLIC_REMOTE_DEVICE_ID ?? "mac-dev";
 export function TerminalScreen() {
   const terminalState = useMemo(() => createTerminalState(), []);
   const [snapshot, setSnapshot] = useState(() => terminalState.getSnapshot());
+  const [connecting, setConnecting] = useState(false);
   const clientRef = useRef<SessionClient | null>(null);
   const scrollRef = useRef<ScrollView | null>(null);
 
@@ -31,11 +32,19 @@ export function TerminalScreen() {
     refreshSnapshot();
   };
 
+  useEffect(() => {
+    return () => {
+      clientRef.current?.close();
+      clientRef.current = null;
+    };
+  }, []);
+
   const handleConnect = () => {
-    if (snapshot.connected) {
+    if (snapshot.connected || connecting) {
       return;
     }
 
+    setConnecting(true);
     try {
       const client = new SessionClient({
         url: SESSION_URL,
@@ -43,6 +52,7 @@ export function TerminalScreen() {
         onMessage(message) {
           if (message.type === "session.opened") {
             terminalState.setConnected(true);
+            setConnecting(false);
           }
 
           if (message.type === "terminal.output") {
@@ -52,6 +62,7 @@ export function TerminalScreen() {
           if (message.type === "session.error") {
             terminalState.appendOutput(`[server] ${message.message}\n`);
             terminalState.setConnected(false);
+            setConnecting(false);
           }
 
           if (message.type === "terminal.exit") {
@@ -59,8 +70,15 @@ export function TerminalScreen() {
               `[server] terminal exited${message.exitCode === null ? "" : ` with code ${message.exitCode}`}\n`
             );
             terminalState.setConnected(false);
+            setConnecting(false);
           }
 
+          refreshSnapshot();
+        },
+        onDisconnect(reason) {
+          terminalState.setConnected(false);
+          setConnecting(false);
+          terminalState.appendOutput(`[local] ${reason}\n`);
           refreshSnapshot();
         }
       });
@@ -68,6 +86,8 @@ export function TerminalScreen() {
       clientRef.current = client;
       client.connect();
     } catch (error) {
+      terminalState.setConnected(false);
+      setConnecting(false);
       appendLocalLine(error instanceof Error ? error.message : "Unable to connect.");
     }
   };
@@ -90,6 +110,8 @@ export function TerminalScreen() {
 
     try {
       if (!clientRef.current) {
+        terminalState.setConnected(false);
+        setConnecting(false);
         appendLocalLine("No active session client.");
         return;
       }
@@ -98,6 +120,8 @@ export function TerminalScreen() {
       terminalState.submitInput();
       refreshSnapshot();
     } catch (error) {
+      terminalState.setConnected(false);
+      setConnecting(false);
       appendLocalLine(error instanceof Error ? error.message : "Command was not sent.");
     }
   };
@@ -112,23 +136,37 @@ export function TerminalScreen() {
           <View style={styles.titleGroup}>
             <Text style={styles.title}>Remote Terminal</Text>
             <View style={styles.statusRow}>
-              <View style={[styles.statusDot, snapshot.connected ? styles.statusOnline : styles.statusOffline]} />
-              <Text style={styles.statusText}>{snapshot.connected ? "session open" : DEVICE_ID}</Text>
+              <View
+                style={[
+                  styles.statusDot,
+                  snapshot.connected ? styles.statusOnline : connecting ? styles.statusConnecting : styles.statusOffline
+                ]}
+              />
+              <Text style={styles.statusText}>
+                {snapshot.connected ? "session open" : connecting ? "connecting" : DEVICE_ID}
+              </Text>
             </View>
           </View>
 
           <Pressable
             accessibilityRole="button"
-            disabled={snapshot.connected}
+            disabled={snapshot.connected || connecting}
             onPress={handleConnect}
             style={({ pressed }) => [
               styles.connectButton,
               snapshot.connected && styles.connectButtonConnected,
-              pressed && !snapshot.connected && styles.connectButtonPressed
+              connecting && styles.connectButtonConnecting,
+              pressed && !snapshot.connected && !connecting && styles.connectButtonPressed
             ]}
           >
-            <Text style={[styles.connectButtonText, snapshot.connected && styles.connectButtonTextConnected]}>
-              {snapshot.connected ? "Connected" : "Connect"}
+            <Text
+              style={[
+                styles.connectButtonText,
+                snapshot.connected && styles.connectButtonTextConnected,
+                connecting && styles.connectButtonTextConnecting
+              ]}
+            >
+              {snapshot.connected ? "Connected" : connecting ? "Connecting" : "Connect"}
             </Text>
           </Pressable>
         </View>
@@ -220,6 +258,9 @@ const styles = StyleSheet.create({
   statusOffline: {
     backgroundColor: "#d7a84d"
   },
+  statusConnecting: {
+    backgroundColor: "#d7a84d"
+  },
   statusText: {
     color: "#9aa39a",
     fontSize: 12,
@@ -243,6 +284,10 @@ const styles = StyleSheet.create({
     borderColor: "#314034",
     backgroundColor: "#151b16"
   },
+  connectButtonConnecting: {
+    borderColor: "#5f5131",
+    backgroundColor: "#221c0f"
+  },
   connectButtonText: {
     color: "#dce8dc",
     fontSize: 14,
@@ -250,6 +295,9 @@ const styles = StyleSheet.create({
   },
   connectButtonTextConnected: {
     color: "#73d578"
+  },
+  connectButtonTextConnecting: {
+    color: "#e0bd66"
   },
   outputPanel: {
     flex: 1,

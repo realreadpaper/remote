@@ -6,13 +6,23 @@ class FakeSocket implements WebSocketLike {
   static readonly OPEN = 1;
 
   readonly OPEN = 1;
+  readonly CLOSED = 3;
   readyState = FakeSocket.OPEN;
   onopen: (() => void) | null = null;
   onmessage: ((event: { data: unknown }) => void) | null = null;
+  onclose: ((event?: { reason?: string }) => void) | null = null;
+  onerror: ((event?: unknown) => void) | null = null;
   sent: string[] = [];
+  closeCalls = 0;
 
   send(data: string): void {
     this.sent.push(data);
+  }
+
+  close(): void {
+    this.closeCalls += 1;
+    this.readyState = this.CLOSED;
+    this.onclose?.({ reason: "closed" });
   }
 
   open(): void {
@@ -22,19 +32,24 @@ class FakeSocket implements WebSocketLike {
   receive(data: unknown): void {
     this.onmessage?.({ data });
   }
+
+  error(event: unknown = new Error("socket failed")): void {
+    this.onerror?.(event);
+  }
 }
 
-function createClient() {
-  const socket = new FakeSocket();
+function createClient(socket = new FakeSocket()) {
   const onMessage = vi.fn<(message: ServerMessage) => void>();
+  const onDisconnect = vi.fn<(reason: string) => void>();
   const client = new SessionClient({
     url: "ws://localhost:3000",
     deviceId: "device-1",
     createSocket: () => socket,
-    onMessage
+    onMessage,
+    onDisconnect
   });
 
-  return { client, socket, onMessage };
+  return { client, socket, onMessage, onDisconnect };
 }
 
 describe("SessionClient", () => {
@@ -95,5 +110,94 @@ describe("SessionClient", () => {
     expect(errorSpy).toHaveBeenCalled();
 
     errorSpy.mockRestore();
+  });
+
+  it("closes a previous socket before creating a new one", () => {
+    const firstSocket = new FakeSocket();
+    const secondSocket = new FakeSocket();
+    const client = new SessionClient({
+      url: "ws://localhost:3000",
+      deviceId: "device-1",
+      createSocket: vi.fn().mockReturnValueOnce(firstSocket).mockReturnValueOnce(secondSocket),
+      onMessage: vi.fn()
+    });
+
+    client.connect();
+    client.connect();
+
+    expect(firstSocket.closeCalls).toBe(1);
+    expect(firstSocket.onopen).toBeNull();
+    expect(firstSocket.onmessage).toBeNull();
+    expect(firstSocket.onclose).toBeNull();
+    expect(firstSocket.onerror).toBeNull();
+  });
+
+  it("ignores stale session.opened messages after reconnect", () => {
+    const firstSocket = new FakeSocket();
+    const secondSocket = new FakeSocket();
+    const onMessage = vi.fn<(message: ServerMessage) => void>();
+    const client = new SessionClient({
+      url: "ws://localhost:3000",
+      deviceId: "device-1",
+      createSocket: vi.fn().mockReturnValueOnce(firstSocket).mockReturnValueOnce(secondSocket),
+      onMessage
+    });
+
+    client.connect();
+    client.connect();
+
+    firstSocket.receive(
+      JSON.stringify({ type: "session.opened", sessionId: "stale-session", deviceId: "device-1" })
+    );
+    secondSocket.receive(
+      JSON.stringify({ type: "session.opened", sessionId: "current-session", deviceId: "device-1" })
+    );
+    client.sendTerminalInput("pwd\n");
+
+    expect(onMessage).toHaveBeenCalledTimes(1);
+    expect(secondSocket.sent.at(-1)).toBe(
+      encodeMessage({ type: "terminal.input", sessionId: "current-session", data: "pwd\n" })
+    );
+    expect(firstSocket.sent).toEqual([]);
+  });
+
+  it("clears the session and calls onDisconnect when the socket closes", () => {
+    const { client, socket, onDisconnect } = createClient();
+
+    client.connect();
+    socket.receive(
+      JSON.stringify({ type: "session.opened", sessionId: "session-1", deviceId: "device-1" })
+    );
+    socket.close();
+
+    expect(onDisconnect).toHaveBeenCalledWith("closed");
+    expect(() => client.sendTerminalInput("pwd\n")).toThrow("terminal session is not open");
+    expect(socket.sent).toEqual([]);
+  });
+
+  it("clears the session and calls onDisconnect when the socket errors", () => {
+    const { client, socket, onDisconnect } = createClient();
+
+    client.connect();
+    socket.receive(
+      JSON.stringify({ type: "session.opened", sessionId: "session-1", deviceId: "device-1" })
+    );
+    socket.error(new Error("network down"));
+
+    expect(onDisconnect).toHaveBeenCalledWith("network down");
+    expect(() => client.sendTerminalInput("pwd\n")).toThrow("terminal session is not open");
+  });
+
+  it("throws before sending terminal input after close", () => {
+    const { client, socket } = createClient();
+
+    client.connect();
+    socket.receive(
+      JSON.stringify({ type: "session.opened", sessionId: "session-1", deviceId: "device-1" })
+    );
+    socket.close();
+
+    expect(() => client.sendTerminalInput("whoami\n")).toThrow("terminal session is not open");
+    expect(socket.sent).toEqual([]);
   });
 });
