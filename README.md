@@ -8,6 +8,7 @@
 - [Feature implementation principles](docs/superpowers/specs/2026-05-02-feature-implementation-principles.md)
 - [External network access design](docs/superpowers/specs/2026-05-02-external-network-access-design.md)
 - [Installable MVP implementation plan](docs/superpowers/plans/2026-05-02-ios-mac-installable-mvp-plan.md)
+- [External network cloud relay plan](docs/superpowers/plans/2026-05-02-external-network-cloud-relay-plan.md)
 
 ## Local MVP Foundation
 

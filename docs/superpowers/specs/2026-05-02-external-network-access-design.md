@@ -410,3 +410,486 @@ iPhone -> Public URL -> Tunnel Server -> Mac
 - 默认关闭。
 
 这样既能保证普通用户可用，又保留技术用户低成本自托管的空间。
+
+## 12. 连接模式产品设计
+
+### 12.1 默认模式：云端安全连接
+
+普通用户只看到一个连接按钮：
+
+```text
+连接
+```
+
+用户不需要选择局域网、外网、DDNS、端口映射或 IPv6。App 内部根据设备在线状态和 server 返回的路由策略连接。
+
+默认文案：
+
+```text
+云端安全连接
+```
+
+解释文案：
+
+```text
+手机和电脑都通过加密连接接入云端，不需要开放家庭路由器端口。
+```
+
+默认模式的实际链路：
+
+```text
+Mobile App -> Cloud Relay -> Agent
+```
+
+### 12.2 自动模式：局域网优先，云中转兜底
+
+当手机和 Mac 在同一局域网时，后续可以优先使用局域网连接，失败后自动切到云中转。
+
+推荐策略：
+
+1. App 打开设备详情。
+2. Cloud 返回设备的最近局域网地址摘要，例如 `192.168.1.23`，只用于同网探测。
+3. Mobile 在 300-800ms 内尝试局域网连接。
+4. 局域网失败立即走云中转。
+5. UI 不让用户等待长时间探测。
+
+MVP 阶段可以先不做局域网自动探测，直接使用云中转。原因是终端流量小，先保证外网稳定更重要。
+
+### 12.3 高级模式：家庭直连
+
+高级设置中提供：
+
+```text
+自托管 / 家庭直连
+```
+
+进入后显示风险提示：
+
+```text
+该模式需要公网 IP、DDNS、端口映射和 TLS。配置错误可能暴露家庭网络入口。仅建议了解网络配置的用户使用。
+```
+
+高级模式字段：
+
+- `serverUrl`：例如 `wss://myhome.example.com/ws/mobile`。
+- `deviceId`：目标设备 ID。
+- `tlsRequired`：必须为 `true`。
+- `allowInsecureLocal`：仅开发模式允许。
+
+高级模式默认隐藏在设置页，不出现在首次连接流程。
+
+### 12.4 高级模式：第三方反向隧道
+
+第三方反向隧道不作为产品默认能力，但可以用于开发者排障。
+
+UI 文案：
+
+```text
+第三方隧道由外部服务提供，稳定性、隐私和费用取决于服务商。正式远控建议使用云端安全连接。
+```
+
+配置字段与家庭直连相同，本质都是用户提供一个自定义 `serverUrl`。
+
+## 13. 默认云中转的详细技术架构
+
+### 13.1 连接分层
+
+云端服务分为三层：
+
+```text
+API Layer
+  - 登录
+  - 设备列表
+  - 绑定
+  - 会话创建
+
+Relay Layer
+  - /ws/agent
+  - /ws/mobile
+  - terminal.input/output 转发
+
+State Layer
+  - PostgreSQL: 用户、设备、绑定、会话元数据
+  - Redis: 在线状态、短期 token、socket 路由
+```
+
+早期可以把 API 和 Relay 放在同一个 Fastify 进程里。等连接数上来后，再拆成独立服务。
+
+### 13.2 Agent 长连接
+
+Agent 启动后主动建立：
+
+```text
+wss://api.example.com/ws/agent
+```
+
+握手参数：
+
+- `deviceId`
+- `agentVersion`
+- `platform`
+- `capabilities`
+- `deviceToken`
+
+Server 校验通过后记录：
+
+```text
+deviceId -> agentSocketId
+deviceId -> online
+deviceId -> lastSeenAt
+deviceId -> capabilities
+```
+
+Agent 需要心跳：
+
+```text
+agent.ping
+agent.pong
+```
+
+如果连续多次心跳失败，server 标记设备离线。
+
+### 13.3 Mobile 会话连接
+
+Mobile 登录后先走 HTTPS 创建会话：
+
+```text
+POST /sessions
+```
+
+请求：
+
+```json
+{
+  "deviceId": "mac-dev",
+  "capability": "terminal"
+}
+```
+
+返回：
+
+```json
+{
+  "sessionId": "session_123",
+  "sessionToken": "short_lived_token",
+  "route": {
+    "mode": "cloud-relay",
+    "wsUrl": "wss://api.example.com/ws/mobile"
+  }
+}
+```
+
+Mobile 再连接：
+
+```text
+wss://api.example.com/ws/mobile
+```
+
+并发送：
+
+```json
+{
+  "type": "session.open",
+  "sessionId": "session_123",
+  "sessionToken": "short_lived_token",
+  "deviceId": "mac-dev"
+}
+```
+
+Server 校验 `sessionToken` 后，才把打开请求转给 Agent。
+
+### 13.4 终端消息路由
+
+路由表：
+
+```text
+sessionId -> deviceId
+sessionId -> mobileSocketId
+deviceId  -> agentSocketId
+```
+
+输入方向：
+
+```text
+Mobile terminal.input -> Relay -> Agent terminal.input -> PTY stdin
+```
+
+输出方向：
+
+```text
+PTY stdout/stderr -> Agent terminal.output -> Relay -> Mobile terminal.output
+```
+
+Server 不解析命令内容，只校验消息结构、会话归属和 socket 归属。
+
+### 13.5 断线行为
+
+Mobile 断开：
+
+- Server 标记 mobile socket disconnected。
+- Agent 保留 PTY 一段时间，例如 5 分钟。
+- Mobile 重连后请求 `terminal.snapshot`。
+
+Agent 断开：
+
+- Server 标记设备离线。
+- Server 通知相关 Mobile：`device.offline` 或 `session.error`。
+- Mobile 展示“电脑离线，等待重连”。
+
+Server 重启：
+
+- Agent 自动重连。
+- Mobile 自动重连。
+- 已有 PTY 是否恢复取决于 Agent 是否仍存活。
+
+## 14. “家里地址变外网地址”的产品解释
+
+用户可能会问：“我家里 Mac 的地址是 `192.168.1.23`，为什么外面不能连？”
+
+产品解释应简化为：
+
+```text
+家里的电脑地址只在家里 Wi-Fi 内有效。离开家后，手机无法直接访问这个地址。默认连接方式会让电脑主动连接云端，手机再通过云端找到电脑，不需要设置路由器。
+```
+
+高级解释：
+
+```text
+如果你有公网 IP，可以通过 DDNS 和端口映射让外网访问家里设备。但这会暴露家庭网络入口，需要自行配置 TLS 和安全策略。普通用户建议使用云端安全连接。
+```
+
+这段解释可以放在：
+
+- 连接失败详情页。
+- 高级网络设置页。
+- 帮助文档。
+
+不要在首次连接流程展示这些复杂概念。
+
+## 15. 成本控制设计
+
+### 15.1 终端免费策略
+
+终端是核心功能，默认免费。原因：
+
+- 流量低。
+- 成本可控。
+- 是产品差异化核心。
+
+限制策略：
+
+- 单用户同时在线设备数限制。
+- 单设备同时终端会话数限制。
+- 单会话空闲超时。
+- 输出缓冲区大小限制。
+- 高频输入限流，防止滥用。
+
+### 15.2 文件和桌面成本策略
+
+文件和桌面流量更高，后续可以限制：
+
+- 单日中转流量。
+- 文件上传下载速度。
+- 桌面帧率和码率。
+- 后台传输时长。
+
+广告策略：
+
+- 会话内不展示广告。
+- 设备列表、连接前、断开后可展示广告。
+- 激励广告只用于高成本资源，例如更高 Relay 流量、更长桌面会话。
+
+### 15.3 Relay 资源隔离
+
+Relay 服务需要隔离不同类型流量：
+
+```text
+terminal: 高优先级，低带宽
+control: 高优先级，低带宽
+file: 中优先级，可限速
+desktop: 低优先级，高带宽，可降级
+```
+
+当系统压力大时：
+
+1. 保终端输入输出。
+2. 保控制心跳。
+3. 限制文件传输。
+4. 降低桌面码率或断开桌面。
+
+## 16. 安全与隐私产品边界
+
+默认云中转并不意味着云端可以随意读取用户内容。安全路线分两阶段。
+
+### 16.1 外网 MVP 安全
+
+MVP 必须做到：
+
+- TLS/WSS。
+- 登录鉴权。
+- 设备绑定。
+- Agent 本地确认。
+- 短期 session token。
+- Server 不落库命令内容。
+- 日志脱敏。
+- Agent 本地可关闭能力。
+
+### 16.2 后续端到端加密
+
+后续会话内容端到端加密：
+
+```text
+Mobile encrypt -> Cloud Relay forwards ciphertext -> Agent decrypt
+Agent encrypt -> Cloud Relay forwards ciphertext -> Mobile decrypt
+```
+
+云端仍能看到：
+
+- 用户 ID。
+- 设备 ID。
+- 会话开始/结束。
+- 流量大小。
+- 连接状态。
+
+云端不能看到：
+
+- 命令内容。
+- 终端输出。
+- 文件内容。
+- 屏幕内容。
+
+## 17. 连接失败诊断
+
+外网连接失败必须给用户可行动的原因。
+
+### 17.1 云端安全连接失败
+
+常见原因：
+
+- 手机无网络。
+- 云服务不可达。
+- 账号登录过期。
+- 设备离线。
+- Agent 未启动。
+- 设备未绑定。
+- 会话 token 过期。
+
+用户文案：
+
+```text
+电脑离线。请确认 Mac 已开机，并且 Agent 正在运行。
+```
+
+```text
+登录已过期，请重新登录。
+```
+
+```text
+无法连接云服务，请检查手机网络。
+```
+
+### 17.2 家庭直连失败
+
+常见原因：
+
+- DDNS 没有更新。
+- 端口映射错误。
+- 没有公网 IP。
+- TLS 证书无效。
+- 路由器防火墙阻止。
+
+用户文案：
+
+```text
+家庭直连不可达。请检查公网 IP、DDNS、端口映射和 TLS 证书。普通用户建议切换回云端安全连接。
+```
+
+### 17.3 诊断信息
+
+App 的高级诊断页可以展示：
+
+- 当前连接模式。
+- 当前 server URL。
+- 最近错误码。
+- 设备在线状态。
+- 最近 Agent 心跳时间。
+- 是否使用云中转。
+- 是否尝试过家庭直连。
+
+不要展示命令内容。
+
+## 18. 高级设置 IA
+
+设置结构：
+
+```text
+设置
+  网络
+    连接模式
+      自动，推荐
+      云端安全连接
+      家庭直连，高级
+      自定义隧道，高级
+    当前服务器
+    连接诊断
+  安全
+    已绑定设备
+    撤销绑定
+    终端能力开关
+  关于
+    隐私说明
+    网络连接说明
+```
+
+默认连接模式：
+
+```text
+自动，推荐
+```
+
+自动模式在 MVP 中等价于云端安全连接；后续加入局域网探测和 P2P 后，自动模式再变成智能路由。
+
+## 19. 开发与生产环境
+
+### 19.1 开发环境
+
+局域网开发：
+
+```bash
+HOST=0.0.0.0 pnpm dev:server
+REMOTE_SERVER_URL=ws://127.0.0.1:8787/ws/agent pnpm dev:agent
+EXPO_PUBLIC_REMOTE_WS_URL=ws://<mac-lan-ip>:8787/ws/mobile pnpm dev:mobile
+```
+
+外网开发：
+
+```bash
+REMOTE_SERVER_URL=wss://dev-api.example.com/ws/agent pnpm dev:agent
+EXPO_PUBLIC_REMOTE_WS_URL=wss://dev-api.example.com/ws/mobile pnpm dev:mobile
+```
+
+### 19.2 生产环境
+
+生产环境必须：
+
+- 禁止 `ws://`。
+- 禁止匿名 WebSocket。
+- 禁止固定开发 token。
+- 强制设备绑定。
+- 强制 TLS。
+- 开启限流。
+- 开启结构化日志。
+- 开启健康检查。
+
+## 20. 决策表
+
+| 方案 | 默认用户可用性 | 安全风险 | 成本 | 适用场景 | 产品定位 |
+| --- | --- | --- | --- | --- | --- |
+| 云端安全连接 | 高 | 中，可控 | 中 | 普通用户、MVP | 默认 |
+| 家庭公网直连 | 低 | 高 | 低 | 技术用户、自托管 | 高级 |
+| DDNS + 端口映射 | 低 | 高 | 低 | 有公网 IP 用户 | 高级 |
+| IPv6 直连 | 中低 | 中高 | 低 | IPv6 环境稳定用户 | 高级 |
+| 第三方反向隧道 | 中 | 中高 | 不稳定 | 开发测试 | 高级/排障 |
+| P2P + Relay | 中高 | 中 | 中低 | 文件/桌面降成本 | 后续演进 |
+
+产品默认选择云端安全连接。高级模式不进入首次使用路径，只在用户主动打开网络设置时出现。
