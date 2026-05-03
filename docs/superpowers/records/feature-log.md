@@ -1796,3 +1796,71 @@
 - 在 Render 创建 Blueprint，记录 `remote-terminal-server` 的服务 URL、生成的 `REMOTE_DEV_TOKEN` 和构建日志。
 - 用 macOS Agent 连接 `wss://<relay-host>/ws/agent`，iPhone 连接 `wss://<relay-host>/ws/mobile`，执行 `printf "__CLOUD__%s\n" "$PWD"`。
 - 后续继续推进 PostgreSQL/Redis 业务 store wiring、TestFlight、macOS 签名公证和断线恢复。
+
+## 2026-05-03 iOS 移动端 UI 与模拟器/真机验证
+
+**状态：** completed
+
+**提交：**
+- `3c33e56` `docs: plan mobile ui simulator validation`
+- `6aa450b` `feat: refine mobile terminal ui`
+
+**实现内容：**
+- Mobile 从整屏深色界面改为浅色运维工作台，保留深色终端窗口，降低真机“黑屏”感知。
+- 新增 `mobileShellTheme.ts`，集中管理移动端颜色、终端字体和短状态文案。
+- `app.json` splash 和 adaptive icon 背景从 `#101214` 改为 `#f4f0e7`。
+- 已配对后配对面板折叠为 `Mac Ready` 状态和 `Forget` 操作，不再持续展示配对码输入框。
+- 增加开发态自动配对和自动连接配置：`EXPO_PUBLIC_REMOTE_AUTO_PAIRING_CODE`、`EXPO_PUBLIC_REMOTE_AUTOCONNECT`、`EXPO_PUBLIC_REMOTE_SMOKE_COMMAND`。
+- Agent 增加开发态 `REMOTE_AUTO_APPROVE_PAIRING=1`，仅用于模拟器/真机 smoke，默认关闭。
+- 修复自动配对码存在且 SecureStore 已恢复 token 时不会自动连接的问题。
+- 修复 `RedisDevicePresenceStore` 测试时间依赖，避免写死时间过期后全仓测试失败。
+- 修复 Agent/Desktop 测试夹具缺少 `autoApprovePairing` 字段导致的 typecheck 失败。
+
+**涉及文件：**
+- `apps/mobile/src/components/TerminalScreen.tsx`
+- `apps/mobile/src/components/mobileShellTheme.ts`
+- `apps/mobile/src/config/runtimeConfig.ts`
+- `apps/mobile/app.json`
+- `apps/mobile/package.json`
+- `apps/mobile/tests/mobileShellTheme.test.ts`
+- `apps/mobile/tests/runtimeConfig.test.ts`
+- `apps/agent/src/config.ts`
+- `apps/agent/src/agentClient.ts`
+- `apps/agent/tests/config.test.ts`
+- `apps/agent/tests/agentClient.test.ts`
+- `apps/agent-desktop/tests/agentDesktopRuntime.test.ts`
+- `apps/agent-desktop/tests/desktopState.test.ts`
+- `apps/server/tests/presence/redisPresenceStore.test.ts`
+- `docs/superpowers/specs/2026-05-03-ios-mobile-ui-simulator-validation-design.md`
+- `docs/superpowers/plans/2026-05-03-ios-mobile-ui-simulator-validation-plan.md`
+
+**TDD 记录：**
+- UI 主题红灯：`pnpm --filter @remote/mobile test -- mobileShellTheme.test.ts` 失败，原因是 `mobileShellTheme.ts` 不存在。
+- UI 主题绿灯：新增主题后 Mobile 测试通过。
+- 自动配对配置红灯：runtime config 测试失败，原因是 `autoPairingCode` 未读取。
+- Agent 自动批准红灯：Agent config 测试失败，原因是 `autoApprovePairing` 未读取且非法值未拒绝。
+- 已配对折叠红灯：`getPairingPanelMode` 不存在。
+- 恢复 token 自动连接红灯：`shouldAutoConnectTerminal` 不存在。
+- 验证阶段红灯：全仓测试发现 Redis presence 测试依赖当前时间；typecheck 发现 Agent/Desktop 测试夹具缺字段。
+
+**验证：**
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm test`: pass，256 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm build`: pass。
+- `git diff --check`: pass，无输出。
+- iOS 模拟器截图：`/tmp/remote-terminal-ui-reconnected.png`，浅色 App 外壳、已配对面板折叠、状态为 `Online`。
+- iOS 模拟器端到端 smoke：Server + Agent + Metro + App，终端输出包含 `__SIM_UI__/Users/hejianglong`。
+- 真机安装：`devicectl` 确认 `Remote Terminal com.terminalfirst.remote 0.1.0 (2)` 已安装到设备 `long`。
+- 真机启动：`devicectl device process launch` 成功，进程列表包含 `/RemoteTerminal.app/RemoteTerminal`。
+
+**已知风险：**
+- 当前真机只能通过 `devicectl` 验证安装、启动和进程；现有工具不能对物理 iPhone 自动点击或截图，UI 视觉确认需要用户在真机上观察。
+- `apps/mobile/ios/` 是 Expo 生成的原生工程，本次未提交；后续如果要稳定真机构建和 TestFlight，需要单独决定是否纳入仓库。
+- 开发态自动批准配对只适用于 smoke，不得作为正式安全策略。
+- 真机当前仍是本地/局域网开发构建，不是 TestFlight。
+
+**后续：**
+- 用户在真机上确认新 UI 不再是整屏黑色后，继续做真实公网 server。
+- 按 `docs/runbooks/cloud-test-environment.md` 在 Render 创建 Blueprint，记录公网 URL 和 `REMOTE_DEV_TOKEN`。
+- 用真机蜂窝网络连接云 relay，执行 `printf "__CLOUD__%s\n" "$PWD"`。
+- 后续推进 TestFlight、macOS 签名公证、Postgres/Redis 业务 store wiring 和发布前验收。
