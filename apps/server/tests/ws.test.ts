@@ -108,7 +108,8 @@ const tokenServerConfig: ServerConfig = {
   rateLimitWindowMs: 60_000,
   rateLimitMaxRequests: 120,
   wsMessageRateLimitWindowMs: 10_000,
-  wsMessageRateLimitMaxRequests: 200
+  wsMessageRateLimitMaxRequests: 200,
+  terminalInputMaxBytes: 16_384
 };
 
 async function registerAgent(app: FastifyInstance, deviceId = "mac-1"): Promise<WebSocket> {
@@ -936,6 +937,76 @@ describe("server websocket API", () => {
     agent.terminate();
     firstMobile.terminate();
     secondMobile.terminate();
+  });
+
+  it("rejects terminal input larger than the configured byte limit", async () => {
+    await app.close();
+    app = await createServer(
+      { logger: false },
+      { ...tokenServerConfig, requireDevToken: false, devToken: null, terminalInputMaxBytes: 4 }
+    );
+    await app.ready();
+
+    const agent = await registerAgent(app);
+    const { sessionToken } = await approvePairingRequest(app, agent);
+    const mobile = await app.injectWS("/ws/mobile");
+    const agentOpened = nextJson(agent);
+    const mobileOpened = nextJson(mobile);
+    mobile.send(JSON.stringify({ type: "session.open", deviceId: "mac-1", sessionToken }));
+
+    await agentOpened;
+    const opened = (await mobileOpened) as { sessionId: string };
+    const routedInput = nextJson(agent);
+    mobile.send(JSON.stringify({ type: "terminal.input", sessionId: opened.sessionId, data: "abcd" }));
+    expect(await routedInput).toEqual({
+      type: "terminal.input",
+      sessionId: opened.sessionId,
+      data: "abcd"
+    });
+
+    const sizeError = nextJson(mobile);
+    mobile.send(JSON.stringify({ type: "terminal.input", sessionId: opened.sessionId, data: "abcde" }));
+    expect(await sizeError).toEqual({
+      type: "session.error",
+      code: "SESSION_ERROR",
+      message: "Terminal input exceeds 4 bytes",
+      sessionId: opened.sessionId
+    });
+    await noJson(agent);
+
+    agent.terminate();
+    mobile.terminate();
+  });
+
+  it("checks terminal input size by UTF-8 bytes", async () => {
+    await app.close();
+    app = await createServer(
+      { logger: false },
+      { ...tokenServerConfig, requireDevToken: false, devToken: null, terminalInputMaxBytes: 4 }
+    );
+    await app.ready();
+
+    const agent = await registerAgent(app);
+    const { sessionToken } = await approvePairingRequest(app, agent);
+    const mobile = await app.injectWS("/ws/mobile");
+    const agentOpened = nextJson(agent);
+    const mobileOpened = nextJson(mobile);
+    mobile.send(JSON.stringify({ type: "session.open", deviceId: "mac-1", sessionToken }));
+
+    await agentOpened;
+    const opened = (await mobileOpened) as { sessionId: string };
+    const sizeError = nextJson(mobile);
+    mobile.send(JSON.stringify({ type: "terminal.input", sessionId: opened.sessionId, data: "你好" }));
+    expect(await sizeError).toEqual({
+      type: "session.error",
+      code: "SESSION_ERROR",
+      message: "Terminal input exceeds 4 bytes",
+      sessionId: opened.sessionId
+    });
+    await noJson(agent);
+
+    agent.terminate();
+    mobile.terminate();
   });
 
   it("routes agent terminal output to the mobile socket", async () => {

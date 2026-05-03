@@ -163,6 +163,16 @@ function isMobileRoutableMessage(message: ClientMessage): message is MobileRouta
   return message.type === "terminal.input" || message.type === "terminal.resize";
 }
 
+function assertTerminalInputSize(message: MobileRoutableMessage, maxBytes: number): void {
+  if (message.type !== "terminal.input") {
+    return;
+  }
+
+  if (Buffer.byteLength(message.data, "utf8") > maxBytes) {
+    throw new Error(`Terminal input exceeds ${maxBytes} bytes`);
+  }
+}
+
 function isAgentRoutableMessage(message: ServerMessage): message is AgentRoutableMessage {
   return message.type === "terminal.output" || message.type === "terminal.exit";
 }
@@ -452,6 +462,8 @@ export function registerWsRoutes(app: FastifyInstance, config: ServerConfig): vo
         if (!isMobileRoutableMessage(message)) {
           throw new Error(`Unsupported mobile message type ${message.type}`);
         }
+
+        assertTerminalInputSize(message, config.terminalInputMaxBytes);
 
         if (!isAllowedWebSocketMessageRate(wsMessageRateLimiter, mobileRateLimitKey)) {
           throw new Error("Rate limit exceeded");

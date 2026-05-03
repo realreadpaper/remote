@@ -13,7 +13,8 @@ describe("loadServerConfig", () => {
       rateLimitWindowMs: 60_000,
       rateLimitMaxRequests: 120,
       wsMessageRateLimitWindowMs: 10_000,
-      wsMessageRateLimitMaxRequests: 200
+      wsMessageRateLimitMaxRequests: 200,
+      terminalInputMaxBytes: 16_384
     });
   });
 
@@ -29,7 +30,8 @@ describe("loadServerConfig", () => {
         REMOTE_HTTP_RATE_LIMIT_WINDOW_MS: "30000",
         REMOTE_HTTP_RATE_LIMIT_MAX: "30",
         REMOTE_WS_MESSAGE_RATE_LIMIT_WINDOW_MS: "5000",
-        REMOTE_WS_MESSAGE_RATE_LIMIT_MAX: "50"
+        REMOTE_WS_MESSAGE_RATE_LIMIT_MAX: "50",
+        REMOTE_TERMINAL_INPUT_MAX_BYTES: "4096"
       })
     ).toEqual({
       host: "0.0.0.0",
@@ -41,7 +43,8 @@ describe("loadServerConfig", () => {
       rateLimitWindowMs: 30_000,
       rateLimitMaxRequests: 30,
       wsMessageRateLimitWindowMs: 5_000,
-      wsMessageRateLimitMaxRequests: 50
+      wsMessageRateLimitMaxRequests: 50,
+      terminalInputMaxBytes: 4_096
     });
   });
 
@@ -80,6 +83,12 @@ describe("loadServerConfig", () => {
     );
     expect(() => loadServerConfig({ REMOTE_WS_MESSAGE_RATE_LIMIT_MAX: "abc" })).toThrow(
       "REMOTE_WS_MESSAGE_RATE_LIMIT_MAX must be a positive integer"
+    );
+    expect(() => loadServerConfig({ REMOTE_TERMINAL_INPUT_MAX_BYTES: "0" })).toThrow(
+      "REMOTE_TERMINAL_INPUT_MAX_BYTES must be a positive integer"
+    );
+    expect(() => loadServerConfig({ REMOTE_TERMINAL_INPUT_MAX_BYTES: "abc" })).toThrow(
+      "REMOTE_TERMINAL_INPUT_MAX_BYTES must be a positive integer"
     );
   });
 });
