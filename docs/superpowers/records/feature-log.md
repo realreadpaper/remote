@@ -1556,3 +1556,45 @@
 **后续：**
 - Task 15 抽象在线状态 store，并加入 Redis-backed presence。
 - 后续云端化时把 PairingStore 和 SessionTokenStore 迁移到 PostgreSQL repository。
+
+## 2026-05-03 Redis Device Presence
+
+**状态：** completed
+
+**提交：**
+- `86e8569` `docs: design redis device presence`
+- `5d74261` `docs: plan redis device presence`
+- `f1bcf4d` `feat: add redis-backed device presence`
+
+**实现内容：**
+- `DeviceRegistry` 新增 `DevicePresenceStore` 抽象。
+- 新增 `MemoryDevicePresenceStore`，开发期默认使用内存 presence。
+- `DeviceRegistry` 注册设备时写入在线状态，断开时写入离线状态。
+- `DeviceRegistry` 新增 `heartbeat()`，心跳会刷新 `lastSeenAt` 和 TTL。
+- `DeviceRegistry.get()` 和 `DeviceRegistry.list()` 从 presence store 组合 `online` 与 `lastSeenAt`。
+- `/devices` 返回设备时新增 `lastSeenAt` 字段，便于 iOS 端展示最后在线时间。
+- 新增 `RedisDevicePresenceStore`，通过注入式 `RedisLike` 客户端写入 Redis key，不直接绑定具体 Redis SDK。
+- Redis presence key 默认格式为 `presence:device:{deviceId}`。
+- 在线状态使用 Redis `SET ... EX` 写入 TTL；离线状态写入无 TTL 的 offline payload。
+- Redis store 对缺失记录、非法 JSON 和非法结构返回 `undefined`。
+- 主计划 Task 15 已同步勾选。
+
+**验证：**
+- DeviceRegistry 红灯：`PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test` 失败，`registry.heartbeat is not a function`、TTL 不生效、`MemoryDevicePresenceStore is not a constructor`。
+- Redis store 红灯：`PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test` 失败，`redisPresenceStore.js` 不存在。
+- Server 绿灯：`PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test`: pass，119 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server build`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm test`: pass，249 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm build`: pass。
+- `git diff --check`: pass。
+
+**已知风险：**
+- 当前 Redis store 已实现但尚未接入 server runtime 配置；现有运行路径仍默认使用内存 presence。
+- 多实例云部署仍需要 WebSocket route affinity 或集中式 session routing；本任务只解决 presence 共享状态。
+- Redis TTL 依赖服务端与 Redis 时间行为，云端上线前需要真实 Redis 冒烟测试。
+
+**后续：**
+- Task 16 编写云端测试环境 runbook，并配置 PostgreSQL、Redis、HTTPS/WSS。
+- 云端 smoke test 时验证 iOS、macOS Agent、server、Redis presence 的完整链路。

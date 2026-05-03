@@ -28,7 +28,7 @@ docs/superpowers/records/feature-log.md
 - Modify: `apps/server/tests/deviceRegistry.test.ts`
 - Modify: `apps/server/src/deviceRegistry.ts`
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 Add tests:
 
@@ -36,7 +36,7 @@ Add tests:
 - device becomes offline after presence TTL.
 - injected memory presence store preserves existing online/offline behavior.
 
-- [ ] **Step 2: Run red server tests**
+- [x] **Step 2: Run red server tests**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test
@@ -44,7 +44,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test
 
 Expected: fail because `heartbeat()` and presence TTL do not exist.
 
-- [ ] **Step 3: Implement memory presence store**
+- [x] **Step 3: Implement memory presence store**
 
 In `deviceRegistry.ts`, export:
 
@@ -56,11 +56,11 @@ export class MemoryDevicePresenceStore
 
 Add `DeviceRegistryOptions` with `presenceStore`, `now`, `presenceTtlMs`.
 
-- [ ] **Step 4: Update DeviceRegistry**
+- [x] **Step 4: Update DeviceRegistry**
 
 `register()` calls `markOnline`; `markOffline()` calls store; `heartbeat()` calls store; `get()`/`list()` compose `online` from store.
 
-- [ ] **Step 5: Run green server tests**
+- [x] **Step 5: Run green server tests**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test
@@ -72,9 +72,9 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test
 - Create: `apps/server/src/presence/redisPresenceStore.ts`
 - Create: `apps/server/tests/presence/redisPresenceStore.test.ts`
 
-- [ ] **Step 1: Write failing Redis store tests**
+- [x] **Step 1: Write failing Redis store tests**
 
-Use fake Redis client with `set`, `get`, `del`, and captured TTL. Cover:
+Use fake Redis client with `set`, `get`, and captured TTL. Cover:
 
 - `markOnline()` writes online payload and TTL.
 - `heartbeat()` refreshes lastSeen/expiresAt and TTL.
@@ -82,7 +82,7 @@ Use fake Redis client with `set`, `get`, `del`, and captured TTL. Cover:
 - `getPresence()` parses stored JSON.
 - invalid JSON returns undefined.
 
-- [ ] **Step 2: Run red server tests**
+- [x] **Step 2: Run red server tests**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test
@@ -90,7 +90,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test
 
 Expected: fail because Redis store module does not exist.
 
-- [ ] **Step 3: Implement RedisDevicePresenceStore**
+- [x] **Step 3: Implement RedisDevicePresenceStore**
 
 Implement with injected client:
 
@@ -103,7 +103,7 @@ export interface RedisLike {
 
 No direct dependency on a Redis package in this task.
 
-- [ ] **Step 4: Run green server tests**
+- [x] **Step 4: Run green server tests**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test
@@ -116,7 +116,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test
 - Modify: `docs/superpowers/plans/2026-05-03-redis-device-presence-plan.md`
 - Modify: `docs/superpowers/records/feature-log.md`
 
-- [ ] **Step 1: Full verification**
+- [x] **Step 1: Full verification**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test
@@ -127,18 +127,18 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm build
 ```
 
-- [ ] **Step 2: Commit implementation**
+- [x] **Step 2: Commit implementation**
 
 ```bash
 git add apps/server/src/deviceRegistry.ts apps/server/src/presence apps/server/tests/deviceRegistry.test.ts apps/server/tests/presence
 git commit -m "feat: add redis-backed device presence"
 ```
 
-- [ ] **Step 3: Mark plan and log delivery**
+- [x] **Step 3: Mark plan and log delivery**
 
 Mark this plan and Task 15 complete. Append feature log with commits and verification.
 
-- [ ] **Step 4: Commit records**
+- [x] **Step 4: Commit records**
 
 ```bash
 git add docs/superpowers/plans/2026-05-02-ios-mac-installable-mvp-plan.md docs/superpowers/plans/2026-05-03-redis-device-presence-plan.md docs/superpowers/records/feature-log.md

@@ -293,13 +293,13 @@ docs/runbooks/macos-agent-package.md
 - Modify: `apps/server/src/deviceRegistry.ts`
 - Test: `apps/server/tests/deviceRegistry.test.ts`
 
-- [ ] 将在线状态接口抽象为 store。
-- [ ] 开发期可用内存 store。
-- [ ] 云端使用 Redis store。
-- [ ] WebSocket 断开时更新离线状态。
-- [ ] 测试：上线、心跳、断开、过期。
-- [ ] 运行：`pnpm --filter @remote/server test`。
-- [ ] 提交：`git commit -m "feat: add redis-backed device presence"`。
+- [x] 将在线状态接口抽象为 store。
+- [x] 开发期可用内存 store。
+- [x] 云端使用 Redis store。
+- [x] WebSocket 断开时更新离线状态。
+- [x] 测试：上线、心跳、断开、过期。
+- [x] 运行：`pnpm --filter @remote/server test`。
+- [x] 提交：`git commit -m "feat: add redis-backed device presence"`。
 
 ### Task 16: 部署与冒烟测试
 
