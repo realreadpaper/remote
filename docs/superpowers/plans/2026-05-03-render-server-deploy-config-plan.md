@@ -232,7 +232,7 @@ command -v docker
 
 Expected: 如果没有输出，则记录 `Docker not available locally; image build not run`。
 
-- [ ] **Step 4: 更新功能日志**
+- [x] **Step 4: 更新功能日志**
 
 Add entry:
 
@@ -258,7 +258,7 @@ Add entry:
 - `docker build`: not run, Docker not available locally
 ```
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 Run:
 

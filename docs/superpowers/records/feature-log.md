@@ -1751,3 +1751,48 @@
 
 **已知风险：**
 - 本任务只完成 config readiness，尚未把 PostgreSQL/Redis 接入业务 store。
+
+## 2026-05-03 Render 真实 Server 部署入口
+
+**状态：** completed
+
+**提交：**
+- `6f20dce` `feat: add render server deploy config`
+
+**实现内容：**
+- 新增根目录 `Dockerfile`，使用 Node 22 + Corepack + `pnpm@9.15.0` 构建 `@remote/protocol` 和 `@remote/server`，启动 `node apps/server/dist/index.js`。
+- 新增根目录 `.dockerignore`，排除依赖、构建产物、移动端原生工程和本地状态，避免 Render Docker context 过大。
+- 新增根目录 `render.yaml`，创建 `remote-terminal-server` Web Service、`remote-terminal-postgres`、`remote-terminal-redis`。
+- `render.yaml` 默认开启 `REMOTE_REQUIRE_DEV_TOKEN=1`，由 Render 生成 `REMOTE_DEV_TOKEN`，并把 Postgres/Key Value connection string 注入 `DATABASE_URL`、`REDIS_URL`。
+- 更新 `docs/runbooks/cloud-test-environment.md`，补充 Blueprint 部署、本地 Docker 验证边界、Render 构建日志记录和云端 smoke 模板。
+- 新增并更新 `docs/superpowers/specs/2026-05-03-render-server-deploy-config-design.md` 与 `docs/superpowers/plans/2026-05-03-render-server-deploy-config-plan.md`。
+
+**涉及文件：**
+- `Dockerfile`
+- `.dockerignore`
+- `render.yaml`
+- `docs/runbooks/cloud-test-environment.md`
+- `docs/superpowers/specs/2026-05-03-render-server-deploy-config-design.md`
+- `docs/superpowers/plans/2026-05-03-render-server-deploy-config-plan.md`
+- `docs/superpowers/records/feature-log.md`
+
+**验证：**
+- `ruby -e "require 'yaml'; p YAML.load_file('render.yaml').keys"`: pass，输出 `["services", "databases"]`。
+- `rg -n "TO[D]O|TB[D]|填[入]|占[位]" docs/runbooks/cloud-test-environment.md docs/superpowers/specs/2026-05-03-render-server-deploy-config-design.md docs/superpowers/plans/2026-05-03-render-server-deploy-config-plan.md`: pass，无输出。
+- `git diff --check`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test`: pass，121 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm test`: pass，253 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm build`: pass。
+- `command -v docker`: not found；本机未执行 `docker build`，不能标记镜像本地构建通过。
+
+**已知风险：**
+- 还没有在 Render 账号里实际 Apply Blueprint，也没有真实公网 relay host。
+- Docker 镜像构建需要由 Render 构建日志确认，或后续在安装 Docker 的机器上执行本地构建。
+- Server 业务 store 还没有全部接入 PostgreSQL/Redis，云端仍必须保持单实例。
+- 真实 iPhone 蜂窝网络 `__CLOUD__` smoke 尚未执行。
+
+**后续：**
+- 在 Render 创建 Blueprint，记录 `remote-terminal-server` 的服务 URL、生成的 `REMOTE_DEV_TOKEN` 和构建日志。
+- 用 macOS Agent 连接 `wss://<relay-host>/ws/agent`，iPhone 连接 `wss://<relay-host>/ws/mobile`，执行 `printf "__CLOUD__%s\n" "$PWD"`。
+- 后续继续推进 PostgreSQL/Redis 业务 store wiring、TestFlight、macOS 签名公证和断线恢复。
