@@ -163,6 +163,10 @@ function isAllowedWebSocketMessageRate(limiter: MemoryRateLimiter, key: string):
   return limiter.check(key).allowed;
 }
 
+function isAllowedAgentOutputRate(limiter: MemoryRateLimiter, deviceId: string): boolean {
+  return limiter.check(`ws.agent.output:${deviceId}`).allowed;
+}
+
 function clientKey(request: FastifyRequest): string {
   const forwardedFor = request.headers["x-forwarded-for"];
   if (typeof forwardedFor === "string" && forwardedFor.trim().length > 0) {
@@ -216,6 +220,10 @@ export function registerWsRoutes(app: FastifyInstance, config: ServerConfig): vo
   const wsMessageRateLimiter = new MemoryRateLimiter({
     windowMs: config.wsMessageRateLimitWindowMs,
     maxRequests: config.wsMessageRateLimitMaxRequests
+  });
+  const agentOutputRateLimiter = new MemoryRateLimiter({
+    windowMs: config.agentOutputRateLimitWindowMs,
+    maxRequests: config.agentOutputRateLimitMaxMessages
   });
 
   app.get("/health", async () => ({ ok: true }));
@@ -338,6 +346,8 @@ export function registerWsRoutes(app: FastifyInstance, config: ServerConfig): vo
     };
 
     socket.on("message", (data) => {
+      let sessionId: string | undefined;
+
       try {
         const payload = parseJson(data, config.wsRawMessageMaxBytes);
 
@@ -415,10 +425,15 @@ export function registerWsRoutes(app: FastifyInstance, config: ServerConfig): vo
         if (!isAgentRoutableMessage(message)) {
           throw new Error(`Unsupported agent message type ${message.type}`);
         }
+        sessionId = message.sessionId;
+
+        if (message.type === "terminal.output" && !isAllowedAgentOutputRate(agentOutputRateLimiter, attachedDeviceId)) {
+          throw new Error("Rate limit exceeded");
+        }
 
         hub.routeFromAgent(attachedDeviceId, agentSend, message);
       } catch (error) {
-        sendSessionError(socket, messageText(error));
+        sendSessionError(socket, messageText(error), sessionId);
       }
     });
 

@@ -15,7 +15,9 @@ describe("loadServerConfig", () => {
       wsMessageRateLimitWindowMs: 10_000,
       wsMessageRateLimitMaxRequests: 200,
       terminalInputMaxBytes: 16_384,
-      wsRawMessageMaxBytes: 65_536
+      wsRawMessageMaxBytes: 65_536,
+      agentOutputRateLimitWindowMs: 10_000,
+      agentOutputRateLimitMaxMessages: 1000
     });
   });
 
@@ -33,7 +35,9 @@ describe("loadServerConfig", () => {
         REMOTE_WS_MESSAGE_RATE_LIMIT_WINDOW_MS: "5000",
         REMOTE_WS_MESSAGE_RATE_LIMIT_MAX: "50",
         REMOTE_TERMINAL_INPUT_MAX_BYTES: "4096",
-        REMOTE_WS_RAW_MESSAGE_MAX_BYTES: "8192"
+        REMOTE_WS_RAW_MESSAGE_MAX_BYTES: "8192",
+        REMOTE_AGENT_OUTPUT_RATE_LIMIT_WINDOW_MS: "5000",
+        REMOTE_AGENT_OUTPUT_RATE_LIMIT_MAX: "50"
       })
     ).toEqual({
       host: "0.0.0.0",
@@ -47,7 +51,9 @@ describe("loadServerConfig", () => {
       wsMessageRateLimitWindowMs: 5_000,
       wsMessageRateLimitMaxRequests: 50,
       terminalInputMaxBytes: 4_096,
-      wsRawMessageMaxBytes: 8_192
+      wsRawMessageMaxBytes: 8_192,
+      agentOutputRateLimitWindowMs: 5_000,
+      agentOutputRateLimitMaxMessages: 50
     });
   });
 
@@ -98,6 +104,18 @@ describe("loadServerConfig", () => {
     );
     expect(() => loadServerConfig({ REMOTE_WS_RAW_MESSAGE_MAX_BYTES: "abc" })).toThrow(
       "REMOTE_WS_RAW_MESSAGE_MAX_BYTES must be a positive integer"
+    );
+    expect(() => loadServerConfig({ REMOTE_AGENT_OUTPUT_RATE_LIMIT_WINDOW_MS: "999" })).toThrow(
+      "REMOTE_AGENT_OUTPUT_RATE_LIMIT_WINDOW_MS must be an integer greater than or equal to 1000"
+    );
+    expect(() => loadServerConfig({ REMOTE_AGENT_OUTPUT_RATE_LIMIT_WINDOW_MS: "abc" })).toThrow(
+      "REMOTE_AGENT_OUTPUT_RATE_LIMIT_WINDOW_MS must be an integer greater than or equal to 1000"
+    );
+    expect(() => loadServerConfig({ REMOTE_AGENT_OUTPUT_RATE_LIMIT_MAX: "0" })).toThrow(
+      "REMOTE_AGENT_OUTPUT_RATE_LIMIT_MAX must be a positive integer"
+    );
+    expect(() => loadServerConfig({ REMOTE_AGENT_OUTPUT_RATE_LIMIT_MAX: "abc" })).toThrow(
+      "REMOTE_AGENT_OUTPUT_RATE_LIMIT_MAX must be a positive integer"
     );
   });
 });

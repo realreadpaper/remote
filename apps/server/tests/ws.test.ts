@@ -110,7 +110,9 @@ const tokenServerConfig: ServerConfig = {
   wsMessageRateLimitWindowMs: 10_000,
   wsMessageRateLimitMaxRequests: 200,
   terminalInputMaxBytes: 16_384,
-  wsRawMessageMaxBytes: 65_536
+  wsRawMessageMaxBytes: 65_536,
+  agentOutputRateLimitWindowMs: 10_000,
+  agentOutputRateLimitMaxMessages: 1000
 };
 
 async function registerAgent(app: FastifyInstance, deviceId = "mac-1"): Promise<WebSocket> {
@@ -1085,6 +1087,83 @@ describe("server websocket API", () => {
     mobile.terminate();
   });
 
+  it("rate limits agent terminal output before routing to mobile", async () => {
+    await app.close();
+    app = await createServer(
+      { logger: false },
+      { ...tokenServerConfig, requireDevToken: false, devToken: null, agentOutputRateLimitMaxMessages: 1 }
+    );
+    await app.ready();
+
+    const agent = await registerAgent(app);
+    const { sessionToken } = await approvePairingRequest(app, agent);
+    const mobile = await app.injectWS("/ws/mobile");
+    const agentOpened = nextJson(agent);
+    const mobileOpened = nextJson(mobile);
+    mobile.send(JSON.stringify({ type: "session.open", deviceId: "mac-1", sessionToken }));
+
+    await agentOpened;
+    const opened = (await mobileOpened) as { sessionId: string };
+    const firstOutput = nextJson(mobile);
+    agent.send(JSON.stringify({ type: "terminal.output", sessionId: opened.sessionId, stream: "stdout", data: "one\n" }));
+    expect(await firstOutput).toEqual({
+      type: "terminal.output",
+      sessionId: opened.sessionId,
+      stream: "stdout",
+      data: "one\n"
+    });
+
+    const rateLimitError = nextJson(agent);
+    agent.send(JSON.stringify({ type: "terminal.output", sessionId: opened.sessionId, stream: "stdout", data: "two\n" }));
+    expect(await rateLimitError).toEqual({
+      type: "session.error",
+      code: "SESSION_ERROR",
+      message: "Rate limit exceeded",
+      sessionId: opened.sessionId
+    });
+    await noJson(mobile);
+
+    agent.terminate();
+    mobile.terminate();
+  });
+
+  it("routes terminal exit after agent output rate limit is exceeded", async () => {
+    await app.close();
+    app = await createServer(
+      { logger: false },
+      { ...tokenServerConfig, requireDevToken: false, devToken: null, agentOutputRateLimitMaxMessages: 1 }
+    );
+    await app.ready();
+
+    const agent = await registerAgent(app);
+    const { sessionToken } = await approvePairingRequest(app, agent);
+    const mobile = await app.injectWS("/ws/mobile");
+    const agentOpened = nextJson(agent);
+    const mobileOpened = nextJson(mobile);
+    mobile.send(JSON.stringify({ type: "session.open", deviceId: "mac-1", sessionToken }));
+
+    await agentOpened;
+    const opened = (await mobileOpened) as { sessionId: string };
+    const firstOutput = nextJson(mobile);
+    agent.send(JSON.stringify({ type: "terminal.output", sessionId: opened.sessionId, stream: "stdout", data: "one\n" }));
+    await firstOutput;
+
+    const rateLimitError = nextJson(agent);
+    agent.send(JSON.stringify({ type: "terminal.output", sessionId: opened.sessionId, stream: "stdout", data: "two\n" }));
+    await rateLimitError;
+
+    const exitMessage = nextJson(mobile);
+    agent.send(JSON.stringify({ type: "terminal.exit", sessionId: opened.sessionId, exitCode: 0 }));
+    expect(await exitMessage).toEqual({
+      type: "terminal.exit",
+      sessionId: opened.sessionId,
+      exitCode: 0
+    });
+
+    agent.terminate();
+    mobile.terminate();
+  });
+
   it("keeps a reconnected agent online when the old socket closes later", async () => {
     const oldAgent = await registerAgent(app);
     const newAgent = await registerAgent(app);
@@ -1159,7 +1238,8 @@ describe("server websocket API", () => {
     expect(await oldAgentError).toEqual({
       type: "session.error",
       code: "SESSION_ERROR",
-      message: "Agent sender is not attached for device mac-1"
+      message: "Agent sender is not attached for device mac-1",
+      sessionId: opened.sessionId
     });
     await noJson(mobile);
 
