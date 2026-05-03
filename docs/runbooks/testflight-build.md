@@ -27,10 +27,22 @@ expo.name = Remote Terminal
 expo.slug = remote-terminal
 expo.ios.bundleIdentifier = com.terminalfirst.remote
 expo.version = 0.1.0
-expo.ios.buildNumber = 1
+expo.ios.buildNumber = 2
+expo.icon = ./assets/icon.png
 ```
 
 Before a real TestFlight upload, confirm the bundle identifier is available in your Apple Developer account. Change it before the first production build if your organization uses another reverse-DNS namespace.
+
+## Version And Asset Rules
+
+- `expo.version` is the user-visible app version. Increase it when testers should see a new release version, for example `0.1.0` to `0.2.0`.
+- `expo.ios.buildNumber` must increase for every App Store Connect upload under the same bundle identifier.
+- App icon and launch assets live in `apps/mobile/assets`.
+- Current MVP assets:
+  - `apps/mobile/assets/icon.png`
+  - `apps/mobile/assets/splash-icon.png`
+  - `apps/mobile/assets/adaptive-icon.png`
+- iOS launch screens can be cached. After changing splash assets, uninstall the previous build from the device before validating the new launch screen.
 
 ## Prerequisites
 
@@ -114,8 +126,10 @@ npx expo config --type public
 Confirm:
 
 - `ios.bundleIdentifier` is `com.terminalfirst.remote` or your chosen bundle id.
-- `ios.buildNumber` is set.
-- `plugins` includes `expo-secure-store`.
+- `ios.buildNumber` is higher than the last uploaded App Store Connect build.
+- `icon` is `./assets/icon.png`.
+- `splash.image` is `./assets/splash-icon.png`.
+- `plugins` includes `expo-secure-store` and `expo-splash-screen`.
 
 ## Build Internal Preview
 

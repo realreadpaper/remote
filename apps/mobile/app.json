@@ -4,6 +4,7 @@
     "slug": "remote-terminal",
     "version": "0.1.0",
     "orientation": "portrait",
+    "icon": "./assets/icon.png",
     "newArchEnabled": true,
     "platforms": [
       "ios",
@@ -11,11 +12,30 @@
     ],
     "ios": {
       "bundleIdentifier": "com.terminalfirst.remote",
-      "buildNumber": "1",
+      "buildNumber": "2",
       "supportsTablet": false
     },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#101214"
+      }
+    },
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#101214"
+    },
     "plugins": [
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#101214"
+        }
+      ]
     ]
   }
 }
