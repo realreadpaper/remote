@@ -26,7 +26,7 @@ docs/superpowers/records/feature-log.md
 - Modify: `apps/server/tests/config.test.ts`
 - Modify: `apps/server/src/config.ts`
 
-- [ ] **Step 1: Write failing config tests**
+- [x] **Step 1: Write failing config tests**
 
 更新默认配置断言，加入：
 
@@ -66,7 +66,7 @@ expect(() => loadServerConfig({ REMOTE_MOBILE_INPUT_BYTE_RATE_LIMIT_MAX: "abc" }
 );
 ```
 
-- [ ] **Step 2: Run red**
+- [x] **Step 2: Run red**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test -- apps/server/tests/config.test.ts
@@ -74,7 +74,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test -- apps
 
 Expected: fail because `ServerConfig` does not expose Mobile input byte rate fields.
 
-- [ ] **Step 3: Implement config**
+- [x] **Step 3: Implement config**
 
 在 `ServerConfig` 增加：
 
@@ -100,7 +100,7 @@ mobileInputByteRateLimitMaxBytes: parseIntegerEnv(
 )
 ```
 
-- [ ] **Step 4: Run green config tests**
+- [x] **Step 4: Run green config tests**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test -- apps/server/tests/config.test.ts
@@ -114,7 +114,7 @@ Expected: config tests pass.
 - Modify: `apps/server/tests/ws.test.ts`
 - Modify: `apps/server/src/ws.ts`
 
-- [ ] **Step 1: Write failing route tests**
+- [x] **Step 1: Write failing route tests**
 
 更新 `tokenServerConfig` 加入：
 
@@ -243,7 +243,7 @@ it("routes terminal resize after mobile input byte rate limit is exceeded", asyn
 });
 ```
 
-- [ ] **Step 2: Run red**
+- [x] **Step 2: Run red**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test -- apps/server/tests/ws.test.ts
@@ -251,7 +251,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test -- apps
 
 Expected: fail because mobile input byte rate is not enforced.
 
-- [ ] **Step 3: Implement route byte limiter**
+- [x] **Step 3: Implement route byte limiter**
 
 在 `apps/server/src/ws.ts` 新增 helper：
 
@@ -291,7 +291,7 @@ if (
 }
 ```
 
-- [ ] **Step 4: Run green server tests**
+- [x] **Step 4: Run green server tests**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test
@@ -299,7 +299,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test
 
 Expected: server tests pass.
 
-- [ ] **Step 5: Commit implementation**
+- [x] **Step 5: Commit implementation**
 
 ```bash
 git add apps/server/src/config.ts apps/server/src/ws.ts apps/server/tests/config.test.ts apps/server/tests/ws.test.ts
@@ -312,7 +312,7 @@ git commit -m "feat: rate limit mobile terminal input bytes"
 - Modify: `docs/superpowers/plans/2026-05-03-server-mobile-input-byte-rate-limit-plan.md`
 - Modify: `docs/superpowers/records/feature-log.md`
 
-- [ ] **Step 1: Full verification**
+- [x] **Step 1: Full verification**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm test
@@ -320,11 +320,11 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm build
 ```
 
-- [ ] **Step 2: Mark completed plan steps**
+- [x] **Step 2: Mark completed plan steps**
 
 把本计划中已经执行且验证过的步骤从 `- [ ]` 更新为 `- [x]`，确保状态可追踪。
 
-- [ ] **Step 3: Record delivery**
+- [x] **Step 3: Record delivery**
 
 在 `docs/superpowers/records/feature-log.md` 追加：
 
@@ -337,7 +337,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm build
 - 风险：丢弃式限流、单进程内存、IP/NAT 误伤。
 - 后续：共享 limiter store、账号/设备维度限流、脚本上传和文件传输。
 
-- [ ] **Step 4: Commit record**
+- [x] **Step 4: Commit record**
 
 ```bash
 git add docs/superpowers/plans/2026-05-03-server-mobile-input-byte-rate-limit-plan.md docs/superpowers/records/feature-log.md

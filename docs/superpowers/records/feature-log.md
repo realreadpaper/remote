@@ -1045,3 +1045,50 @@
 - 增加 Agent output 背压队列。
 - 将 limiter store 抽象为 Redis/Postgres 可替换实现。
 - 增加 Mobile input 累计字节限流。
+
+## 2026-05-03 Server Mobile Input Byte Rate Limit
+
+**状态：** completed
+
+**提交：**
+- `dc5143a` `docs: design server mobile input byte rate limit`
+- `0ee6fdc` `docs: plan server mobile input byte rate limit`
+- `ef9add4` `feat: rate limit mobile terminal input bytes`
+
+**实现内容：**
+- Server 配置新增 `REMOTE_MOBILE_INPUT_BYTE_RATE_LIMIT_WINDOW_MS` 和 `REMOTE_MOBILE_INPUT_BYTE_RATE_LIMIT_MAX`。
+- 默认 Mobile input 字节限流为 10 秒窗口、每客户端 256 KiB。
+- `/ws/mobile` 对 `terminal.input.data` 使用 UTF-8 字节数作为 weight 进行累计限流。
+- 限流 key 为 `ws.mobile.input.bytes:<clientKey>`，`clientKey` 复用 `x-forwarded-for`、`request.ip`、`unknown` 顺序。
+- 超限 input 不转发给 Agent，Server 向 Mobile 返回 `session.error`，message 为 `Rate limit exceeded`，带原始 `sessionId`。
+- `terminal.resize` 不计入 input 字节限流，input 超限后仍可转发。
+
+**涉及文件：**
+- `docs/superpowers/specs/2026-05-03-server-mobile-input-byte-rate-limit-design.md`
+- `docs/superpowers/plans/2026-05-03-server-mobile-input-byte-rate-limit-plan.md`
+- `apps/server/src/config.ts`
+- `apps/server/src/ws.ts`
+- `apps/server/tests/config.test.ts`
+- `apps/server/tests/ws.test.ts`
+
+**TDD 记录：**
+- Config 红灯：`PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test -- apps/server/tests/config.test.ts` 失败，`loadServerConfig()` 缺少 Mobile input byte rate 字段，非法 env 未抛错。
+- Config 绿灯：实现 `mobileInputByteRateLimitWindowMs`、`mobileInputByteRateLimitMaxBytes` 和环境变量解析后，config 测试通过。
+- Route 红灯：`PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test -- apps/server/tests/ws.test.ts` 失败，累计 ASCII input、UTF-8 input 和超限后 resize 测试等不到预期限流行为。
+- Route 绿灯：接入 `MemoryWeightedRateLimiter` 后，Server 测试通过，101 tests passed。
+
+**验证：**
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test`: pass，101 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm test`: pass，198 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm build`: pass。
+
+**已知风险：**
+- 当前仍是丢弃式限流，不是背压；超限 input 会被拒绝。
+- 内存限流只在单 Server 进程内生效，多实例云中转需要共享 store。
+- IP 级限流可能误伤同 NAT 用户，后续应迁移到账号、设备或 session 维度。
+
+**后续：**
+- 将 limiter store 抽象为 Redis/Postgres 可替换实现。
+- 增加正式账号/设备维度限流。
+- 设计脚本上传和文件传输，减少大输入走 terminal input。
