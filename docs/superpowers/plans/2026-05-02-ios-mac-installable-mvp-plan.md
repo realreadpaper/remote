@@ -199,13 +199,13 @@ docs/runbooks/macos-agent-package.md
 - Test: `apps/agent/tests/terminalSession.test.ts`
 - Test: `apps/server/tests/sessionHub.test.ts`
 
-- [ ] Agent 在 mobile 断开后保留 PTY 5 分钟。
-- [ ] Agent 为每个会话保留有限输出环形缓冲区。
-- [ ] Mobile 重连后请求 `terminal.snapshot`。
-- [ ] Server 验证 session owner 后转发恢复请求。
-- [ ] 测试：断线后 PTY 未立即关闭，超时后关闭，snapshot 包含最近输出。
-- [ ] 运行：`pnpm test`。
-- [ ] 提交：`git commit -m "feat: support terminal session recovery"`。
+- [x] Agent 在 mobile 断开后保留 PTY 5 分钟。
+- [x] Agent 为每个会话保留有限输出环形缓冲区。
+- [x] Mobile 重连后请求 `terminal.snapshot`。
+- [x] Server 验证 session owner 后转发恢复请求。
+- [x] 测试：断线后 PTY 未立即关闭，超时后关闭，snapshot 包含最近输出。
+- [x] 运行：`pnpm test`。
+- [x] 提交：`git commit -m "feat: support terminal session recovery"`。
 
 ## Phase 4: macOS Agent 可安装版本
 

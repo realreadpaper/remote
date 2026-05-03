@@ -1234,3 +1234,66 @@
 - 设计并加入 iOS app icon/splash。
 - 使用真实 Apple Developer Team 和 App Store Connect app 执行 EAS build/submit。
 - 用 TestFlight App 连接云中转并完成 `__TESTFLIGHT__` 冒烟验收。
+
+## 2026-05-03 Terminal Session Recovery
+
+**状态：** completed
+
+**提交：**
+- `deac113` `docs: design terminal session recovery`
+- `e582a4a` `docs: plan terminal session recovery`
+- `0bce497` `feat: support terminal session recovery`
+
+**实现内容：**
+- 协议 `session.open` 增加可选 `resumeSessionId`，用于 Mobile 重连恢复同一会话。
+- Server `SessionHub` 支持 detached session rebind，并校验恢复请求的 device/session 归属。
+- Mobile WebSocket 断开后，Server 不立即向 Agent 发送 `terminal.close`，而是保留 detached session 5 分钟；超时后发送 `terminal.close` 并删除 session。
+- Mobile 恢复成功前，Server 丢弃 detached session 的 Agent 输出，避免向已关闭 socket 写入。
+- Agent `TerminalSession` 保存有限输出环形缓冲区，snapshot 包含最近输出、窗口尺寸、alive 和 exitCode。
+- AgentClient 收到 `terminal.snapshot.request` 后发送 `terminal.snapshot`。
+- Server 支持 Agent -> Mobile 转发 `terminal.snapshot`。
+- Mobile `SessionClient` 断线后保留 session id，重连时携带 `resumeSessionId`，收到 `session.opened` 后立即请求 `terminal.snapshot`。
+- 用户显式 `close()` 会清除本地 session id，下一次连接创建新 session。
+
+**涉及文件：**
+- `docs/superpowers/specs/2026-05-03-terminal-session-recovery-design.md`
+- `docs/superpowers/plans/2026-05-03-terminal-session-recovery-plan.md`
+- `docs/superpowers/plans/2026-05-02-ios-mac-installable-mvp-plan.md`
+- `packages/protocol/src/messages.ts`
+- `packages/protocol/tests/messages.test.ts`
+- `apps/server/src/sessionHub.ts`
+- `apps/server/src/ws.ts`
+- `apps/server/tests/sessionHub.test.ts`
+- `apps/server/tests/ws.test.ts`
+- `apps/agent/src/terminalSession.ts`
+- `apps/agent/src/agentClient.ts`
+- `apps/agent/tests/terminalSession.test.ts`
+- `apps/agent/tests/agentClient.test.ts`
+- `apps/mobile/src/protocol/sessionClient.ts`
+- `apps/mobile/tests/sessionClient.test.ts`
+
+**TDD 记录：**
+- Protocol 红灯：`PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/protocol test` 失败，`resumeSessionId` 被 strict schema 拒绝。
+- Protocol 绿灯：加入 `resumeSessionId` schema 后，protocol 测试通过，20 tests passed。
+- Server 红灯：`PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test` 失败，Mobile close 会关闭 session、resume 不存在、snapshot request 不能路由。
+- Server 补充红灯：新增 detached retention timeout 和 Agent snapshot route 测试后，Server 测试失败，超时不发送 `terminal.close`，`terminal.snapshot` 不转发。
+- Server 绿灯：实现 rebind、5 分钟 detached cleanup、snapshot request 和 snapshot route 后，Server 测试通过，109 tests passed。
+- Agent 红灯：`PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent test` 失败，`snapshot()` 不存在，AgentClient 不处理 `terminal.snapshot.request`。
+- Agent 绿灯：实现输出缓冲、尺寸/退出状态和 snapshot request handler 后，Agent 测试通过，42 tests passed。
+- Mobile 红灯：`PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile test` 失败，断线清空 session id，重连不带 `resumeSessionId`，opened 后不请求 snapshot。
+- Mobile 绿灯：实现 session id 保留、resume open、opened 后 snapshot request 和 explicit close 清理后，Mobile 测试通过，50 tests passed。
+
+**验证：**
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm test`: pass，221 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm build`: pass。
+
+**已知风险：**
+- 会话恢复状态仍在 Server/Agent 进程内存中，Server 或 Agent 重启会丢失正在运行的 PTY。
+- Snapshot 是最近输出 chunk，不是完整终端屏幕模型；光标位置、alternate screen、全屏 TUI 状态后续需要更完整的终端解析或录屏方案。
+- 5 分钟 detached retention 由 Server 定时器触发，单进程可用；多实例云中转需要把 session ownership 和 cleanup 迁移到共享状态或固定路由。
+
+**后续：**
+- Task 13 实现 iOS 前后台自动重连和手动重连按钮。
+- macOS Agent 桌面壳接入运行态 session 状态展示和退出控制。
+- 云端化后补充多实例 relay 的 session affinity 与 cleanup 验收。
