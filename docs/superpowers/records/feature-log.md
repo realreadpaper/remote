@@ -1192,3 +1192,45 @@
 - 增加 `terminal.signal` 的 UI/审计语义。
 - 继续实现 terminal session recovery 和 snapshot 恢复。
 - macOS Agent 桌面壳后续可把 signal 暴露为更明确的控制按钮。
+
+## 2026-05-03 EAS TestFlight Build Config
+
+**状态：** completed
+
+**提交：**
+- `8dd0c50` `chore: add eas testflight build config`
+
+**实现内容：**
+- 新增 `apps/mobile/eas.json`。
+- EAS build profiles 包含 `development`、`preview`、`production`。
+- `preview` 和 `production` 默认指向云中转示例地址 `https://api.example.com` / `wss://api.example.com/ws/mobile`，真实构建前需要替换或用 EAS env 覆盖。
+- `apps/mobile/app.json` 增加 `ios.bundleIdentifier=com.terminalfirst.remote`、`ios.buildNumber=1`、`ios.supportsTablet=false`。
+- 新增 `docs/runbooks/testflight-build.md`，记录 EAS 登录、环境变量、preview build、production build、submit/TestFlight、验收和排障步骤。
+- README 增加 TestFlight runbook 入口。
+- `docs/superpowers/plans/2026-05-02-ios-mac-installable-mvp-plan.md` 已同步 Task 12 的已完成项；图标/启动页资产仍未勾选。
+
+**涉及文件：**
+- `README.md`
+- `apps/mobile/app.json`
+- `apps/mobile/eas.json`
+- `docs/runbooks/testflight-build.md`
+- `docs/superpowers/plans/2026-05-02-ios-mac-installable-mvp-plan.md`
+
+**验证：**
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile test`: pass，47 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile build`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile exec expo config --type public`: pass，输出包含 `ios.bundleIdentifier` 和 `ios.buildNumber`。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm test`: pass，208 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm build`: pass。
+
+**已知风险：**
+- 尚未创建正式 app icon 和 splash 资产。
+- 尚未执行真实 `eas build`、Apple signing、App Store Connect submit 或 TestFlight 安装验收。
+- `EXPO_PUBLIC_REMOTE_DEV_TOKEN` 会嵌入客户端包，只能作为内部测试开发边界，不是生产 secret。
+
+**后续：**
+- 设计并加入 iOS app icon/splash。
+- 使用真实 Apple Developer Team 和 App Store Connect app 执行 EAS build/submit。
+- 用 TestFlight App 连接云中转并完成 `__TESTFLIGHT__` 冒烟验收。
