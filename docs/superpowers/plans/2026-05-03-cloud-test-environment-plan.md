@@ -26,7 +26,7 @@ docs/superpowers/records/feature-log.md
 **Files:**
 - Create: `docs/runbooks/cloud-test-environment.md`
 
-- [ ] **Step 1: Write the runbook**
+- [x] **Step 1: Write the runbook**
 
 Create `docs/runbooks/cloud-test-environment.md` with:
 
@@ -104,7 +104,7 @@ pnpm dev:mobile
   - `https://render.com/docs/redis`
   - `https://render.com/docs/docker`
 
-- [ ] **Step 2: Check placeholders**
+- [x] **Step 2: Check placeholders**
 
 Run:
 
@@ -114,7 +114,7 @@ rg "TB[D]|TO[D]O|待[定]|以后[再]" docs/runbooks/cloud-test-environment.md
 
 Expected: no matches.
 
-- [ ] **Step 3: Commit runbook**
+- [x] **Step 3: Commit runbook**
 
 ```bash
 git add docs/runbooks/cloud-test-environment.md
@@ -126,7 +126,7 @@ git commit -m "docs: add cloud test environment runbook"
 **Files:**
 - Modify: `README.md`
 
-- [ ] **Step 1: Add README link and short usage**
+- [x] **Step 1: Add README link and short usage**
 
 Add `Cloud test environment` to Product Documents. Add a `Cloud Test Environment` section after Physical Device Development with:
 
@@ -159,7 +159,7 @@ EXPO_PUBLIC_REMOTE_DEVICE_ID="${REMOTE_DEVICE_ID}" \
 pnpm dev:mobile
 ```
 
-- [ ] **Step 2: Verify README references**
+- [x] **Step 2: Verify README references**
 
 Run:
 
@@ -169,7 +169,7 @@ rg "cloud-test-environment|Cloud Test Environment" README.md docs/runbooks/cloud
 
 Expected: both files are listed.
 
-- [ ] **Step 3: Commit README update**
+- [x] **Step 3: Commit README update**
 
 ```bash
 git add README.md
@@ -183,7 +183,7 @@ git commit -m "docs: link cloud test environment from readme"
 - Modify: `docs/superpowers/plans/2026-05-03-cloud-test-environment-plan.md`
 - Modify: `docs/superpowers/records/feature-log.md`
 
-- [ ] **Step 1: Update main plan Task 16**
+- [x] **Step 1: Update main plan Task 16**
 
 Mark completed:
 
@@ -202,7 +202,7 @@ Keep unchecked until real cloud resources are available:
 - [ ] 执行 `printf "__CLOUD__%s\n" "$PWD"` 冒烟测试。
 ```
 
-- [ ] **Step 2: Append feature log**
+- [x] **Step 2: Append feature log**
 
 Add a `2026-05-03 Cloud Test Environment` entry with:
 
@@ -213,7 +213,7 @@ Add a `2026-05-03 Cloud Test Environment` entry with:
 - verification commands.
 - known blocker: real Render/TestFlight/iPhone cloud smoke not executed in this local session.
 
-- [ ] **Step 3: Verification**
+- [x] **Step 3: Verification**
 
 Run:
 
@@ -231,7 +231,7 @@ Expected:
 - `git diff --check` exits 0.
 - workspace test/typecheck/build exit 0.
 
-- [ ] **Step 4: Commit records**
+- [x] **Step 4: Commit records**
 
 ```bash
 git add docs/superpowers/plans/2026-05-02-ios-mac-installable-mvp-plan.md docs/superpowers/plans/2026-05-03-cloud-test-environment-plan.md docs/superpowers/records/feature-log.md

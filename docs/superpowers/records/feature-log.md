@@ -1598,3 +1598,47 @@
 **后续：**
 - Task 16 编写云端测试环境 runbook，并配置 PostgreSQL、Redis、HTTPS/WSS。
 - 云端 smoke test 时验证 iOS、macOS Agent、server、Redis presence 的完整链路。
+
+## 2026-05-03 Cloud Test Environment
+
+**状态：** partially completed
+
+**提交：**
+- `41d4102` `docs: design cloud test environment`
+- `4ce000e` `docs: plan cloud test environment`
+- `4677b53` `docs: add cloud test environment runbook`
+- `f808694` `docs: link cloud test environment from readme`
+
+**实现内容：**
+- 新增 `docs/runbooks/cloud-test-environment.md`。
+- 第一阶段默认平台选择 Render，VPS + Caddy 作为备用路径。
+- runbook 写明 Web Service build/start command。
+- runbook 写明公网 server 环境变量：`HOST=0.0.0.0`、`REMOTE_REQUIRE_DEV_TOKEN=1`、`REMOTE_DEV_TOKEN`、`REMOTE_PUBLIC_BASE_URL`、`REMOTE_DATA_DIR`。
+- runbook 写明 PostgreSQL/Key Value 准备变量：`DATABASE_URL`、`REDIS_URL`。
+- runbook 写明公网 `/health`、未授权 WebSocket、Agent 在线、iPhone 蜂窝网络终端命令的检查步骤。
+- runbook 增加云端测试结果模板和阻塞条件。
+- README 增加 Cloud Test Environment 入口和 Agent/Mobile 云端启动命令。
+- 主计划 Task 16 已勾选：平台选择、HTTPS/WSS 域名配置方案、PostgreSQL/Redis 配置方案、环境变量和启动命令文档。
+
+**验证：**
+- `rg "TBD|TODO|待定|以后再" docs/runbooks/cloud-test-environment.md`: pass，无匹配。
+- `rg "cloud-test-environment|Cloud Test Environment" README.md docs/runbooks/cloud-test-environment.md`: pass，README 和 runbook 均有入口。
+- `git diff --check README.md docs/runbooks/cloud-test-environment.md`: pass。
+- `rg "TB[D]|TO[D]O|待[定]|以后[再]" docs/runbooks/cloud-test-environment.md docs/superpowers/plans/2026-05-03-cloud-test-environment-plan.md`: pass，无匹配。
+- `git diff --check`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm test`: pass，249 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm build`: pass。
+
+**未完成真实云端验收：**
+- 未执行 TestFlight App 连接云端 server。
+- 未执行 macOS Agent 连接云端 server。
+- 未执行 `printf "__CLOUD__%s\n" "$PWD"` 真实外网冒烟。
+
+**阻塞原因：**
+- 当前会话没有可用 Render 账号、公网 relay host、自定义域名和真机 TestFlight/Expo 云端会话。
+- Server runtime 尚未接入 `DATABASE_URL` 和 `REDIS_URL`，云端 runbook 明确要求单实例 relay。
+
+**后续：**
+- 准备 Render 账号和 relay host 后，按 `docs/runbooks/cloud-test-environment.md` 执行真实云端 smoke test。
+- Task 17 编写 MVP 验收清单，并把真实云端验收结果纳入发布前门禁。

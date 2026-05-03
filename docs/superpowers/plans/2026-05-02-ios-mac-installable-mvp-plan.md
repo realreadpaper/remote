@@ -307,10 +307,10 @@ docs/runbooks/macos-agent-package.md
 - Create: `docs/runbooks/cloud-test-environment.md`
 - Modify: `README.md`
 
-- [ ] 选择第一阶段部署平台：Fly.io、Render、Railway 或自有 VPS。
-- [ ] 配置 HTTPS/WSS 域名。
-- [ ] 配置 PostgreSQL 和 Redis。
-- [ ] 文档写入环境变量和启动命令。
+- [x] 选择第一阶段部署平台：Fly.io、Render、Railway 或自有 VPS。
+- [x] 配置 HTTPS/WSS 域名。
+- [x] 配置 PostgreSQL 和 Redis。
+- [x] 文档写入环境变量和启动命令。
 - [ ] 用 TestFlight App 连接云端 server。
 - [ ] 用 macOS Agent 连接云端 server。
 - [ ] 执行 `printf "__CLOUD__%s\n" "$PWD"` 冒烟测试。
