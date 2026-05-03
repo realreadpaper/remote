@@ -105,6 +105,7 @@ const config: AgentConfig = {
   deviceName: "Mac",
   devToken: null,
   capabilities: ["terminal"],
+  autoApprovePairing: false,
   shell: "/bin/zsh",
   terminalOutputChunkBytes: 16_384
 };

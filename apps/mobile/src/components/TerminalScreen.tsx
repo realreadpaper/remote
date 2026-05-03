@@ -11,7 +11,7 @@ import {
   TextInput,
   View
 } from "react-native";
-import { loadMobileRuntimeConfig } from "../config/runtimeConfig";
+import { loadMobileRuntimeConfig, shouldAutoConnectTerminal } from "../config/runtimeConfig";
 import { PairingClient } from "../protocol/pairingClient";
 import { SessionClient } from "../protocol/sessionClient";
 import {
@@ -21,6 +21,7 @@ import {
   savePairingToken
 } from "../state/pairingTokenStore";
 import { createTerminalState } from "../state/terminalStore";
+import { getConnectionStatusLabel, getPairingPanelMode, mobileShellTheme } from "./mobileShellTheme";
 import { terminalShortcutPayloads } from "./terminalShortcuts";
 
 export function TerminalScreen() {
@@ -38,6 +39,7 @@ export function TerminalScreen() {
   const [manualReconnectVisible, setManualReconnectVisible] = useState(false);
   const clientRef = useRef<SessionClient | undefined>(undefined);
   const autoConnectAttemptedRef = useRef(false);
+  const autoPairAttemptedRef = useRef(false);
   const autoReconnectAttemptedRef = useRef(false);
   const appActiveRef = useRef(true);
   const scrollRef = useRef<ScrollView | null>(null);
@@ -94,8 +96,7 @@ export function TerminalScreen() {
     handleConnect();
   };
 
-  const handlePairingSubmit = async () => {
-    const normalizedCode = pairingCode.trim();
+  const submitPairingCode = async (normalizedCode: string) => {
     if (!normalizedCode || pairingSubmitting) {
       appendLocalLine("Enter a pairing code first.");
       return;
@@ -128,6 +129,9 @@ export function TerminalScreen() {
         pairedAt: new Date().toISOString()
       });
       appendLocalLine(`Pairing approved for ${auth.deviceId}.`);
+      if (runtimeConfig.autoConnect) {
+        openTerminalSession(auth.sessionToken);
+      }
     } catch (error) {
       const reason = error instanceof Error ? error.message : "Pairing request failed.";
       setPairingStatus(reason);
@@ -135,6 +139,10 @@ export function TerminalScreen() {
     } finally {
       setPairingSubmitting(false);
     }
+  };
+
+  const handlePairingSubmit = async () => {
+    await submitPairingCode(pairingCode.trim());
   };
 
   useEffect(() => {
@@ -229,7 +237,7 @@ export function TerminalScreen() {
     }
   };
 
-  const handleConnect = () => {
+  const openTerminalSession = (sessionTokenOverride: string | null) => {
     if (snapshot.connected || connecting) {
       return;
     }
@@ -241,7 +249,7 @@ export function TerminalScreen() {
       const client = new SessionClient({
         url: runtimeConfig.sessionUrl,
         deviceId: runtimeConfig.deviceId,
-        sessionToken,
+        sessionToken: sessionTokenOverride,
         onMessage(message) {
           if (clientRef.current !== client) {
             return;
@@ -333,14 +341,35 @@ export function TerminalScreen() {
     }
   };
 
+  const handleConnect = () => {
+    openTerminalSession(sessionToken);
+  };
+
   useEffect(() => {
-    if (!runtimeConfig.autoConnect || autoConnectAttemptedRef.current) {
+    if (
+      !shouldAutoConnectTerminal({
+        autoConnect: runtimeConfig.autoConnect,
+        autoPairingCode: runtimeConfig.autoPairingCode,
+        autoConnectAttempted: autoConnectAttemptedRef.current,
+        sessionToken
+      })
+    ) {
       return;
     }
 
     autoConnectAttemptedRef.current = true;
     handleConnect();
-  }, [runtimeConfig.autoConnect]);
+  }, [runtimeConfig.autoConnect, runtimeConfig.autoPairingCode, sessionToken]);
+
+  useEffect(() => {
+    if (!runtimeConfig.autoPairingCode || autoPairAttemptedRef.current || sessionToken || pairingSubmitting) {
+      return;
+    }
+
+    autoPairAttemptedRef.current = true;
+    setPairingCode(runtimeConfig.autoPairingCode);
+    void submitPairingCode(runtimeConfig.autoPairingCode);
+  }, [runtimeConfig.autoPairingCode, pairingSubmitting, sessionToken]);
 
   const handleInputChange = (input: string) => {
     terminalState.setInput(input);
@@ -441,6 +470,8 @@ export function TerminalScreen() {
     }
   };
 
+  const pairingPanelMode = getPairingPanelMode(pairedDeviceId);
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
@@ -458,7 +489,11 @@ export function TerminalScreen() {
                 ]}
               />
               <Text style={styles.statusText}>
-                {snapshot.connected ? "session open" : connecting ? "connecting" : runtimeConfig.deviceId}
+                {getConnectionStatusLabel({
+                  connected: snapshot.connected,
+                  connecting,
+                  deviceId: runtimeConfig.deviceId
+                })}
               </Text>
             </View>
             <Text numberOfLines={1} style={styles.configText}>
@@ -484,7 +519,7 @@ export function TerminalScreen() {
                 connecting && styles.connectButtonTextConnecting
               ]}
             >
-              {snapshot.connected ? "Connected" : connecting ? "Connecting" : "Connect"}
+              {snapshot.connected ? "Online" : connecting ? "..." : "Connect"}
             </Text>
           </Pressable>
         </View>
@@ -508,44 +543,49 @@ export function TerminalScreen() {
 
         <View style={styles.pairingPanel}>
           <View style={styles.pairingMeta}>
-            <Text style={styles.pairingTitle}>Pair device</Text>
+            <Text style={styles.pairingTitle}>{pairingPanelMode === "paired" ? "Mac Ready" : "Pair Mac"}</Text>
             <Text numberOfLines={1} style={styles.pairingApiText}>
-              {runtimeConfig.mobileClientId} · {runtimeConfig.displayApiBaseUrl}
+              {pairingPanelMode === "paired"
+                ? `${pairedDeviceId} · ${runtimeConfig.deviceId}`
+                : `${runtimeConfig.mobileClientId} · ${runtimeConfig.displayApiBaseUrl}`}
             </Text>
           </View>
-          <View style={styles.pairingControls}>
-            <TextInput
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType="number-pad"
-              onChangeText={setPairingCode}
-              placeholder="配对码"
-              placeholderTextColor="#6f756f"
-              style={styles.pairingInput}
-              value={pairingCode}
-            />
-            <Pressable
-              accessibilityRole="button"
-              disabled={pairingSubmitting}
-              onPress={handlePairingSubmit}
-              style={({ pressed }) => [
-                styles.pairingButton,
-                pairingSubmitting && styles.pairingButtonDisabled,
-                pressed && !pairingSubmitting && styles.pairingButtonPressed
-              ]}
-            >
-              <Text style={styles.pairingButtonText}>{pairingSubmitting ? "..." : "Pair"}</Text>
-            </Pressable>
-          </View>
-          {pairingStatus ? (
-            <Text numberOfLines={1} style={styles.pairingStatusText}>
-              {pairingStatus}
-            </Text>
-          ) : null}
-          {pairedDeviceId ? (
+          {pairingPanelMode === "setup" ? (
+            <>
+              <View style={styles.pairingControls}>
+                <TextInput
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="number-pad"
+                  onChangeText={setPairingCode}
+                  placeholder="配对码"
+                  placeholderTextColor="#6f756f"
+                  style={styles.pairingInput}
+                  value={pairingCode}
+                />
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={pairingSubmitting}
+                  onPress={handlePairingSubmit}
+                  style={({ pressed }) => [
+                    styles.pairingButton,
+                    pairingSubmitting && styles.pairingButtonDisabled,
+                    pressed && !pairingSubmitting && styles.pairingButtonPressed
+                  ]}
+                >
+                  <Text style={styles.pairingButtonText}>{pairingSubmitting ? "..." : "Pair"}</Text>
+                </Pressable>
+              </View>
+              {pairingStatus ? (
+                <Text numberOfLines={1} style={styles.pairingStatusText}>
+                  {pairingStatus}
+                </Text>
+              ) : null}
+            </>
+          ) : (
             <View style={styles.pairedDeviceRow}>
               <Text numberOfLines={1} style={styles.pairedDeviceText}>
-                Paired {pairedDeviceId}
+                Paired {pairedDeviceId}，可以直接输入命令
               </Text>
               <Pressable
                 accessibilityRole="button"
@@ -555,7 +595,7 @@ export function TerminalScreen() {
                 <Text style={styles.forgetButtonText}>Forget</Text>
               </Pressable>
             </View>
-          ) : null}
+          )}
         </View>
 
         <ScrollView
@@ -566,7 +606,7 @@ export function TerminalScreen() {
           style={styles.outputPanel}
         >
           {snapshot.output.length === 0 ? (
-            <Text style={styles.emptyText}>Connect to {runtimeConfig.deviceId} to start a terminal session.</Text>
+            <Text style={styles.emptyText}>Pair, connect, then type a command.</Text>
           ) : (
             <Text selectable style={styles.outputText}>
               {snapshot.output}
@@ -619,37 +659,42 @@ export function TerminalScreen() {
   );
 }
 
+const colors = mobileShellTheme.colors;
+const terminalFont = Platform.select(mobileShellTheme.fonts.terminal);
+
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#111312"
+    backgroundColor: colors.appBackground
   },
   screen: {
     flex: 1,
-    backgroundColor: "#111312"
+    backgroundColor: colors.appBackground
   },
   header: {
-    minHeight: 64,
+    minHeight: 76,
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingTop: 12,
+    paddingBottom: 10,
     borderBottomWidth: 1,
-    borderBottomColor: "#242826",
+    borderBottomColor: colors.panelBorder,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: 12
+    gap: 12,
+    backgroundColor: colors.panel
   },
   titleGroup: {
     flex: 1,
     minWidth: 0
   },
   title: {
-    color: "#eef2ed",
-    fontSize: 20,
-    fontWeight: "700"
+    color: colors.textPrimary,
+    fontSize: 22,
+    fontWeight: "800"
   },
   statusRow: {
-    marginTop: 5,
+    marginTop: 6,
     flexDirection: "row",
     alignItems: "center",
     gap: 7
@@ -660,25 +705,26 @@ const styles = StyleSheet.create({
     borderRadius: 4
   },
   statusOnline: {
-    backgroundColor: "#73d578"
+    backgroundColor: colors.online
   },
   statusOffline: {
-    backgroundColor: "#d7a84d"
+    backgroundColor: colors.offline
   },
   statusConnecting: {
-    backgroundColor: "#d7a84d"
+    backgroundColor: colors.connecting
   },
   statusText: {
-    color: "#9aa39a",
+    color: colors.textSecondary,
     fontSize: 12,
-    fontFamily: Platform.select({ ios: "Menlo", android: "monospace", default: "monospace" })
+    fontWeight: "700",
+    fontFamily: terminalFont
   },
   configText: {
     marginTop: 4,
-    color: "#68716a",
+    color: colors.textMuted,
     fontSize: 11,
     lineHeight: 15,
-    fontFamily: Platform.select({ ios: "Menlo", android: "monospace", default: "monospace" })
+    fontFamily: terminalFont
   },
   connectButton: {
     minWidth: 96,
@@ -686,44 +732,49 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: "#5a6a5a",
-    backgroundColor: "#1b241d",
+    borderColor: colors.accent,
+    backgroundColor: colors.accent,
     alignItems: "center",
     justifyContent: "center"
   },
   connectButtonPressed: {
-    backgroundColor: "#263629"
+    backgroundColor: colors.accentPressed
   },
   connectButtonConnected: {
-    borderColor: "#314034",
-    backgroundColor: "#151b16"
+    borderColor: colors.online,
+    backgroundColor: colors.panel
   },
   connectButtonConnecting: {
-    borderColor: "#5f5131",
-    backgroundColor: "#221c0f"
+    borderColor: colors.connecting,
+    backgroundColor: colors.warningSurface
   },
   connectButtonText: {
-    color: "#dce8dc",
+    color: colors.accentText,
     fontSize: 14,
     fontWeight: "700"
   },
   connectButtonTextConnected: {
-    color: "#73d578"
+    color: colors.online
   },
   connectButtonTextConnecting: {
-    color: "#e0bd66"
+    color: colors.warning
   },
   outputPanel: {
     flex: 1,
-    backgroundColor: "#080a09"
+    marginHorizontal: 12,
+    marginTop: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.terminalBorder,
+    backgroundColor: colors.terminalBackground
   },
   errorBanner: {
     minHeight: 36,
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: "#4f3929",
-    backgroundColor: "#211710",
+    borderBottomColor: "#efd5bb",
+    backgroundColor: colors.warningSurface,
     flexDirection: "row",
     alignItems: "center",
     gap: 10
@@ -731,50 +782,53 @@ const styles = StyleSheet.create({
   errorText: {
     flex: 1,
     minWidth: 0,
-    color: "#f1bf85",
+    color: colors.warning,
     fontSize: 12,
     lineHeight: 18,
-    fontFamily: Platform.select({ ios: "Menlo", android: "monospace", default: "monospace" })
+    fontFamily: terminalFont
   },
   reconnectButton: {
     minHeight: 30,
     minWidth: 88,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: "#8a6645",
-    backgroundColor: "#2b2118",
+    borderColor: colors.warning,
+    backgroundColor: colors.panel,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 10
   },
   reconnectButtonPressed: {
-    backgroundColor: "#3a2a1d"
+    backgroundColor: "#f7e4cb"
   },
   reconnectButtonText: {
-    color: "#f1bf85",
+    color: colors.warning,
     fontSize: 12,
     fontWeight: "800"
   },
   pairingPanel: {
-    paddingHorizontal: 16,
+    marginHorizontal: 12,
+    marginTop: 10,
+    paddingHorizontal: 12,
     paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "#242826",
-    backgroundColor: "#151816",
+    borderWidth: 1,
+    borderRadius: 8,
+    borderColor: colors.panelBorder,
+    backgroundColor: colors.panel,
     gap: 8
   },
   pairingMeta: {
     gap: 2
   },
   pairingTitle: {
-    color: "#eef2ed",
+    color: colors.textPrimary,
     fontSize: 13,
-    fontWeight: "700"
+    fontWeight: "800"
   },
   pairingApiText: {
-    color: "#8f978f",
+    color: colors.textMuted,
     fontSize: 11,
-    fontFamily: Platform.select({ ios: "Menlo", android: "monospace", default: "monospace" })
+    fontFamily: terminalFont
   },
   pairingControls: {
     flexDirection: "row",
@@ -786,12 +840,12 @@ const styles = StyleSheet.create({
     minHeight: 38,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: "#313733",
-    backgroundColor: "#101211",
-    color: "#f4f7f2",
+    borderColor: colors.commandBorder,
+    backgroundColor: colors.commandBackground,
+    color: colors.textPrimary,
     paddingHorizontal: 10,
     fontSize: 15,
-    fontFamily: Platform.select({ ios: "Menlo", android: "monospace", default: "monospace" })
+    fontFamily: terminalFont
   },
   pairingButton: {
     minHeight: 38,
@@ -799,24 +853,24 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#dce8cc",
+    backgroundColor: colors.textPrimary,
     paddingHorizontal: 12
   },
   pairingButtonPressed: {
-    backgroundColor: "#f2f7e9"
+    backgroundColor: "#384247"
   },
   pairingButtonDisabled: {
-    backgroundColor: "#586052"
+    backgroundColor: colors.panelMuted
   },
   pairingButtonText: {
-    color: "#111312",
+    color: colors.panel,
     fontSize: 13,
     fontWeight: "800"
   },
   pairingStatusText: {
-    color: "#b9c2b6",
+    color: colors.textSecondary,
     fontSize: 12,
-    fontFamily: Platform.select({ ios: "Menlo", android: "monospace", default: "monospace" })
+    fontFamily: terminalFont
   },
   pairedDeviceRow: {
     minHeight: 32,
@@ -828,27 +882,27 @@ const styles = StyleSheet.create({
   pairedDeviceText: {
     flex: 1,
     minWidth: 0,
-    color: "#9ed29a",
+    color: colors.online,
     fontSize: 12,
-    fontWeight: "700",
-    fontFamily: Platform.select({ ios: "Menlo", android: "monospace", default: "monospace" })
+    fontWeight: "800",
+    fontFamily: terminalFont
   },
   forgetButton: {
     minHeight: 30,
     minWidth: 64,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: "#51433a",
-    backgroundColor: "#1f1815",
+    borderColor: "#e3b9ad",
+    backgroundColor: colors.dangerSurface,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 10
   },
   forgetButtonPressed: {
-    backgroundColor: "#2d211c"
+    backgroundColor: "#f7ded7"
   },
   forgetButtonText: {
-    color: "#e5b99a",
+    color: colors.danger,
     fontSize: 12,
     fontWeight: "800"
   },
@@ -858,22 +912,26 @@ const styles = StyleSheet.create({
     paddingVertical: 12
   },
   outputText: {
-    color: "#d7ddd4",
+    color: colors.terminalText,
     fontSize: 13,
     lineHeight: 19,
-    fontFamily: Platform.select({ ios: "Menlo", android: "monospace", default: "monospace" })
+    fontFamily: terminalFont
   },
   emptyText: {
-    color: "#7f877f",
+    color: colors.terminalMuted,
     fontSize: 13,
     lineHeight: 19,
-    fontFamily: Platform.select({ ios: "Menlo", android: "monospace", default: "monospace" })
+    fontFamily: terminalFont
   },
   shortcutRail: {
-    maxHeight: 48,
-    borderTopWidth: 1,
-    borderTopColor: "#202522",
-    backgroundColor: "#101311"
+    maxHeight: 50,
+    marginHorizontal: 12,
+    marginTop: 8,
+    borderBottomWidth: 1,
+    borderWidth: 1,
+    borderColor: colors.panelBorder,
+    borderRadius: 8,
+    backgroundColor: colors.panel
   },
   shortcutContent: {
     paddingHorizontal: 10,
@@ -886,27 +944,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: "#2f3933",
-    backgroundColor: "#171d19",
+    borderColor: colors.panelBorder,
+    backgroundColor: colors.appBackground,
     alignItems: "center",
     justifyContent: "center"
   },
   shortcutButtonPressed: {
-    backgroundColor: "#233029"
+    backgroundColor: colors.panelMuted
   },
   shortcutText: {
-    color: "#d7ddd4",
+    color: colors.textPrimary,
     fontSize: 13,
     fontWeight: "700",
-    fontFamily: Platform.select({ ios: "Menlo", android: "monospace", default: "monospace" })
+    fontFamily: terminalFont
   },
   inputRow: {
-    minHeight: 64,
+    minHeight: 68,
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderTopWidth: 1,
-    borderTopColor: "#242826",
-    backgroundColor: "#121513",
+    borderTopColor: colors.panelBorder,
+    backgroundColor: colors.panel,
     flexDirection: "row",
     alignItems: "center",
     gap: 10
@@ -919,25 +977,25 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: "#303733",
-    backgroundColor: "#090b0a",
-    color: "#eef2ed",
+    borderColor: colors.commandBorder,
+    backgroundColor: colors.commandBackground,
+    color: colors.textPrimary,
     fontSize: 14,
-    fontFamily: Platform.select({ ios: "Menlo", android: "monospace", default: "monospace" })
+    fontFamily: terminalFont
   },
   sendButton: {
     width: 64,
     minHeight: 42,
     borderRadius: 6,
-    backgroundColor: "#c8a453",
+    backgroundColor: colors.accent,
     alignItems: "center",
     justifyContent: "center"
   },
   sendButtonPressed: {
-    backgroundColor: "#ddb95f"
+    backgroundColor: colors.accentPressed
   },
   sendButtonText: {
-    color: "#15120a",
+    color: colors.accentText,
     fontSize: 15,
     fontWeight: "800"
   }

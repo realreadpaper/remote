@@ -20,6 +20,7 @@ describe("loadAgentConfig", () => {
     process.env.REMOTE_DEV_TOKEN = "secret";
     process.env.REMOTE_TERMINAL_OUTPUT_CHUNK_BYTES = "4096";
     process.env.REMOTE_ENABLE_TERMINAL = "0";
+    process.env.REMOTE_AUTO_APPROVE_PAIRING = "1";
     process.env.SHELL = "/bin/bash";
 
     expect(loadAgentConfig()).toEqual({
@@ -28,6 +29,7 @@ describe("loadAgentConfig", () => {
       deviceName: "Build Mac",
       devToken: "secret",
       capabilities: [],
+      autoApprovePairing: true,
       terminalOutputChunkBytes: 4_096,
       shell: "/bin/bash"
     });
@@ -40,6 +42,7 @@ describe("loadAgentConfig", () => {
     delete process.env.REMOTE_DEV_TOKEN;
     delete process.env.REMOTE_TERMINAL_OUTPUT_CHUNK_BYTES;
     delete process.env.REMOTE_ENABLE_TERMINAL;
+    delete process.env.REMOTE_AUTO_APPROVE_PAIRING;
     delete process.env.SHELL;
 
     expect(
@@ -58,6 +61,7 @@ describe("loadAgentConfig", () => {
       deviceName: os.hostname(),
       devToken: null,
       capabilities: ["terminal"],
+      autoApprovePairing: false,
       terminalOutputChunkBytes: 16_384,
       shell: "/bin/zsh"
     });
@@ -67,6 +71,12 @@ describe("loadAgentConfig", () => {
     process.env.REMOTE_ENABLE_TERMINAL = "false";
 
     expect(() => loadAgentConfig()).toThrow("REMOTE_ENABLE_TERMINAL must be 1 or 0");
+  });
+
+  it("rejects invalid auto pairing approval toggle values", () => {
+    process.env.REMOTE_AUTO_APPROVE_PAIRING = "yes";
+
+    expect(() => loadAgentConfig()).toThrow("REMOTE_AUTO_APPROVE_PAIRING must be 1 or 0");
   });
 
   it("rejects invalid terminal output chunk bytes", () => {

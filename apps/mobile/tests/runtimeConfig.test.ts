@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { loadMobileRuntimeConfig } from "../src/config/runtimeConfig";
+import { loadMobileRuntimeConfig, shouldAutoConnectTerminal } from "../src/config/runtimeConfig";
 
 describe("mobile runtime config", () => {
   it("uses simulator-friendly defaults", () => {
@@ -13,7 +13,8 @@ describe("mobile runtime config", () => {
       mobileName: "iPhone",
       devToken: null,
       autoConnect: false,
-      smokeCommand: null
+      smokeCommand: null,
+      autoPairingCode: null
     });
   });
 
@@ -26,7 +27,8 @@ describe("mobile runtime config", () => {
         EXPO_PUBLIC_REMOTE_MOBILE_CLIENT_ID: "iphone-1",
         EXPO_PUBLIC_REMOTE_MOBILE_NAME: "Alice iPhone",
         EXPO_PUBLIC_REMOTE_AUTOCONNECT: "1",
-        EXPO_PUBLIC_REMOTE_SMOKE_COMMAND: "printf hi"
+        EXPO_PUBLIC_REMOTE_SMOKE_COMMAND: "printf hi",
+        EXPO_PUBLIC_REMOTE_AUTO_PAIRING_CODE: "123456"
       })
     ).toEqual({
       sessionUrl: "ws://192.168.1.20:8787/ws/mobile",
@@ -38,7 +40,8 @@ describe("mobile runtime config", () => {
       mobileName: "Alice iPhone",
       devToken: null,
       autoConnect: true,
-      smokeCommand: "printf hi"
+      smokeCommand: "printf hi",
+      autoPairingCode: "123456"
     });
   });
 
@@ -58,7 +61,8 @@ describe("mobile runtime config", () => {
       mobileName: "iPhone",
       devToken: "secret",
       autoConnect: false,
-      smokeCommand: null
+      smokeCommand: null,
+      autoPairingCode: null
     });
   });
 
@@ -78,7 +82,8 @@ describe("mobile runtime config", () => {
       mobileName: "iPhone",
       devToken: "secret",
       autoConnect: false,
-      smokeCommand: null
+      smokeCommand: null,
+      autoPairingCode: null
     });
   });
 
@@ -91,5 +96,24 @@ describe("mobile runtime config", () => {
       sessionUrl: "wss://relay.example.test/ws/mobile",
       apiBaseUrl: "https://relay.example.test"
     });
+  });
+
+  it("auto connects with a restored token even when auto pairing is configured", () => {
+    expect(
+      shouldAutoConnectTerminal({
+        autoConnect: true,
+        autoPairingCode: "123456",
+        autoConnectAttempted: false,
+        sessionToken: "token-1"
+      })
+    ).toBe(true);
+    expect(
+      shouldAutoConnectTerminal({
+        autoConnect: true,
+        autoPairingCode: "123456",
+        autoConnectAttempted: false,
+        sessionToken: null
+      })
+    ).toBe(false);
   });
 });

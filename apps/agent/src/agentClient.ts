@@ -141,7 +141,9 @@ export class AgentClient {
     this.createSocket = dependencies.createSocket ?? createDefaultSocket;
     this.createTerminal = dependencies.createTerminal ?? createDefaultTerminal;
     this.displayPairingCode = dependencies.displayPairingCode ?? defaultDisplayPairingCode;
-    this.approvePairingRequest = dependencies.approvePairingRequest ?? promptPairingApproval;
+    this.approvePairingRequest =
+      dependencies.approvePairingRequest ??
+      (config.autoApprovePairing ? () => ({ approved: true }) : promptPairingApproval);
   }
 
   connect(): void {

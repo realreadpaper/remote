@@ -66,6 +66,7 @@ Use the theme in `TerminalScreen.tsx` and adjust:
 - Root/screen background to light.
 - Header to compact light surface.
 - Pairing panel to secondary light panel.
+- Pairing panel collapses after a device is paired, leaving command entry as the primary action.
 - Output panel to framed terminal surface.
 - Input row to persistent command dock.
 
@@ -85,7 +86,7 @@ Expected: pass.
 
 ## Task 3: 移动端回归和模拟器验证
 
-- [ ] **Step 1: 移动端包验证**
+- [x] **Step 1: 移动端包验证**
 
 Run:
 
@@ -97,7 +98,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile build
 
 Expected: all pass.
 
-- [ ] **Step 2: 启动本地链路**
+- [x] **Step 2: 启动本地链路**
 
 Use local Server, Metro, and Agent with:
 
@@ -107,7 +108,7 @@ EXPO_PUBLIC_REMOTE_WS_URL=ws://127.0.0.1:8788/ws/mobile EXPO_PUBLIC_REMOTE_API_U
 REMOTE_SERVER_URL=ws://127.0.0.1:8788/ws/agent REMOTE_DEVICE_ID=sim-ui-mac pnpm --filter @remote/agent dev
 ```
 
-- [ ] **Step 3: 安装并启动 iOS 模拟器 App**
+- [x] **Step 3: 安装并启动 iOS 模拟器 App**
 
 Run:
 
@@ -115,7 +116,7 @@ Run:
 EXPO_PUBLIC_REMOTE_WS_URL=ws://127.0.0.1:8788/ws/mobile EXPO_PUBLIC_REMOTE_API_URL=http://127.0.0.1:8788 EXPO_PUBLIC_REMOTE_DEVICE_ID=sim-ui-mac pnpm --filter @remote/mobile exec expo run:ios --simulator "iPhone 15" --port 8082
 ```
 
-- [ ] **Step 4: 截图检查**
+- [x] **Step 4: 截图检查**
 
 Run:
 
@@ -125,7 +126,7 @@ xcrun simctl io booted screenshot /tmp/remote-terminal-ui.png
 
 Expected: screenshot is not a full black screen and shows the command dock.
 
-- [ ] **Step 5: 模拟器链路 smoke**
+- [x] **Step 5: 模拟器链路 smoke**
 
 Complete Pair, approve in Agent, Connect, then run:
 
@@ -137,7 +138,7 @@ Expected: simulator output contains `__SIM_UI__`.
 
 ## Task 4: 真机重新安装和记录
 
-- [ ] **Step 1: 重新安装真机**
+- [x] **Step 1: 重新安装真机**
 
 Run:
 
@@ -145,7 +146,9 @@ Run:
 EXPO_PUBLIC_REMOTE_WS_URL=ws://192.168.2.16:8788/ws/mobile EXPO_PUBLIC_REMOTE_API_URL=http://192.168.2.16:8788 EXPO_PUBLIC_REMOTE_DEVICE_ID=real-ios-mac pnpm --filter @remote/mobile exec expo run:ios --device long --port 8082
 ```
 
-- [ ] **Step 2: 启动真机 App**
+Result: installed `Remote Terminal com.terminalfirst.remote 0.1.0 (2)` on device `long`.
+
+- [x] **Step 2: 启动真机 App**
 
 Run:
 
@@ -153,13 +156,25 @@ Run:
 xcrun devicectl device process launch --device 67C1404D-0644-489C-9014-879E44FFFBEA --terminate-existing --activate com.terminalfirst.remote
 ```
 
-- [ ] **Step 3: 更新日志并提交**
+Result: process list contains `/RemoteTerminal.app/RemoteTerminal`.
+
+- [x] **Step 3: 更新日志并提交**
 
 Update `docs/superpowers/records/feature-log.md` with test results, simulator screenshot result, real device install result, and any manual-operation gaps.
+
+Simulator evidence:
+
+- `/tmp/remote-terminal-ui-reconnected.png`: light app shell, paired panel collapsed, `Online` status.
+- `/tmp/remote-terminal-ui-autosmoke.png`: end-to-end output contains `__SIM_UI__/Users/hejianglong`.
+
+Real-device automation gap:
+
+- `devicectl` verified install, launch, and process.
+- Current toolchain cannot tap or screenshot the physical iPhone UI; final visual confirmation needs user observation on device.
 
 Commit:
 
 ```bash
-git add apps/mobile/src/components/mobileShellTheme.ts apps/mobile/tests/mobileShellTheme.test.ts apps/mobile/src/components/TerminalScreen.tsx apps/mobile/app.json docs/superpowers/specs/2026-05-03-ios-mobile-ui-simulator-validation-design.md docs/superpowers/plans/2026-05-03-ios-mobile-ui-simulator-validation-plan.md docs/superpowers/records/feature-log.md
+git add apps/mobile/src/components/mobileShellTheme.ts apps/mobile/tests/mobileShellTheme.test.ts apps/mobile/src/components/TerminalScreen.tsx apps/mobile/src/config/runtimeConfig.ts apps/mobile/tests/runtimeConfig.test.ts apps/mobile/app.json apps/mobile/package.json apps/agent/src/config.ts apps/agent/src/agentClient.ts apps/agent/tests/config.test.ts apps/agent/tests/agentClient.test.ts apps/agent-desktop/tests/agentDesktopRuntime.test.ts apps/agent-desktop/tests/desktopState.test.ts apps/server/tests/presence/redisPresenceStore.test.ts docs/superpowers/specs/2026-05-03-ios-mobile-ui-simulator-validation-design.md docs/superpowers/plans/2026-05-03-ios-mobile-ui-simulator-validation-plan.md docs/superpowers/records/feature-log.md
 git commit -m "feat: refine mobile terminal ui"
 ```

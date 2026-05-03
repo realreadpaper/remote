@@ -39,7 +39,7 @@ describe("RedisDevicePresenceStore", () => {
     await store.heartbeat("mac-1", new Date("2026-05-03T10:00:30.000Z"));
 
     expect(redis.ttls.get("presence:device:mac-1")).toBe(45);
-    await expect(store.getPresence("mac-1")).resolves.toEqual({
+    await expect(store.getPresence("mac-1", new Date("2026-05-03T10:00:31.000Z"))).resolves.toEqual({
       online: true,
       lastSeenAt: "2026-05-03T10:00:30.000Z",
       expiresAt: "2026-05-03T10:01:15.000Z"

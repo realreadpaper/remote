@@ -9,6 +9,7 @@ export interface AgentConfig {
   deviceName: string;
   devToken: string | null;
   capabilities: AgentCapability[];
+  autoApprovePairing: boolean;
   shell: string;
   terminalOutputChunkBytes: number;
 }
@@ -26,6 +27,7 @@ export function loadAgentConfig(options: LoadAgentConfigOptions = {}): AgentConf
     deviceName: process.env.REMOTE_DEVICE_NAME ?? os.hostname(),
     devToken: normalizeOptional(process.env.REMOTE_DEV_TOKEN),
     capabilities: terminalEnabled(process.env.REMOTE_ENABLE_TERMINAL) ? ["terminal"] : [],
+    autoApprovePairing: parseBooleanToggle(process.env.REMOTE_AUTO_APPROVE_PAIRING, "REMOTE_AUTO_APPROVE_PAIRING"),
     shell: process.env.SHELL ?? "/bin/zsh",
     terminalOutputChunkBytes: parsePositiveIntegerEnv(
       process.env.REMOTE_TERMINAL_OUTPUT_CHUNK_BYTES,
@@ -64,4 +66,16 @@ function terminalEnabled(rawValue: string | undefined): boolean {
   }
 
   throw new Error("REMOTE_ENABLE_TERMINAL must be 1 or 0");
+}
+
+function parseBooleanToggle(rawValue: string | undefined, envName: string): boolean {
+  const normalized = normalizeOptional(rawValue);
+  if (!normalized || normalized === "0") {
+    return false;
+  }
+  if (normalized === "1") {
+    return true;
+  }
+
+  throw new Error(`${envName} must be 1 or 0`);
 }

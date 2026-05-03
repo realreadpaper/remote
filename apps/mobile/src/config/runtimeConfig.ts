@@ -9,12 +9,21 @@ export interface MobileRuntimeConfig {
   devToken: string | null;
   autoConnect: boolean;
   smokeCommand: string | null;
+  autoPairingCode: string | null;
 }
 
 type RuntimeEnv = Record<string, string | undefined>;
 
+export interface AutoConnectDecisionInput {
+  autoConnect: boolean;
+  autoPairingCode: string | null;
+  autoConnectAttempted: boolean;
+  sessionToken: string | null;
+}
+
 export function loadMobileRuntimeConfig(env: RuntimeEnv = process.env): MobileRuntimeConfig {
   const smokeCommand = env.EXPO_PUBLIC_REMOTE_SMOKE_COMMAND?.trim();
+  const autoPairingCode = normalizeOptional(env.EXPO_PUBLIC_REMOTE_AUTO_PAIRING_CODE);
   const baseSessionUrl = env.EXPO_PUBLIC_REMOTE_WS_URL ?? "ws://127.0.0.1:8787/ws/mobile";
   const devToken = normalizeOptional(env.EXPO_PUBLIC_REMOTE_DEV_TOKEN);
   const sessionUrl = buildSessionUrl(baseSessionUrl, devToken);
@@ -30,8 +39,17 @@ export function loadMobileRuntimeConfig(env: RuntimeEnv = process.env): MobileRu
     mobileName: normalizeOptional(env.EXPO_PUBLIC_REMOTE_MOBILE_NAME) ?? "iPhone",
     devToken,
     autoConnect: env.EXPO_PUBLIC_REMOTE_AUTOCONNECT === "1",
-    smokeCommand: smokeCommand && smokeCommand.length > 0 ? smokeCommand : null
+    smokeCommand: smokeCommand && smokeCommand.length > 0 ? smokeCommand : null,
+    autoPairingCode
   };
+}
+
+export function shouldAutoConnectTerminal(input: AutoConnectDecisionInput): boolean {
+  if (!input.autoConnect || input.autoConnectAttempted) {
+    return false;
+  }
+
+  return !input.autoPairingCode || Boolean(input.sessionToken);
 }
 
 function buildSessionUrl(baseSessionUrl: string, devToken: string | null): string {
