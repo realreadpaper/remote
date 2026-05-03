@@ -852,3 +852,50 @@
 - 增加 WebSocket raw message size guard。
 - 增加 terminal input 累计字节限流。
 - 设计文件传输和脚本上传能力。
+
+## 2026-05-03 WebSocket Raw Message Size Guard
+
+**状态：** completed
+
+**提交：**
+- `07ff9fd` `docs: design websocket raw message size guard`
+- `f21bba7` `docs: plan websocket raw message size guard`
+- `9a688cb` `feat: guard websocket raw message size`
+
+**实现内容：**
+- Server 配置新增 `REMOTE_WS_RAW_MESSAGE_MAX_BYTES`。
+- 默认单条 WebSocket raw message 限制为 64 KiB。
+- `parseJson()` 改为先计算 `RawData` 字节数，超过上限时直接抛出 `WebSocket message exceeds <N> bytes`。
+- `/ws/agent` 和 `/ws/mobile` 两个入口都在 JSON parse 前应用 raw message size guard。
+- 支持 string、Buffer 和 Buffer array 形式的 `RawData` 字节计算。
+- 超限时沿用现有 `session.error` 响应，不进入协议解析和业务路由。
+
+**涉及文件：**
+- `docs/superpowers/specs/2026-05-03-websocket-raw-message-size-guard-design.md`
+- `docs/superpowers/plans/2026-05-03-websocket-raw-message-size-guard-plan.md`
+- `apps/server/src/config.ts`
+- `apps/server/src/ws.ts`
+- `apps/server/tests/config.test.ts`
+- `apps/server/tests/ws.test.ts`
+
+**TDD 记录：**
+- Config 红灯：`PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test -- apps/server/tests/config.test.ts` 失败，`ServerConfig` 缺少 `wsRawMessageMaxBytes`，非法配置未抛错。
+- Config 绿灯：实现 `wsRawMessageMaxBytes` 和 `REMOTE_WS_RAW_MESSAGE_MAX_BYTES` 解析后，config 测试通过。
+- Route 红灯：`PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test -- apps/server/tests/ws.test.ts` 失败，超大 raw frame 返回 JSON parse error，而不是 size guard error。
+- Route 绿灯：`parseJson(data, maxBytes)` 增加 parse 前字节检查后，Server 测试通过，90 tests passed。
+
+**验证：**
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test`: pass，90 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm test`: pass，184 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm build`: pass。
+
+**已知风险：**
+- WebSocket 库仍会先接收 frame 到进程内存，本功能保护的是应用层 JSON parse 和后续路由。
+- 64 KiB 可能影响极端大 terminal output chunk，后续需要 Agent 输出分块和背压。
+- 超限 raw frame 无法安全提取 `sessionId`，因此错误响应不带 session 上下文。
+
+**后续：**
+- 在 Agent 端增加 terminal output 分块上限。
+- 增加 Agent output 背压和输出限速。
+- 评估 WebSocket server 层 `maxPayload` 配置。
