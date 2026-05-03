@@ -14,6 +14,7 @@
 - [Feature delivery tracking](docs/superpowers/records/feature-delivery-tracking.md)
 - [Feature log](docs/superpowers/records/feature-log.md)
 - [Cloud relay dev deploy runbook](docs/runbooks/cloud-relay-dev-deploy.md)
+- [Cloud test environment runbook](docs/runbooks/cloud-test-environment.md)
 - [External network smoke test runbook](docs/runbooks/external-network-smoke-test.md)
 - [TestFlight build runbook](docs/runbooks/testflight-build.md)
 - [macOS Agent desktop runbook](docs/runbooks/macos-agent-package.md)
@@ -98,6 +99,43 @@ Start the mobile app with the development machine's LAN address:
 
 ```bash
 EXPO_PUBLIC_REMOTE_WS_URL=ws://<dev-machine-lan-ip>:8787/ws/mobile pnpm dev:mobile
+```
+
+### Cloud Test Environment
+
+Use this when testing the default external-network path:
+
+```text
+iPhone on cellular -> Cloud Relay -> home macOS Agent
+```
+
+Follow [Cloud Test Environment Runbook](docs/runbooks/cloud-test-environment.md).
+
+Core environment variables:
+
+```bash
+export REMOTE_RELAY_HOST="<relay-host>"
+export REMOTE_DEV_TOKEN="<secret>"
+export REMOTE_DEVICE_ID="home-mac"
+```
+
+Start the Agent:
+
+```bash
+REMOTE_SERVER_URL="wss://${REMOTE_RELAY_HOST}/ws/agent" \
+REMOTE_DEV_TOKEN="${REMOTE_DEV_TOKEN}" \
+REMOTE_DEVICE_ID="${REMOTE_DEVICE_ID}" \
+pnpm dev:agent
+```
+
+Start the mobile app:
+
+```bash
+EXPO_PUBLIC_REMOTE_WS_URL="wss://${REMOTE_RELAY_HOST}/ws/mobile" \
+EXPO_PUBLIC_REMOTE_API_URL="https://${REMOTE_RELAY_HOST}" \
+EXPO_PUBLIC_REMOTE_DEV_TOKEN="${REMOTE_DEV_TOKEN}" \
+EXPO_PUBLIC_REMOTE_DEVICE_ID="${REMOTE_DEVICE_ID}" \
+pnpm dev:mobile
 ```
 
 Optional Agent environment variables:
