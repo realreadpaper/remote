@@ -1373,3 +1373,53 @@
 - Task 11 增加 macOS 签名、公证和正式打包 runbook。
 - Task 12 补 iOS icon/splash/version/build number。
 - Task 13 接入 iOS 前后台自动重连和手动恢复按钮。
+
+## 2026-05-03 macOS Agent Signing and Notarization
+
+**状态：** completed
+
+**提交：**
+- `556c1bf` `docs: design macos agent signing notarization`
+- `86168fd` `docs: plan macos agent signing notarization`
+- `0a61583` `docs: add macos signing and notarization runbook`
+
+**实现内容：**
+- `apps/agent-desktop/package.json` 保持应用 bundle id：`com.terminalfirst.agent`。
+- 新增 `dist:mac` 发布命令：`pnpm build && electron-builder --mac`。
+- Electron Builder mac target 从开发目录扩展为正式 `dmg` 和 `zip`。
+- mac 配置启用 `hardenedRuntime`。
+- 新增 `apps/agent-desktop/build/entitlements.mac.plist`。
+- mac 配置接入 `entitlements` 和 `entitlementsInherit`。
+- mac 配置接入 notarization `teamId`，由 `APPLE_TEAM_ID` 环境变量提供。
+- `docs/runbooks/macos-agent-package.md` 扩展 Developer ID Application 证书、App Store Connect API Key、环境变量、正式构建、公证验证和排障说明。
+- 主计划 Task 11 已同步勾选。
+
+**涉及文件：**
+- `docs/superpowers/specs/2026-05-03-macos-agent-signing-notarization-design.md`
+- `docs/superpowers/plans/2026-05-03-macos-agent-signing-notarization-plan.md`
+- `docs/superpowers/plans/2026-05-02-ios-mac-installable-mvp-plan.md`
+- `apps/agent-desktop/package.json`
+- `apps/agent-desktop/build/entitlements.mac.plist`
+- `docs/runbooks/macos-agent-package.md`
+
+**验证：**
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent-desktop build`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent-desktop pack:dir`: pass，生成 macOS app 目录；当前环境没有 Apple notarization credentials，electron-builder 输出 `skipped macOS notarization`。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm test`: pass，237 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm build`: pass。
+
+**未执行项：**
+- 未执行真实 `pnpm --filter @remote/agent-desktop dist:mac` 的 Apple notarization 提交，因为当前机器没有提供 `APPLE_API_KEY`、`APPLE_API_KEY_ID`、`APPLE_API_ISSUER` 和可发布用 Developer ID 凭据。
+- 未执行 `spctl` 和 `xcrun stapler validate` 的最终发布验收，因为真实 notarized artifact 尚未生成。
+
+**已知风险：**
+- 正式发布必须在有 Developer ID Application 证书和 App Store Connect API Key 的机器或 CI 上执行。
+- `node-pty` 原生模块可能在 x64/arm64 不同架构下需要额外 rebuild 和签名验证。
+- `disable-library-validation` 是 Electron native module 兼容性权衡，正式安全评审时需要复核。
+- 当前尚无 CI secret 管理、证书导入和 notarization 自动化。
+
+**后续：**
+- Task 12 补 iOS app icon、splash、version 和 build number。
+- 准备 Apple Developer 账号后执行真实 `dist:mac`、`spctl` 和 `stapler` 验收。
+- 发布工程阶段补 CI keychain、证书导入和 notarization 自动化。

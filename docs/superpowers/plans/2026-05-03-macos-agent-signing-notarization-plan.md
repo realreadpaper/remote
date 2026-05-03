@@ -27,7 +27,7 @@ docs/superpowers/records/feature-log.md
 - Modify: `apps/agent-desktop/package.json`
 - Create: `apps/agent-desktop/build/entitlements.mac.plist`
 
-- [ ] **Step 1: Add entitlements file**
+- [x] **Step 1: Add entitlements file**
 
 Create `apps/agent-desktop/build/entitlements.mac.plist`:
 
@@ -46,7 +46,7 @@ Create `apps/agent-desktop/build/entitlements.mac.plist`:
 </plist>
 ```
 
-- [ ] **Step 2: Update package scripts**
+- [x] **Step 2: Update package scripts**
 
 In `apps/agent-desktop/package.json`, add:
 
@@ -60,7 +60,7 @@ Keep:
 "pack:dir": "pnpm build && electron-builder --dir --mac"
 ```
 
-- [ ] **Step 3: Update mac build config**
+- [x] **Step 3: Update mac build config**
 
 In `apps/agent-desktop/package.json`, update `build.mac`:
 
@@ -86,7 +86,7 @@ Add top-level:
 
 Do not commit real identities or secret values.
 
-- [ ] **Step 4: Verify local build config still works without credentials**
+- [x] **Step 4: Verify local build config still works without credentials**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent-desktop build
@@ -100,7 +100,7 @@ Expected: build succeeds; `pack:dir` may sign with local identity if present and
 **Files:**
 - Modify: `docs/runbooks/macos-agent-package.md`
 
-- [ ] **Step 1: Add certificate section**
+- [x] **Step 1: Add certificate section**
 
 Document:
 
@@ -113,7 +113,7 @@ Document:
 security find-identity -v -p codesigning
 ```
 
-- [ ] **Step 2: Add environment variable section**
+- [x] **Step 2: Add environment variable section**
 
 Document:
 
@@ -127,7 +127,7 @@ export APPLE_API_ISSUER="<ISSUER_UUID>"
 
 Document that `.p8` files must never be committed.
 
-- [ ] **Step 3: Add release build commands**
+- [x] **Step 3: Add release build commands**
 
 Document:
 
@@ -140,7 +140,7 @@ and outputs:
 - `.dmg`
 - `.zip`
 
-- [ ] **Step 4: Add verification commands**
+- [x] **Step 4: Add verification commands**
 
 Document:
 
@@ -151,7 +151,7 @@ spctl --assess --type execute --verbose=4 "dist/mac-arm64/Terminal First Agent.a
 xcrun stapler validate "dist/mac-arm64/Terminal First Agent.app"
 ```
 
-- [ ] **Step 5: Add troubleshooting**
+- [x] **Step 5: Add troubleshooting**
 
 Cover:
 
@@ -169,7 +169,7 @@ Cover:
 - Modify: `docs/superpowers/plans/2026-05-03-macos-agent-signing-notarization-plan.md`
 - Modify: `docs/superpowers/records/feature-log.md`
 
-- [ ] **Step 1: Run verification**
+- [x] **Step 1: Run verification**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent-desktop build
@@ -179,18 +179,18 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm build
 ```
 
-- [ ] **Step 2: Commit implementation**
+- [x] **Step 2: Commit implementation**
 
 ```bash
 git add apps/agent-desktop/package.json apps/agent-desktop/build/entitlements.mac.plist docs/runbooks/macos-agent-package.md
 git commit -m "docs: add macos signing and notarization runbook"
 ```
 
-- [ ] **Step 3: Mark plan steps complete**
+- [x] **Step 3: Mark plan steps complete**
 
 Mark this plan and Task 11 in `2026-05-02-ios-mac-installable-mvp-plan.md` complete.
 
-- [ ] **Step 4: Record feature log**
+- [x] **Step 4: Record feature log**
 
 Append feature log with:
 
@@ -200,7 +200,7 @@ Append feature log with:
 - verification commands.
 - explicit note that true notarization was not executed because credentials are absent.
 
-- [ ] **Step 5: Commit record**
+- [x] **Step 5: Commit record**
 
 ```bash
 git add docs/superpowers/plans/2026-05-02-ios-mac-installable-mvp-plan.md docs/superpowers/plans/2026-05-03-macos-agent-signing-notarization-plan.md docs/superpowers/records/feature-log.md

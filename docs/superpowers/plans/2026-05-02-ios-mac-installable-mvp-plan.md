@@ -230,12 +230,12 @@ docs/runbooks/macos-agent-package.md
 - Modify: `apps/agent-desktop/package.json`
 - Create: `docs/runbooks/macos-agent-package.md`
 
-- [ ] 配置应用 bundle id。
-- [ ] 配置 hardened runtime。
-- [ ] 配置 Developer ID Application 签名。
-- [ ] 配置 notarization 命令。
-- [ ] 文档写明证书、环境变量、打包、验证和常见失败原因。
-- [ ] 提交：`git commit -m "docs: add macos signing and notarization runbook"`。
+- [x] 配置应用 bundle id。
+- [x] 配置 hardened runtime。
+- [x] 配置 Developer ID Application 签名。
+- [x] 配置 notarization 命令。
+- [x] 文档写明证书、环境变量、打包、验证和常见失败原因。
+- [x] 提交：`git commit -m "docs: add macos signing and notarization runbook"`。
 
 ## Phase 5: iOS TestFlight
 
