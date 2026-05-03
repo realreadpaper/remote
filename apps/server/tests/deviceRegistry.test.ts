@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DeviceRegistry, type DeviceCapability } from "../src/deviceRegistry.js";
+import { DeviceRegistry, MemoryDevicePresenceStore, type DeviceCapability } from "../src/deviceRegistry.js";
 
 describe("DeviceRegistry", () => {
   it("stores online device metadata", () => {
@@ -14,7 +14,8 @@ describe("DeviceRegistry", () => {
       deviceId: "mac-1",
       deviceName: "MacBook Pro",
       capabilities: ["terminal"],
-      online: true
+      online: true,
+      lastSeenAt: expect.any(String)
     });
   });
 
@@ -29,6 +30,64 @@ describe("DeviceRegistry", () => {
     registry.markOffline("mac-1");
 
     expect(registry.get("mac-1")?.online).toBe(false);
+  });
+
+  it("updates lastSeenAt when a device heartbeats", () => {
+    let now = new Date("2026-05-03T10:00:00.000Z");
+    const registry = new DeviceRegistry({ now: () => now });
+    registry.register({
+      deviceId: "mac-1",
+      deviceName: "MacBook Pro",
+      capabilities: ["terminal"]
+    });
+
+    now = new Date("2026-05-03T10:00:30.000Z");
+    registry.heartbeat("mac-1");
+
+    expect(registry.get("mac-1")).toMatchObject({
+      online: true,
+      lastSeenAt: "2026-05-03T10:00:30.000Z"
+    });
+  });
+
+  it("marks devices offline after presence ttl expires", () => {
+    let now = new Date("2026-05-03T10:00:00.000Z");
+    const registry = new DeviceRegistry({
+      now: () => now,
+      presenceTtlMs: 1_000
+    });
+    registry.register({
+      deviceId: "mac-1",
+      deviceName: "MacBook Pro",
+      capabilities: ["terminal"]
+    });
+
+    now = new Date("2026-05-03T10:00:01.001Z");
+
+    expect(registry.get("mac-1")).toMatchObject({
+      online: false,
+      lastSeenAt: "2026-05-03T10:00:00.000Z"
+    });
+  });
+
+  it("can use an injected memory presence store", () => {
+    const presenceStore = new MemoryDevicePresenceStore({
+      now: () => new Date("2026-05-03T10:00:00.000Z"),
+      ttlMs: 60_000
+    });
+    const registry = new DeviceRegistry({ presenceStore });
+
+    registry.register({
+      deviceId: "mac-1",
+      deviceName: "MacBook Pro",
+      capabilities: ["terminal"]
+    });
+    registry.markOffline("mac-1");
+
+    expect(registry.get("mac-1")).toMatchObject({
+      online: false,
+      lastSeenAt: "2026-05-03T10:00:00.000Z"
+    });
   });
 
   it("isolates registered device state from input capabilities mutations", () => {
@@ -61,7 +120,8 @@ describe("DeviceRegistry", () => {
       deviceId: "mac-1",
       deviceName: "MacBook Pro",
       capabilities: ["terminal"],
-      online: true
+      online: true,
+      lastSeenAt: expect.any(String)
     });
   });
 
@@ -83,7 +143,8 @@ describe("DeviceRegistry", () => {
       deviceId: "mac-1",
       deviceName: "MacBook Pro",
       capabilities: ["terminal"],
-      online: true
+      online: true,
+      lastSeenAt: expect.any(String)
     });
   });
 
@@ -105,7 +166,8 @@ describe("DeviceRegistry", () => {
       deviceId: "mac-1",
       deviceName: "MacBook Pro",
       capabilities: ["terminal"],
-      online: true
+      online: true,
+      lastSeenAt: expect.any(String)
     });
   });
 });

@@ -688,7 +688,8 @@ describe("server websocket API", () => {
           deviceId: "mac-1",
           deviceName: "MacBook Pro",
           capabilities: ["terminal"],
-          online: true
+          online: true,
+          lastSeenAt: expect.any(String)
         }
       ]
     });
@@ -1467,7 +1468,8 @@ describe("server websocket API", () => {
           deviceId: "mac-1",
           deviceName: "MacBook Pro",
           capabilities: ["terminal"],
-          online: true
+          online: true,
+          lastSeenAt: expect.any(String)
         }
       ]
     });
