@@ -12,6 +12,8 @@ services:
         value: 0.0.0.0
       - key: REMOTE_REQUIRE_DEV_TOKEN
         value: "1"
+      - key: REMOTE_RELEASE
+        value: "1"
       - key: REMOTE_DEV_TOKEN
         generateValue: true
       - key: DATABASE_URL

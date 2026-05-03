@@ -76,16 +76,15 @@ If EAS adds an `extra.eas.projectId` value to `app.json`, commit it only after c
 `apps/mobile/eas.json` contains three profiles:
 
 - `development`: local simulator/internal development, defaults to `127.0.0.1`.
-- `preview`: internal build pointed at `https://api.example.com`.
-- `production`: production/TestFlight build pointed at `https://api.example.com`.
+- `preview`: internal build profile. The checked-in value uses `remote-terminal.example.invalid` as a placeholder.
+- `production`: production/TestFlight profile. The checked-in value uses `remote-terminal.example.invalid` as a placeholder.
 
-For a real relay, replace `api.example.com` in `apps/mobile/eas.json` before building or use EAS environment variables for the same `EXPO_PUBLIC_` names.
+For a real relay, set EAS environment variables before building. The app has release guards: when `EXPO_PUBLIC_REMOTE_RELEASE=1`, placeholder hosts such as `remote-terminal.example.invalid`, `api.example.com`, or `<relay-host>` fail fast instead of producing a broken build.
 
 The app reads:
 
 ```text
-EXPO_PUBLIC_REMOTE_WS_URL
-EXPO_PUBLIC_REMOTE_API_URL
+EXPO_PUBLIC_REMOTE_RELAY_HOST
 EXPO_PUBLIC_REMOTE_DEV_TOKEN
 EXPO_PUBLIC_REMOTE_DEVICE_ID
 ```
@@ -100,8 +99,8 @@ npx eas-cli env:create --environment production --name EXPO_PUBLIC_REMOTE_DEV_TO
 For public client variables that are safe to include in the binary:
 
 ```bash
-npx eas-cli env:create --environment production --name EXPO_PUBLIC_REMOTE_WS_URL --value "wss://api.example.com/ws/mobile" --visibility plaintext
-npx eas-cli env:create --environment production --name EXPO_PUBLIC_REMOTE_API_URL --value "https://api.example.com" --visibility plaintext
+npx eas-cli env:create --environment production --name EXPO_PUBLIC_REMOTE_RELAY_HOST --value "<relay-host>" --visibility plaintext
+npx eas-cli env:create --environment production --name EXPO_PUBLIC_REMOTE_RELEASE --value "1" --visibility plaintext
 ```
 
 `EXPO_PUBLIC_` values are embedded in the client bundle. A dev token in this variable is only a temporary internal-test gate, not a production secret.

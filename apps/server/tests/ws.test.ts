@@ -229,6 +229,41 @@ describe("server websocket API", () => {
     expect(response.json()).toEqual({ ok: true });
   });
 
+  it("returns deployment status without exposing secrets", async () => {
+    await app.close();
+    app = await createServer(
+      { logger: false },
+      {
+        ...tokenServerConfig,
+        publicBaseUrl: "https://relay.example.test",
+        dataDir: "/var/data/remote",
+        databaseUrl: "postgres://remote:secret@postgres.internal:5432/remote",
+        redisUrl: "redis://redis.internal:6379"
+      }
+    );
+    await app.ready();
+
+    const response = await app.inject({ method: "GET", url: "/deployment/status", headers: { authorization: "Bearer secret" } });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      publicBaseUrl: "https://relay.example.test",
+      auth: { devTokenRequired: true },
+      stores: {
+        pairing: "json-file",
+        sessionTokens: "json-file",
+        devicePresence: "memory",
+        postgresConfigured: true,
+        redisConfigured: true
+      },
+      limitations: [
+        "pairing and session token stores use REMOTE_DATA_DIR JSON files in this build",
+        "device presence is process-local memory in this build"
+      ]
+    });
+    expect(response.body).not.toContain("secret");
+  });
+
   it("rejects an agent websocket without token when dev token is required", async () => {
     await app.close();
     app = await createServer({ logger: false }, tokenServerConfig);

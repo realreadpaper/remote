@@ -27,9 +27,19 @@ export function loadServerConfig(env: ServerEnv = process.env): ServerConfig {
   const port = parsePort(env.PORT);
   const requireDevToken = env.REMOTE_REQUIRE_DEV_TOKEN === "1";
   const devToken = normalizeOptional(env.REMOTE_DEV_TOKEN);
+  const publicBaseUrl = parsePublicBaseUrl(env);
 
   if (requireDevToken && !devToken) {
     throw new Error("REMOTE_DEV_TOKEN is required when REMOTE_REQUIRE_DEV_TOKEN=1");
+  }
+
+  if (env.REMOTE_RELEASE === "1") {
+    if (!requireDevToken) {
+      throw new Error("REMOTE_REQUIRE_DEV_TOKEN=1 is required when REMOTE_RELEASE=1");
+    }
+    if (publicBaseUrl) {
+      assertNoReleasePlaceholder(publicBaseUrl, "Release server endpoint");
+    }
   }
 
   return {
@@ -37,7 +47,7 @@ export function loadServerConfig(env: ServerEnv = process.env): ServerConfig {
     port,
     requireDevToken,
     devToken,
-    publicBaseUrl: normalizeOptional(env.REMOTE_PUBLIC_BASE_URL),
+    publicBaseUrl,
     dataDir: normalizeOptional(env.REMOTE_DATA_DIR),
     databaseUrl: parseOptionalUrl(env.DATABASE_URL, "DATABASE_URL"),
     redisUrl: parseOptionalUrl(env.REDIS_URL, "REDIS_URL"),
@@ -109,6 +119,29 @@ export function loadServerConfig(env: ServerEnv = process.env): ServerConfig {
       1
     )
   };
+}
+
+function parsePublicBaseUrl(env: ServerEnv): string | null {
+  const explicit = normalizeOptional(env.REMOTE_PUBLIC_BASE_URL);
+  if (explicit) {
+    return explicit;
+  }
+
+  const relayHost = normalizeOptional(env.REMOTE_RELAY_HOST);
+  return relayHost ? `https://${relayHost}` : null;
+}
+
+function assertNoReleasePlaceholder(rawUrl: string, context: string): void {
+  const url = new URL(rawUrl);
+  const host = url.host;
+  if (
+    host === "api.example.com" ||
+    host.endsWith(".example.invalid") ||
+    host.includes("<") ||
+    host.includes(">")
+  ) {
+    throw new Error(`${context} must not use placeholder host ${host}`);
+  }
 }
 
 function parsePort(rawPort: string | undefined): number {

@@ -45,6 +45,8 @@ The repository includes `render.yaml` and `Dockerfile` for the default cloud rel
 6. Open `remote-terminal-server` in the Render Dashboard.
 7. Copy the generated `REMOTE_DEV_TOKEN` from the service environment variables.
 8. Use the Web Service host as `REMOTE_RELAY_HOST`, without `https://`.
+9. Add or update `REMOTE_RELAY_HOST=<render-host>` on the Web Service.
+10. Redeploy the Web Service so pairing codes display the public HTTPS URL.
 
 The Blueprint keeps `remote-terminal-server` at one instance because pairing, session tokens, and terminal sessions are not yet fully distributed across Postgres and Redis.
 
@@ -74,6 +76,35 @@ Expected:
 ```json
 {"ok":true}
 ```
+
+## Deployment Status Check
+
+After the Web Service is deployed, verify release guard and store mode:
+
+```bash
+curl -H "Authorization: Bearer ${REMOTE_DEV_TOKEN}" \
+  "https://${REMOTE_RELAY_HOST}/deployment/status"
+```
+
+Expected for the current build:
+
+```json
+{
+  "publicBaseUrl": "https://<relay-host>",
+  "auth": {
+    "devTokenRequired": true
+  },
+  "stores": {
+    "pairing": "memory or json-file",
+    "sessionTokens": "memory or json-file",
+    "devicePresence": "memory",
+    "postgresConfigured": true,
+    "redisConfigured": true
+  }
+}
+```
+
+This endpoint never returns `REMOTE_DEV_TOKEN`.
 
 If Docker is not available locally, do not mark image build verification complete. Let Render perform the first image build and record the Render build log result in the smoke template.
 
@@ -139,7 +170,8 @@ Current status:
 - Task 14 added PostgreSQL schema and repositories.
 - Task 15 added Redis-compatible presence store.
 - Server runtime config reads `DATABASE_URL` and `REDIS_URL`.
-- Business store wiring is still pending, so the smoke test must use one Web Service instance.
+- `/deployment/status` exposes whether Postgres/Redis URLs are configured and which runtime stores are active.
+- Business store wiring is still limited in this build, so the smoke test must use one Web Service instance.
 - Do not mark multi-instance cloud readiness complete until pairing/session token stores use PostgreSQL and presence uses Redis in the running server.
 
 ## Public Health Check

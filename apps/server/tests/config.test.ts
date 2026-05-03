@@ -75,6 +75,41 @@ describe("loadServerConfig", () => {
     });
   });
 
+  it("derives public base URL from relay host", () => {
+    expect(loadServerConfig({ REMOTE_RELAY_HOST: "relay.example.test" })).toMatchObject({
+      publicBaseUrl: "https://relay.example.test"
+    });
+  });
+
+  it("rejects placeholder release public URLs", () => {
+    expect(() =>
+      loadServerConfig({
+        REMOTE_RELEASE: "1",
+        REMOTE_RELAY_HOST: "remote-terminal.example.invalid",
+        REMOTE_REQUIRE_DEV_TOKEN: "1",
+        REMOTE_DEV_TOKEN: "secret"
+      })
+    ).toThrow("Release server endpoint must not use placeholder host remote-terminal.example.invalid");
+    expect(() =>
+      loadServerConfig({
+        REMOTE_RELEASE: "1",
+        REMOTE_PUBLIC_BASE_URL: "https://api.example.com",
+        REMOTE_REQUIRE_DEV_TOKEN: "1",
+        REMOTE_DEV_TOKEN: "secret"
+      })
+    ).toThrow("Release server endpoint must not use placeholder host api.example.com");
+  });
+
+  it("requires dev token guard for release server mode", () => {
+    expect(() =>
+      loadServerConfig({
+        REMOTE_RELEASE: "1",
+        REMOTE_RELAY_HOST: "relay.example.test",
+        REMOTE_DEV_TOKEN: "secret"
+      })
+    ).toThrow("REMOTE_REQUIRE_DEV_TOKEN=1 is required when REMOTE_RELEASE=1");
+  });
+
   it("rejects an invalid port", () => {
     expect(() => loadServerConfig({ PORT: "not-a-number" })).toThrow("PORT must be a valid TCP port");
     expect(() => loadServerConfig({ PORT: "70000" })).toThrow("PORT must be a valid TCP port");

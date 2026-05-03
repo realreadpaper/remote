@@ -24,10 +24,25 @@ export interface AutoConnectDecisionInput {
 export function loadMobileRuntimeConfig(env: RuntimeEnv = process.env): MobileRuntimeConfig {
   const smokeCommand = env.EXPO_PUBLIC_REMOTE_SMOKE_COMMAND?.trim();
   const autoPairingCode = normalizeOptional(env.EXPO_PUBLIC_REMOTE_AUTO_PAIRING_CODE);
-  const baseSessionUrl = env.EXPO_PUBLIC_REMOTE_WS_URL ?? "ws://127.0.0.1:8787/ws/mobile";
+  const release = env.EXPO_PUBLIC_REMOTE_RELEASE === "1";
+  const relayHost = normalizeOptional(env.EXPO_PUBLIC_REMOTE_RELAY_HOST);
+  const baseSessionUrl =
+    normalizeOptional(env.EXPO_PUBLIC_REMOTE_WS_URL) ?? (relayHost ? `wss://${relayHost}/ws/mobile` : "ws://127.0.0.1:8787/ws/mobile");
   const devToken = normalizeOptional(env.EXPO_PUBLIC_REMOTE_DEV_TOKEN);
   const sessionUrl = buildSessionUrl(baseSessionUrl, devToken);
-  const apiBaseUrl = normalizeOptional(env.EXPO_PUBLIC_REMOTE_API_URL) ?? deriveApiBaseUrl(baseSessionUrl);
+  const apiBaseUrl =
+    normalizeOptional(env.EXPO_PUBLIC_REMOTE_API_URL) ?? (relayHost ? `https://${relayHost}` : deriveApiBaseUrl(baseSessionUrl));
+
+  if (release) {
+    if (!devToken) {
+      throw new Error("EXPO_PUBLIC_REMOTE_DEV_TOKEN is required when EXPO_PUBLIC_REMOTE_RELEASE=1");
+    }
+    if (isPlaceholderToken(devToken)) {
+      throw new Error("Release mobile dev token must not be a placeholder");
+    }
+    assertNoReleasePlaceholder(sessionUrl, "Release mobile endpoint");
+    assertNoReleasePlaceholder(apiBaseUrl, "Release mobile endpoint");
+  }
 
   return {
     sessionUrl,
@@ -42,6 +57,24 @@ export function loadMobileRuntimeConfig(env: RuntimeEnv = process.env): MobileRu
     smokeCommand: smokeCommand && smokeCommand.length > 0 ? smokeCommand : null,
     autoPairingCode
   };
+}
+
+function isPlaceholderToken(token: string): boolean {
+  const normalized = token.trim().toLowerCase();
+  return normalized.includes("replace") || normalized.includes("<") || normalized.includes(">");
+}
+
+function assertNoReleasePlaceholder(rawUrl: string, context: string): void {
+  const url = new URL(rawUrl);
+  const host = url.host;
+  if (
+    host === "api.example.com" ||
+    host.endsWith(".example.invalid") ||
+    host.includes("<") ||
+    host.includes(">")
+  ) {
+    throw new Error(`${context} must not use placeholder host ${host}`);
+  }
 }
 
 export function shouldAutoConnectTerminal(input: AutoConnectDecisionInput): boolean {

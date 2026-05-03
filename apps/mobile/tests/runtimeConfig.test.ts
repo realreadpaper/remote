@@ -98,6 +98,50 @@ describe("mobile runtime config", () => {
     });
   });
 
+  it("derives release URLs from a relay host", () => {
+    expect(
+      loadMobileRuntimeConfig({
+        EXPO_PUBLIC_REMOTE_RELAY_HOST: "relay.example.test"
+      })
+    ).toMatchObject({
+      sessionUrl: "wss://relay.example.test/ws/mobile",
+      apiBaseUrl: "https://relay.example.test"
+    });
+  });
+
+  it("rejects placeholder release endpoints", () => {
+    expect(() =>
+      loadMobileRuntimeConfig({
+        EXPO_PUBLIC_REMOTE_RELEASE: "1",
+        EXPO_PUBLIC_REMOTE_RELAY_HOST: "remote-terminal.example.invalid",
+        EXPO_PUBLIC_REMOTE_DEV_TOKEN: "secret"
+      })
+    ).toThrow("Release mobile endpoint must not use placeholder host remote-terminal.example.invalid");
+    expect(() =>
+      loadMobileRuntimeConfig({
+        EXPO_PUBLIC_REMOTE_RELEASE: "1",
+        EXPO_PUBLIC_REMOTE_WS_URL: "wss://api.example.com/ws/mobile",
+        EXPO_PUBLIC_REMOTE_DEV_TOKEN: "secret"
+      })
+    ).toThrow("Release mobile endpoint must not use placeholder host api.example.com");
+  });
+
+  it("requires a non-placeholder dev token for release builds", () => {
+    expect(() =>
+      loadMobileRuntimeConfig({
+        EXPO_PUBLIC_REMOTE_RELEASE: "1",
+        EXPO_PUBLIC_REMOTE_RELAY_HOST: "relay.example.test"
+      })
+    ).toThrow("EXPO_PUBLIC_REMOTE_DEV_TOKEN is required when EXPO_PUBLIC_REMOTE_RELEASE=1");
+    expect(() =>
+      loadMobileRuntimeConfig({
+        EXPO_PUBLIC_REMOTE_RELEASE: "1",
+        EXPO_PUBLIC_REMOTE_RELAY_HOST: "relay.example.test",
+        EXPO_PUBLIC_REMOTE_DEV_TOKEN: "replace-with-render-dev-token"
+      })
+    ).toThrow("Release mobile dev token must not be a placeholder");
+  });
+
   it("auto connects with a restored token even when auto pairing is configured", () => {
     expect(
       shouldAutoConnectTerminal({

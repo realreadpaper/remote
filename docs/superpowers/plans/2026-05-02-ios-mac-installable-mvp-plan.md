@@ -311,6 +311,8 @@ docs/runbooks/macos-agent-package.md
 - [x] 配置 HTTPS/WSS 域名。
 - [x] 配置 PostgreSQL 和 Redis。
 - [x] 文档写入环境变量和启动命令。
+- [x] 增加 release 占位符防呆：公网占位 host/token 不能进入 release build。
+- [x] 增加 `/deployment/status`，用于云端验证当前 store 模式且不泄露 token。
 - [ ] 用 TestFlight App 连接云端 server。
 - [ ] 用 macOS Agent 连接云端 server。
 - [ ] 执行 `printf "__CLOUD__%s\n" "$PWD"` 冒烟测试。

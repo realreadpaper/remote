@@ -262,6 +262,29 @@ export function registerWsRoutes(app: FastifyInstance, config: ServerConfig): vo
   });
 
   app.get("/health", async () => ({ ok: true }));
+  app.get("/deployment/status", async (request, reply) => {
+    if (!isAuthorizedHttpRequest(request, reply, config)) {
+      return reply;
+    }
+
+    return {
+      publicBaseUrl: serverBaseUrl(config),
+      auth: {
+        devTokenRequired: config.requireDevToken
+      },
+      stores: {
+        pairing: config.dataDir ? "json-file" : "memory",
+        sessionTokens: config.dataDir ? "json-file" : "memory",
+        devicePresence: "memory",
+        postgresConfigured: Boolean(config.databaseUrl),
+        redisConfigured: Boolean(config.redisUrl)
+      },
+      limitations: [
+        "pairing and session token stores use REMOTE_DATA_DIR JSON files in this build",
+        "device presence is process-local memory in this build"
+      ]
+    };
+  });
   app.get("/devices", async () => ({ devices: registry.list() }));
   app.get("/pairing/bindings", async (request, reply) => {
     if (!isAuthorizedHttpRequest(request, reply, config)) {

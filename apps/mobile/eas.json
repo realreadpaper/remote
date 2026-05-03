@@ -18,15 +18,17 @@
     "preview": {
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_REMOTE_WS_URL": "wss://api.example.com/ws/mobile",
-        "EXPO_PUBLIC_REMOTE_API_URL": "https://api.example.com"
+        "EXPO_PUBLIC_REMOTE_RELEASE": "1",
+        "EXPO_PUBLIC_REMOTE_RELAY_HOST": "remote-terminal.example.invalid",
+        "EXPO_PUBLIC_REMOTE_DEV_TOKEN": "replace-with-render-dev-token"
       }
     },
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_REMOTE_WS_URL": "wss://api.example.com/ws/mobile",
-        "EXPO_PUBLIC_REMOTE_API_URL": "https://api.example.com"
+        "EXPO_PUBLIC_REMOTE_RELEASE": "1",
+        "EXPO_PUBLIC_REMOTE_RELAY_HOST": "remote-terminal.example.invalid",
+        "EXPO_PUBLIC_REMOTE_DEV_TOKEN": "replace-with-render-dev-token"
       }
     }
   },
