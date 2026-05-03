@@ -899,3 +899,50 @@
 - 在 Agent 端增加 terminal output 分块上限。
 - 增加 Agent output 背压和输出限速。
 - 评估 WebSocket server 层 `maxPayload` 配置。
+
+## 2026-05-03 Agent Terminal Output Chunking
+
+**状态：** completed
+
+**提交：**
+- `a893f3e` `docs: design agent terminal output chunking`
+- `77b2526` `docs: plan agent terminal output chunking`
+- `6b8a933` `feat: chunk agent terminal output`
+
+**实现内容：**
+- Agent 配置新增 `REMOTE_TERMINAL_OUTPUT_CHUNK_BYTES`。
+- 默认 terminal output chunk 大小为 16 KiB。
+- `AgentClient` 在 PTY `onOutput()` 后按 UTF-8 字节数拆分输出。
+- 每个 chunk 作为独立 `terminal.output` 发送，保留原始 `sessionId`、`stream` 和输出顺序。
+- ASCII 大输出会拆分，例如 4 字节配置下 `"abcdef"` 拆成 `"abcd"`、`"ef"`。
+- UTF-8 多字节字符不会被切坏，例如 4 字节配置下 `"你好"` 拆成 `"你"`、`"好"`。
+
+**涉及文件：**
+- `docs/superpowers/specs/2026-05-03-agent-terminal-output-chunking-design.md`
+- `docs/superpowers/plans/2026-05-03-agent-terminal-output-chunking-plan.md`
+- `apps/agent/src/config.ts`
+- `apps/agent/src/agentClient.ts`
+- `apps/agent/tests/config.test.ts`
+- `apps/agent/tests/agentClient.test.ts`
+
+**TDD 记录：**
+- Config 红灯：`PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent test -- apps/agent/tests/config.test.ts` 失败，`AgentConfig` 缺少 `terminalOutputChunkBytes`，非法配置未抛错。
+- Config 绿灯：实现 `terminalOutputChunkBytes` 和 `REMOTE_TERMINAL_OUTPUT_CHUNK_BYTES` 解析后，Agent config 测试通过。
+- AgentClient 红灯：`PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent test -- apps/agent/tests/agentClient.test.ts` 失败，大输出仍被原样发成一条 `terminal.output`。
+- AgentClient 绿灯：实现 `splitUtf8ByBytes()` 并在 `session.onOutput()` 中按顺序发送 chunk 后，Agent 测试通过，35 tests passed。
+
+**验证：**
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent test`: pass，35 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm test`: pass，187 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm build`: pass。
+
+**已知风险：**
+- 当前只做分块，不做背压；Agent 仍可能快速发送大量 chunk。
+- 如果用户把 chunk 配置得接近 Server raw limit，JSON envelope 后仍可能触发 Server guard。
+- 单个字符超过 chunk 限制时仍会作为单独 chunk 发送。
+
+**后续：**
+- 增加 Agent output 背压和发送队列上限。
+- 增加 Server 对 Agent output 的消息数/字节速率限制。
+- 文件和日志输出后续走专用传输通道。
