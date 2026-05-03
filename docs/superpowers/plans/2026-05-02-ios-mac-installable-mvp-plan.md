@@ -332,7 +332,7 @@ docs/runbooks/macos-agent-package.md
 - [ ] 验证 server 重启后绑定关系不丢失。
 - [ ] 验证 Agent 本地关闭终端能力后，Mobile 连接失败并显示原因。
 - [ ] 验证会话页不展示广告。
-- [ ] 提交：`git commit -m "docs: add mvp acceptance checklist"`。
+- [x] 提交：`git commit -m "docs: add mvp acceptance checklist"`。
 
 ## Execution Order
 

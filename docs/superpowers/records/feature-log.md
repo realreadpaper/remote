@@ -1642,3 +1642,53 @@
 **后续：**
 - 准备 Render 账号和 relay host 后，按 `docs/runbooks/cloud-test-environment.md` 执行真实云端 smoke test。
 - Task 17 编写 MVP 验收清单，并把真实云端验收结果纳入发布前门禁。
+
+## 2026-05-03 MVP Acceptance Checklist
+
+**状态：** checklist completed, execution blocked
+
+**提交：**
+- `72495e2` `docs: design mvp acceptance checklist`
+- `81ccc95` `docs: plan mvp acceptance checklist`
+- `cabceae` `docs: add mvp acceptance checklist`
+
+**实现内容：**
+- 新增 `docs/runbooks/mvp-acceptance.md`。
+- 固化 `pass | fail | blocked` 记录规则。
+- 增加 LAN simulator、LAN physical iPhone、Cloud cellular iPhone 三类环境矩阵。
+- 覆盖首次安装、扫码/手动配对、绑定批准。
+- 覆盖未绑定手机拒绝连接。
+- 覆盖终端命令：`pwd`、`ls`、`git status`、`npm run dev`。
+- 覆盖长命令中断：`ping 127.0.0.1` + `Ctrl+C`。
+- 覆盖 iOS 前后台切换与重连。
+- 覆盖 Agent 重启后设备身份保持。
+- 覆盖 server 重启后绑定关系保持。
+- 覆盖 Agent 关闭 terminal capability 后的失败提示。
+- 覆盖终端会话页不展示广告。
+- 增加发布判定表，明确外部 TestFlight 前云端蜂窝 smoke 必须通过。
+- 主计划 Task 17 的 runbook 提交项已同步勾选。
+
+**验证：**
+- `rg "TB[D]|TO[D]O|待[定]|以后[再]" docs/runbooks/mvp-acceptance.md`: pass，无匹配。
+- `git diff --check docs/runbooks/mvp-acceptance.md`: pass。
+- `rg "TB[D]|TO[D]O|待[定]|以后[再]" docs/runbooks/mvp-acceptance.md docs/superpowers/plans/2026-05-03-mvp-acceptance-plan.md`: pass，无匹配。
+- `git diff --check`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm test`: pass，249 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm build`: pass。
+
+**未执行真实验收：**
+- 未验证新设备首次安装、扫码、绑定。
+- 未验证未绑定手机无法连接。
+- 未验证真机终端命令、长命令中断、前后台切换。
+- 未验证 Agent/server 重启后的真实持久化。
+- 未验证 terminal capability 关闭路径。
+- 未验证真机终端会话页广告边界。
+
+**阻塞原因：**
+- 当前会话没有真实 TestFlight build、iPhone 真机云端会话、可重启的云端 server 和可切换 capability 的 Agent 配置。
+- runbook 已明确这些项必须记录为 `blocked`，不能误标为 `pass`。
+
+**后续：**
+- 准备真机、TestFlight 或 Expo 物理机环境后，按 `docs/runbooks/mvp-acceptance.md` 执行验收。
+- 为 disabled terminal capability 增加明确 Agent 启动开关，避免该项长期只能人工构造。

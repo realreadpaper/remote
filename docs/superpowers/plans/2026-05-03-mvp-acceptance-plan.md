@@ -25,7 +25,7 @@ docs/superpowers/records/feature-log.md
 **Files:**
 - Create: `docs/runbooks/mvp-acceptance.md`
 
-- [ ] **Step 1: Create acceptance checklist**
+- [x] **Step 1: Create acceptance checklist**
 
 Write `docs/runbooks/mvp-acceptance.md` with these sections:
 
@@ -49,7 +49,7 @@ Write `docs/runbooks/mvp-acceptance.md` with these sections:
 - Checklist item proving ads are not shown on terminal session page.
 - Release decision table.
 
-- [ ] **Step 2: Placeholder scan**
+- [x] **Step 2: Placeholder scan**
 
 Run:
 
@@ -59,7 +59,7 @@ rg "TB[D]|TO[D]O|待[定]|以后[再]" docs/runbooks/mvp-acceptance.md
 
 Expected: no matches.
 
-- [ ] **Step 3: Commit runbook**
+- [x] **Step 3: Commit runbook**
 
 ```bash
 git add docs/runbooks/mvp-acceptance.md
@@ -73,15 +73,15 @@ git commit -m "docs: add mvp acceptance checklist"
 - Modify: `docs/superpowers/plans/2026-05-03-mvp-acceptance-plan.md`
 - Modify: `docs/superpowers/records/feature-log.md`
 
-- [ ] **Step 1: Update main plan**
+- [x] **Step 1: Update main plan**
 
 Mark Task 17 checklist-writing work complete only after `docs/runbooks/mvp-acceptance.md` exists. Keep real acceptance execution unchecked unless the corresponding real device/cloud test was executed in this session.
 
-- [ ] **Step 2: Append feature log**
+- [x] **Step 2: Append feature log**
 
 Add a `2026-05-03 MVP Acceptance Checklist` entry with commits, verification, and blocked real-device items.
 
-- [ ] **Step 3: Verification**
+- [x] **Step 3: Verification**
 
 Run:
 
@@ -99,7 +99,7 @@ Expected:
 - `git diff --check` exits 0.
 - workspace test/typecheck/build exit 0.
 
-- [ ] **Step 4: Commit records**
+- [x] **Step 4: Commit records**
 
 ```bash
 git add docs/superpowers/plans/2026-05-02-ios-mac-installable-mvp-plan.md docs/superpowers/plans/2026-05-03-mvp-acceptance-plan.md docs/superpowers/records/feature-log.md
