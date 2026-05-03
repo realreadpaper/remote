@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { loadMobileRuntimeConfig, shouldAutoConnectTerminal } from "../src/config/runtimeConfig";
+import { loadMobileRuntimeConfig, shouldAutoConnectTerminal, tryLoadMobileRuntimeConfig } from "../src/config/runtimeConfig";
 
 describe("mobile runtime config", () => {
   it("uses simulator-friendly defaults", () => {
@@ -140,6 +140,18 @@ describe("mobile runtime config", () => {
         EXPO_PUBLIC_REMOTE_DEV_TOKEN: "replace-with-render-dev-token"
       })
     ).toThrow("Release mobile dev token must not be a placeholder");
+  });
+
+  it("returns a user-facing config error instead of throwing for screens", () => {
+    expect(
+      tryLoadMobileRuntimeConfig({
+        EXPO_PUBLIC_REMOTE_RELEASE: "1",
+        EXPO_PUBLIC_REMOTE_RELAY_HOST: "relay.example.test"
+      })
+    ).toEqual({
+      ok: false,
+      error: "EXPO_PUBLIC_REMOTE_DEV_TOKEN is required when EXPO_PUBLIC_REMOTE_RELEASE=1"
+    });
   });
 
   it("auto connects with a restored token even when auto pairing is configured", () => {

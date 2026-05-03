@@ -11,7 +11,7 @@ import {
   TextInput,
   View
 } from "react-native";
-import { loadMobileRuntimeConfig, shouldAutoConnectTerminal } from "../config/runtimeConfig";
+import { shouldAutoConnectTerminal, tryLoadMobileRuntimeConfig } from "../config/runtimeConfig";
 import { PairingClient } from "../protocol/pairingClient";
 import { SessionClient } from "../protocol/sessionClient";
 import type { PairingTokenRecord } from "../state/pairingTokenStore";
@@ -26,7 +26,8 @@ export interface TerminalScreenProps {
 }
 
 export function TerminalScreen({ selectedDevice, onBack, onForget }: TerminalScreenProps) {
-  const runtimeConfig = useMemo(() => loadMobileRuntimeConfig(), []);
+  const runtimeConfigResult = useMemo(() => tryLoadMobileRuntimeConfig(), []);
+  const runtimeConfig = runtimeConfigResult.ok ? runtimeConfigResult.config : null;
   const terminalState = useMemo(() => createTerminalState(), []);
   const [snapshot, setSnapshot] = useState(() => terminalState.getSnapshot());
   const [connecting, setConnecting] = useState(false);
@@ -119,9 +120,13 @@ export function TerminalScreen({ selectedDevice, onBack, onForget }: TerminalScr
 
   const handleForgetPairing = async () => {
     try {
+      if (!runtimeConfigResult.ok) {
+        throw new Error(runtimeConfigResult.error);
+      }
+
       const client = new PairingClient({
-        apiBaseUrl: runtimeConfig.apiBaseUrl,
-        devToken: runtimeConfig.devToken
+        apiBaseUrl: runtimeConfigResult.config.apiBaseUrl,
+        devToken: runtimeConfigResult.config.devToken
       });
       await client.revokeSessionToken({
         deviceId: selectedDevice.deviceId,
@@ -143,12 +148,18 @@ export function TerminalScreen({ selectedDevice, onBack, onForget }: TerminalScr
       return;
     }
 
+    if (!runtimeConfigResult.ok) {
+      terminalState.setConnectionError(runtimeConfigResult.error);
+      appendLocalLine(runtimeConfigResult.error);
+      return;
+    }
+
     setConnecting(true);
     try {
       closeCurrentClient();
       let smokeCommandSent = false;
       const client = new SessionClient({
-        url: runtimeConfig.sessionUrl,
+        url: runtimeConfigResult.config.sessionUrl,
         deviceId: selectedDevice.deviceId,
         sessionToken: selectedDevice.sessionToken,
         onMessage(message) {
@@ -161,11 +172,11 @@ export function TerminalScreen({ selectedDevice, onBack, onForget }: TerminalScr
             setConnecting(false);
             setManualReconnectVisible(false);
             autoReconnectAttemptedRef.current = false;
-            if (runtimeConfig.smokeCommand && !smokeCommandSent) {
+            if (runtimeConfigResult.config.smokeCommand && !smokeCommandSent) {
               smokeCommandSent = true;
-              const command = runtimeConfig.smokeCommand.endsWith("\n")
-                ? runtimeConfig.smokeCommand
-                : `${runtimeConfig.smokeCommand}\n`;
+              const command = runtimeConfigResult.config.smokeCommand.endsWith("\n")
+                ? runtimeConfigResult.config.smokeCommand
+                : `${runtimeConfigResult.config.smokeCommand}\n`;
               client.sendTerminalInput(command);
             }
           }
@@ -247,6 +258,10 @@ export function TerminalScreen({ selectedDevice, onBack, onForget }: TerminalScr
   };
 
   useEffect(() => {
+    if (!runtimeConfig) {
+      return;
+    }
+
     if (
       !shouldAutoConnectTerminal({
         autoConnect: runtimeConfig.autoConnect,
@@ -260,7 +275,7 @@ export function TerminalScreen({ selectedDevice, onBack, onForget }: TerminalScr
 
     autoConnectAttemptedRef.current = true;
     handleConnect();
-  }, [runtimeConfig.autoConnect, runtimeConfig.autoPairingCode, selectedDevice.sessionToken]);
+  }, [runtimeConfig?.autoConnect, runtimeConfig?.autoPairingCode, selectedDevice.sessionToken]);
 
   const handleInputChange = (input: string) => {
     terminalState.setInput(input);
@@ -389,7 +404,7 @@ export function TerminalScreen({ selectedDevice, onBack, onForget }: TerminalScr
               </Text>
             </View>
             <Text numberOfLines={1} style={styles.configText}>
-              {selectedDevice.deviceId} · {runtimeConfig.displaySessionUrl}
+              {selectedDevice.deviceId} · {runtimeConfig?.displaySessionUrl ?? "Server config unavailable"}
             </Text>
           </View>
 

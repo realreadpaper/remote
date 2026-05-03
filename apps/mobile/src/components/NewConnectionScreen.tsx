@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, SafeAreaView, StyleSheet, Text, TextInput, View } from "react-native";
-import { loadMobileRuntimeConfig } from "../config/runtimeConfig";
+import { tryLoadMobileRuntimeConfig } from "../config/runtimeConfig";
 import { PairingClient } from "../protocol/pairingClient";
 import type { PairingTokenRecord } from "../state/pairingTokenStore";
 import { mobileShellTheme } from "./mobileShellTheme";
@@ -11,7 +11,7 @@ export interface NewConnectionScreenProps {
 }
 
 export function NewConnectionScreen({ onCancel, onPaired }: NewConnectionScreenProps) {
-  const runtimeConfig = useMemo(() => loadMobileRuntimeConfig(), []);
+  const runtimeConfigResult = useMemo(() => tryLoadMobileRuntimeConfig(), []);
   const [pairingCode, setPairingCode] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [status, setStatus] = useState("Enter the pairing code shown on your Mac.");
@@ -26,14 +26,18 @@ export function NewConnectionScreen({ onCancel, onPaired }: NewConnectionScreenP
     setSubmitting(true);
     setStatus("Waiting for Mac approval.");
     try {
+      if (!runtimeConfigResult.ok) {
+        throw new Error(runtimeConfigResult.error);
+      }
+
       const client = new PairingClient({
-        apiBaseUrl: runtimeConfig.apiBaseUrl,
-        devToken: runtimeConfig.devToken
+        apiBaseUrl: runtimeConfigResult.config.apiBaseUrl,
+        devToken: runtimeConfigResult.config.devToken
       });
       const result = await client.requestPairing({
         pairingCode: normalizedCode,
-        mobileClientId: runtimeConfig.mobileClientId,
-        mobileName: runtimeConfig.mobileName
+        mobileClientId: runtimeConfigResult.config.mobileClientId,
+        mobileName: runtimeConfigResult.config.mobileName
       });
       const auth = await client.waitForApproval(result.pairingRequestId);
       onPaired({
@@ -63,6 +67,11 @@ export function NewConnectionScreen({ onCancel, onPaired }: NewConnectionScreenP
         <View style={styles.content}>
           <Text style={styles.title}>Pair a Mac</Text>
           <Text style={styles.subtitle}>Open the Agent on your Mac, create a pairing code, then enter it here.</Text>
+          {!runtimeConfigResult.ok ? (
+            <View style={styles.configPanel}>
+              <Text style={styles.configText}>{runtimeConfigResult.error}</Text>
+            </View>
+          ) : null}
           <TextInput
             autoCapitalize="none"
             autoCorrect={false}
@@ -75,9 +84,13 @@ export function NewConnectionScreen({ onCancel, onPaired }: NewConnectionScreenP
           />
           <Pressable
             accessibilityRole="button"
-            disabled={submitting}
+            disabled={submitting || !runtimeConfigResult.ok}
             onPress={submitPairingCode}
-            style={({ pressed }) => [styles.primaryButton, submitting && styles.primaryButtonDisabled, pressed && !submitting && styles.primaryButtonPressed]}
+            style={({ pressed }) => [
+              styles.primaryButton,
+              (submitting || !runtimeConfigResult.ok) && styles.primaryButtonDisabled,
+              pressed && !submitting && runtimeConfigResult.ok && styles.primaryButtonPressed
+            ]}
           >
             <Text style={styles.primaryButtonText}>{submitting ? "Waiting" : "Pair"}</Text>
           </Pressable>
@@ -141,6 +154,20 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontSize: 15,
     lineHeight: 21
+  },
+  configPanel: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: layout.panelRadius,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.panelBorder,
+    backgroundColor: colors.warningSurface
+  },
+  configText: {
+    color: colors.warning,
+    fontSize: 13,
+    fontWeight: "600",
+    lineHeight: 18
   },
   input: {
     minHeight: 48,

@@ -21,6 +21,10 @@ export interface AutoConnectDecisionInput {
   sessionToken: string | null;
 }
 
+export type MobileRuntimeConfigResult =
+  | { ok: true; config: MobileRuntimeConfig }
+  | { ok: false; error: string };
+
 export function loadMobileRuntimeConfig(env: RuntimeEnv = process.env): MobileRuntimeConfig {
   const smokeCommand = env.EXPO_PUBLIC_REMOTE_SMOKE_COMMAND?.trim();
   const autoPairingCode = normalizeOptional(env.EXPO_PUBLIC_REMOTE_AUTO_PAIRING_CODE);
@@ -57,6 +61,17 @@ export function loadMobileRuntimeConfig(env: RuntimeEnv = process.env): MobileRu
     smokeCommand: smokeCommand && smokeCommand.length > 0 ? smokeCommand : null,
     autoPairingCode
   };
+}
+
+export function tryLoadMobileRuntimeConfig(env: RuntimeEnv = process.env): MobileRuntimeConfigResult {
+  try {
+    return { ok: true, config: loadMobileRuntimeConfig(env) };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Remote server config is invalid."
+    };
+  }
 }
 
 function isPlaceholderToken(token: string): boolean {

@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { HomeScreen } from "./src/components/HomeScreen";
 import { NewConnectionScreen } from "./src/components/NewConnectionScreen";
 import { TerminalScreen } from "./src/components/TerminalScreen";
-import { loadMobileRuntimeConfig } from "./src/config/runtimeConfig";
-import { DeviceStatusClient, type RegisteredDeviceStatus } from "./src/protocol/deviceStatusClient";
+import type { RegisteredDeviceStatus } from "./src/protocol/deviceStatusClient";
+import { createOptionalHomeDeviceStatusClient } from "./src/state/homeDeviceStatus";
 import {
   buildDeviceStatusLookup,
   buildDevelopmentPreviewConnections,
@@ -25,12 +25,8 @@ type AppRoute =
   | { name: "terminal"; device: PairingTokenRecord };
 
 export default function App() {
-  const runtimeConfig = useMemo(() => loadMobileRuntimeConfig(), []);
   const pairingTokenStorage = useMemo(() => createSecureStorePairingTokenStorage(), []);
-  const deviceStatusClient = useMemo(
-    () => new DeviceStatusClient({ apiBaseUrl: runtimeConfig.apiBaseUrl, devToken: runtimeConfig.devToken }),
-    [runtimeConfig.apiBaseUrl, runtimeConfig.devToken]
-  );
+  const deviceStatusClient = useMemo(() => createOptionalHomeDeviceStatusClient(), []);
   const [route, setRoute] = useState<AppRoute>({ name: "home" });
   const [devices, setDevices] = useState<PairingTokenRecord[]>([]);
   const [deviceStatusesById, setDeviceStatusesById] = useState<Record<string, RegisteredDeviceStatus>>({});
@@ -43,6 +39,12 @@ export default function App() {
       const stored = await loadPairingTokens(pairingTokenStorage);
       const visibleDevices = stored.length === 0 && shouldUseDevelopmentPreviewConnections() ? buildDevelopmentPreviewConnections() : stored;
       setDevices(visibleDevices);
+
+      if (!deviceStatusClient) {
+        setDeviceStatusesById({});
+        setOnlineStatusState("unavailable");
+        return;
+      }
 
       try {
         const statuses = await deviceStatusClient.listDevices();

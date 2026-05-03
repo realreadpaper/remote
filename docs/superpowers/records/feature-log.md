@@ -2109,3 +2109,49 @@
 **已知风险：**
 - 当前 `/devices` 是全局注册设备列表，手机端只按本地保存的 `deviceId` 合并显示；后续多用户云端化后应切换为用户绑定设备列表或服务端过滤后的绑定视图。
 - 在线状态只在首页刷新时获取一次，暂未做后台轮询或 App 回到前台自动刷新。
+
+## 2026-05-03 iOS Startup Config Crash Fix
+
+**状态：** completed
+
+**问题现象：**
+- 真机/模拟器在 `EXPO_PUBLIC_REMOTE_RELEASE=1` 且缺少 `EXPO_PUBLIC_REMOTE_DEV_TOKEN` 时无法打开 App。
+- 复现日志显示异常发生在根组件 `App`：`EXPO_PUBLIC_REMOTE_DEV_TOKEN is required when EXPO_PUBLIC_REMOTE_RELEASE=1`。
+
+**根因：**
+- 上一轮在线状态接入把 `loadMobileRuntimeConfig()` 提前到 `App.tsx` 根组件。
+- release 配置校验原本用于连接/配对动作，但被根组件调用后变成启动硬依赖，导致首页也无法渲染。
+
+**实现内容：**
+- 新增 `tryLoadMobileRuntimeConfig()`，页面可拿到 `{ ok: false, error }` 并显示文案，而不是抛异常。
+- 新增 `homeDeviceStatus` 模块，首页在线状态客户端创建失败时返回 `null`，只降级为状态不可用提示。
+- `App.tsx` 不再直接调用 release-sensitive 配置加载。
+- `NewConnectionScreen` 配置不完整时显示错误文案并禁用 Pair 按钮。
+- `TerminalScreen` 配置不完整时显示连接错误文案，不再因进入页面崩溃。
+
+**涉及文件：**
+- `apps/mobile/App.tsx`
+- `apps/mobile/src/config/runtimeConfig.ts`
+- `apps/mobile/src/components/NewConnectionScreen.tsx`
+- `apps/mobile/src/components/TerminalScreen.tsx`
+- `apps/mobile/src/state/homeDeviceStatus.ts`
+- `apps/mobile/tests/homeDeviceStatus.test.ts`
+- `apps/mobile/tests/runtimeConfig.test.ts`
+- `docs/superpowers/records/feature-log.md`
+
+**TDD 记录：**
+- 红灯：`homeDeviceStatus.test.ts` 失败，原因是 `homeDeviceStatus` 模块不存在。
+- 红灯：`runtimeConfig.test.ts` 失败，原因是 `tryLoadMobileRuntimeConfig` 不存在。
+- 绿灯：实现可降级首页状态客户端和安全配置加载后，专项测试通过。
+
+**验证：**
+- `EXPO_PUBLIC_REMOTE_RELEASE=1 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile exec expo run:ios --device "iPhone 15"`: 复现崩溃，日志指向 `App` 根组件。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile test -- homeDeviceStatus.test.ts`: pass，74 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile test -- runtimeConfig.test.ts homeDeviceStatus.test.ts`: pass，75 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile test`: pass，75 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm test`: pass，281 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm build`: pass。
+- `EXPO_PUBLIC_REMOTE_RELEASE=1 EXPO_PUBLIC_REMOTE_DEMO_CONNECTIONS=1 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile exec expo run:ios --device "iPhone 15"`: build succeeded，首页已打开，无根组件配置异常。
+- `EXPO_PUBLIC_REMOTE_RELEASE=1 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile exec expo run:ios --device "iPhone 15"`: build succeeded，首页已打开，无根组件配置异常。
+- iOS 模拟器截图：`/tmp/remote-terminal-release-home-fixed.png`，确认 release 配置不完整时首页可打开。
