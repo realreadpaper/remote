@@ -1993,3 +1993,43 @@
 
 **已知风险：**
 - 本次是模拟器视觉验证；真机视觉仍需要用户在物理 iPhone 上确认。
+
+## 2026-05-03 iOS Home Connection List
+
+**状态：** completed
+
+**实现内容：**
+- 新增 iOS 首页连接列表设计和执行计划。
+- App 启动后先进入 `HomeScreen`，不再直接进入终端页。
+- 首页显示保存的连接数量、已保存设备列表和 `New Connection` 空状态。
+- 新增 `NewConnectionScreen`，承接配对码输入、等待 Mac Agent 审批和配对成功回调。
+- `TerminalScreen` 改为接收选中的 `deviceId + sessionToken`，不再用 `runtimeConfig.deviceId` 作为唯一目标。
+- `TerminalScreen` 增加返回首页入口，离开终端页时由组件卸载关闭当前 session client。
+- 本地 SecureStore 配对 token 从单设备升级为多设备列表，并兼容旧单 token 数据迁移。
+- 忘记设备时移除对应设备 token 并回到首页。
+
+**涉及文件：**
+- `apps/mobile/App.tsx`
+- `apps/mobile/src/components/HomeScreen.tsx`
+- `apps/mobile/src/components/NewConnectionScreen.tsx`
+- `apps/mobile/src/components/TerminalScreen.tsx`
+- `apps/mobile/src/state/pairingTokenStore.ts`
+- `apps/mobile/tests/pairingTokenStore.test.ts`
+- `docs/superpowers/specs/2026-05-03-ios-home-connection-list-design.md`
+- `docs/superpowers/plans/2026-05-03-ios-home-connection-list-plan.md`
+
+**TDD 记录：**
+- 红灯：`pairingTokenStore.test.ts` 失败，原因是 `loadPairingTokens`、`upsertPairingToken`、`removePairingToken` 尚不存在。
+- 绿灯：实现多设备 token 存储、旧单 token 迁移和按设备删除后，移动端存储测试通过。
+
+**验证：**
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile test -- pairingTokenStore.test.ts`: pass，64 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile test`: pass，64 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm test`: pass，270 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm build`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile exec expo run:ios --device "iPhone 15"`: build succeeded，开发构建已安装并打开。
+- iOS 模拟器截图：`/tmp/remote-terminal-home-list.png`，确认默认首页为连接列表空状态和 `New Connection`，不再直达终端页。
+
+**已知风险：**
+- 本轮截图验证了首页默认入口；由于模拟器当前没有真实配对设备，已保存设备列表和点击进入终端仍需要真机或完整配对 smoke 再验收。

@@ -14,32 +14,26 @@ import {
 import { loadMobileRuntimeConfig, shouldAutoConnectTerminal } from "../config/runtimeConfig";
 import { PairingClient } from "../protocol/pairingClient";
 import { SessionClient } from "../protocol/sessionClient";
-import {
-  clearPairingToken,
-  createSecureStorePairingTokenStorage,
-  loadPairingToken,
-  savePairingToken
-} from "../state/pairingTokenStore";
+import type { PairingTokenRecord } from "../state/pairingTokenStore";
 import { createTerminalState } from "../state/terminalStore";
-import { getConnectionStatusLabel, getPairingPanelMode, mobileShellTheme } from "./mobileShellTheme";
+import { getConnectionStatusLabel, mobileShellTheme } from "./mobileShellTheme";
 import { terminalShortcutPayloads } from "./terminalShortcuts";
 
-export function TerminalScreen() {
+export interface TerminalScreenProps {
+  selectedDevice: PairingTokenRecord;
+  onBack: () => void;
+  onForget: (deviceId: string) => void;
+}
+
+export function TerminalScreen({ selectedDevice, onBack, onForget }: TerminalScreenProps) {
   const runtimeConfig = useMemo(() => loadMobileRuntimeConfig(), []);
   const terminalState = useMemo(() => createTerminalState(), []);
-  const pairingTokenStorage = useMemo(() => createSecureStorePairingTokenStorage(), []);
   const [snapshot, setSnapshot] = useState(() => terminalState.getSnapshot());
   const [connecting, setConnecting] = useState(false);
-  const [pairingCode, setPairingCode] = useState("");
-  const [pairingStatus, setPairingStatus] = useState<string | null>(null);
-  const [pairingSubmitting, setPairingSubmitting] = useState(false);
-  const [sessionToken, setSessionToken] = useState<string | null>(null);
-  const [pairedDeviceId, setPairedDeviceId] = useState<string | null>(null);
   const [appActive, setAppActive] = useState(true);
   const [manualReconnectVisible, setManualReconnectVisible] = useState(false);
   const clientRef = useRef<SessionClient | undefined>(undefined);
   const autoConnectAttemptedRef = useRef(false);
-  const autoPairAttemptedRef = useRef(false);
   const autoReconnectAttemptedRef = useRef(false);
   const appActiveRef = useRef(true);
   const scrollRef = useRef<ScrollView | null>(null);
@@ -96,55 +90,6 @@ export function TerminalScreen() {
     handleConnect();
   };
 
-  const submitPairingCode = async (normalizedCode: string) => {
-    if (!normalizedCode || pairingSubmitting) {
-      appendLocalLine("Enter a pairing code first.");
-      return;
-    }
-
-    setPairingSubmitting(true);
-    setPairingStatus("sending");
-    setSessionToken(null);
-    setPairedDeviceId(null);
-    try {
-      const client = new PairingClient({
-        apiBaseUrl: runtimeConfig.apiBaseUrl,
-        devToken: runtimeConfig.devToken
-      });
-      const result = await client.requestPairing({
-        pairingCode: normalizedCode,
-        mobileClientId: runtimeConfig.mobileClientId,
-        mobileName: runtimeConfig.mobileName
-      });
-      setPairingStatus(`pending ${result.pairingRequestId}`);
-      appendLocalLine(`Pairing request pending for ${result.deviceId}.`);
-      const auth = await client.waitForApproval(result.pairingRequestId);
-      setSessionToken(auth.sessionToken);
-      setPairedDeviceId(auth.deviceId);
-      setPairingStatus(`paired until ${auth.expiresAt}`);
-      await savePairingToken(pairingTokenStorage, {
-        deviceId: auth.deviceId,
-        sessionToken: auth.sessionToken,
-        expiresAt: auth.expiresAt,
-        pairedAt: new Date().toISOString()
-      });
-      appendLocalLine(`Pairing approved for ${auth.deviceId}.`);
-      if (runtimeConfig.autoConnect) {
-        openTerminalSession(auth.sessionToken);
-      }
-    } catch (error) {
-      const reason = error instanceof Error ? error.message : "Pairing request failed.";
-      setPairingStatus(reason);
-      appendLocalLine(`Pairing request failed: ${reason}`);
-    } finally {
-      setPairingSubmitting(false);
-    }
-  };
-
-  const handlePairingSubmit = async () => {
-    await submitPairingCode(pairingCode.trim());
-  };
-
   useEffect(() => {
     return () => {
       closeCurrentClient();
@@ -172,72 +117,28 @@ export function TerminalScreen() {
     };
   }, [connecting, snapshot.connected]);
 
-  useEffect(() => {
-    let active = true;
-
-    void loadPairingToken(pairingTokenStorage)
-      .then((token) => {
-        if (!active || !token) {
-          return;
-        }
-
-        setSessionToken(token.sessionToken);
-        setPairedDeviceId(token.deviceId);
-        setPairingStatus(`paired ${token.deviceId} until ${token.expiresAt}`);
-        appendLocalLine(`Restored pairing for ${token.deviceId}.`);
-      })
-      .catch((error) => {
-        if (!active) {
-          return;
-        }
-
-        const reason = error instanceof Error ? error.message : "Pairing restore failed.";
-        setPairingStatus(reason);
-        appendLocalLine(`Pairing restore failed: ${reason}`);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [pairingTokenStorage]);
-
   const handleForgetPairing = async () => {
-    const tokenToRevoke = sessionToken;
-    const deviceToRevoke = pairedDeviceId;
-
     try {
-      if (tokenToRevoke && deviceToRevoke) {
-        const client = new PairingClient({
-          apiBaseUrl: runtimeConfig.apiBaseUrl,
-          devToken: runtimeConfig.devToken
-        });
-        await client.revokeSessionToken({
-          deviceId: deviceToRevoke,
-          sessionToken: tokenToRevoke
-        });
-      }
+      const client = new PairingClient({
+        apiBaseUrl: runtimeConfig.apiBaseUrl,
+        devToken: runtimeConfig.devToken
+      });
+      await client.revokeSessionToken({
+        deviceId: selectedDevice.deviceId,
+        sessionToken: selectedDevice.sessionToken
+      });
     } catch (error) {
       const reason = error instanceof Error ? error.message : "Session token revoke failed.";
       appendLocalLine(`Session token revoke failed: ${reason}`);
     }
 
-    try {
-      await clearPairingToken(pairingTokenStorage);
-      closeCurrentClient();
-      setSessionToken(null);
-      setPairedDeviceId(null);
-      setPairingStatus("not paired");
-      terminalState.setConnected(false);
-      setConnecting(false);
-      appendLocalLine("Forgot paired device.");
-    } catch (error) {
-      const reason = error instanceof Error ? error.message : "Forget device failed.";
-      setPairingStatus(reason);
-      appendLocalLine(`Forget device failed: ${reason}`);
-    }
+    closeCurrentClient();
+    terminalState.setConnected(false);
+    setConnecting(false);
+    onForget(selectedDevice.deviceId);
   };
 
-  const openTerminalSession = (sessionTokenOverride: string | null) => {
+  const openTerminalSession = () => {
     if (snapshot.connected || connecting) {
       return;
     }
@@ -248,8 +149,8 @@ export function TerminalScreen() {
       let smokeCommandSent = false;
       const client = new SessionClient({
         url: runtimeConfig.sessionUrl,
-        deviceId: runtimeConfig.deviceId,
-        sessionToken: sessionTokenOverride,
+        deviceId: selectedDevice.deviceId,
+        sessionToken: selectedDevice.sessionToken,
         onMessage(message) {
           if (clientRef.current !== client) {
             return;
@@ -342,7 +243,7 @@ export function TerminalScreen() {
   };
 
   const handleConnect = () => {
-    openTerminalSession(sessionToken);
+    openTerminalSession();
   };
 
   useEffect(() => {
@@ -351,7 +252,7 @@ export function TerminalScreen() {
         autoConnect: runtimeConfig.autoConnect,
         autoPairingCode: runtimeConfig.autoPairingCode,
         autoConnectAttempted: autoConnectAttemptedRef.current,
-        sessionToken
+        sessionToken: selectedDevice.sessionToken
       })
     ) {
       return;
@@ -359,17 +260,7 @@ export function TerminalScreen() {
 
     autoConnectAttemptedRef.current = true;
     handleConnect();
-  }, [runtimeConfig.autoConnect, runtimeConfig.autoPairingCode, sessionToken]);
-
-  useEffect(() => {
-    if (!runtimeConfig.autoPairingCode || autoPairAttemptedRef.current || sessionToken || pairingSubmitting) {
-      return;
-    }
-
-    autoPairAttemptedRef.current = true;
-    setPairingCode(runtimeConfig.autoPairingCode);
-    void submitPairingCode(runtimeConfig.autoPairingCode);
-  }, [runtimeConfig.autoPairingCode, pairingSubmitting, sessionToken]);
+  }, [runtimeConfig.autoConnect, runtimeConfig.autoPairingCode, selectedDevice.sessionToken]);
 
   const handleInputChange = (input: string) => {
     terminalState.setInput(input);
@@ -470,8 +361,6 @@ export function TerminalScreen() {
     }
   };
 
-  const pairingPanelMode = getPairingPanelMode(pairedDeviceId);
-
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
@@ -480,6 +369,9 @@ export function TerminalScreen() {
       >
         <View style={styles.header}>
           <View style={styles.titleGroup}>
+            <Pressable accessibilityRole="button" onPress={onBack} style={styles.backButton}>
+              <Text style={styles.backButtonText}>Connections</Text>
+            </Pressable>
             <Text style={styles.title}>Terminal</Text>
             <View style={styles.statusRow}>
               <View
@@ -492,12 +384,12 @@ export function TerminalScreen() {
                 {getConnectionStatusLabel({
                   connected: snapshot.connected,
                   connecting,
-                  deviceId: runtimeConfig.deviceId
+                  deviceId: selectedDevice.deviceId
                 })}
               </Text>
             </View>
             <Text numberOfLines={1} style={styles.configText}>
-              {runtimeConfig.deviceId} · {runtimeConfig.displaySessionUrl}
+              {selectedDevice.deviceId} · {runtimeConfig.displaySessionUrl}
             </Text>
           </View>
 
@@ -542,61 +434,21 @@ export function TerminalScreen() {
         ) : null}
 
         <View style={styles.pairingPanel}>
-          {pairingPanelMode === "setup" ? (
-            <>
-              <View style={styles.pairingMeta}>
-                <Text style={styles.pairingTitle}>Pair Mac</Text>
-                <Text numberOfLines={1} style={styles.pairingApiText}>
-                  {runtimeConfig.mobileClientId} · {runtimeConfig.displayApiBaseUrl}
-                </Text>
-              </View>
-              <View style={styles.pairingControls}>
-                <TextInput
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  keyboardType="number-pad"
-                  onChangeText={setPairingCode}
-                  placeholder="配对码"
-                  placeholderTextColor={colors.textMuted}
-                  style={styles.pairingInput}
-                  value={pairingCode}
-                />
-                <Pressable
-                  accessibilityRole="button"
-                  disabled={pairingSubmitting}
-                  onPress={handlePairingSubmit}
-                  style={({ pressed }) => [
-                    styles.pairingButton,
-                    pairingSubmitting && styles.pairingButtonDisabled,
-                    pressed && !pairingSubmitting && styles.pairingButtonPressed
-                  ]}
-                >
-                  <Text style={styles.pairingButtonText}>{pairingSubmitting ? "..." : "Pair"}</Text>
-                </Pressable>
-              </View>
-              {pairingStatus ? (
-                <Text numberOfLines={1} style={styles.pairingStatusText}>
-                  {pairingStatus}
-                </Text>
-              ) : null}
-            </>
-          ) : (
-            <View style={styles.pairedCompactRow}>
-              <View style={styles.pairedDeviceMeta}>
-                <Text style={styles.pairingTitle}>Mac</Text>
-                <Text numberOfLines={1} style={styles.pairedDeviceText}>
-                  {pairedDeviceId} · Ready
-                </Text>
-              </View>
-              <Pressable
-                accessibilityRole="button"
-                onPress={handleForgetPairing}
-                style={({ pressed }) => [styles.forgetButton, pressed && styles.forgetButtonPressed]}
-              >
-                <Text style={styles.forgetButtonText}>Forget</Text>
-              </Pressable>
+          <View style={styles.pairedCompactRow}>
+            <View style={styles.pairedDeviceMeta}>
+              <Text style={styles.pairingTitle}>Mac</Text>
+              <Text numberOfLines={1} style={styles.pairedDeviceText}>
+                {selectedDevice.deviceId} · Ready
+              </Text>
             </View>
-          )}
+            <Pressable
+              accessibilityRole="button"
+              onPress={handleForgetPairing}
+              style={({ pressed }) => [styles.forgetButton, pressed && styles.forgetButtonPressed]}
+            >
+              <Text style={styles.forgetButtonText}>Forget</Text>
+            </Pressable>
+          </View>
         </View>
 
         <ScrollView
@@ -689,6 +541,16 @@ const styles = StyleSheet.create({
   titleGroup: {
     flex: 1,
     minWidth: 0
+  },
+  backButton: {
+    alignSelf: "flex-start",
+    minHeight: 24,
+    justifyContent: "center"
+  },
+  backButtonText: {
+    color: colors.accent,
+    fontSize: 13,
+    fontWeight: "600"
   },
   title: {
     color: colors.textPrimary,
@@ -824,60 +686,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.panel,
     gap: 7
   },
-  pairingMeta: {
-    gap: 2
-  },
   pairingTitle: {
     color: colors.textPrimary,
     fontSize: 13,
     fontWeight: "700"
-  },
-  pairingApiText: {
-    color: colors.textMuted,
-    fontSize: 11,
-    fontFamily: terminalFont
-  },
-  pairingControls: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8
-  },
-  pairingInput: {
-    flex: 1,
-    minHeight: 38,
-    borderRadius: layout.panelRadius,
-    borderWidth: 1,
-    borderColor: colors.commandBorder,
-    backgroundColor: colors.commandBackground,
-    color: colors.textPrimary,
-    paddingHorizontal: 10,
-    fontSize: 15,
-    fontFamily: terminalFont
-  },
-  pairingButton: {
-    minHeight: 38,
-    minWidth: 64,
-    borderRadius: layout.panelRadius,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.textPrimary,
-    paddingHorizontal: 12
-  },
-  pairingButtonPressed: {
-    backgroundColor: "#384247"
-  },
-  pairingButtonDisabled: {
-    backgroundColor: colors.panelMuted
-  },
-  pairingButtonText: {
-    color: colors.panel,
-    fontSize: 13,
-    fontWeight: "700"
-  },
-  pairingStatusText: {
-    color: colors.textSecondary,
-    fontSize: 12,
-    fontFamily: terminalFont
   },
   pairedCompactRow: {
     minHeight: 36,
