@@ -184,7 +184,7 @@ docs/runbooks/macos-agent-package.md
 
 - [x] 增加 `Tab`、`Esc`、方向键、`Ctrl+C` 按钮。
 - [x] `Ctrl+C` 发送 `\x03`，`Tab` 发送 `\t`，方向键发送 ANSI sequence。
-- [ ] 增加 `terminal.signal`，用于后续明确表达 `SIGINT`、`EOF`。
+- [x] 增加 `terminal.signal`，用于后续明确表达 `SIGINT`、`EOF`。
 - [x] 测试：点击快捷键后 session client 发送正确 payload。
 - [x] 运行：`pnpm test`。
 - [x] 提交：`git commit -m "feat: add mobile terminal shortcut keys"`。

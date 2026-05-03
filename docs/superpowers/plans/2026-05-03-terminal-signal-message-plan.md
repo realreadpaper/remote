@@ -37,7 +37,7 @@ docs/superpowers/records/feature-log.md
 - Modify: `packages/protocol/tests/messages.test.ts`
 - Modify: `packages/protocol/src/messages.ts`
 
-- [ ] **Step 1: Write failing protocol tests**
+- [x] **Step 1: Write failing protocol tests**
 
 新增：
 
@@ -61,7 +61,7 @@ it("rejects invalid terminal signal messages", () => {
 });
 ```
 
-- [ ] **Step 2: Run red**
+- [x] **Step 2: Run red**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/protocol test
@@ -69,7 +69,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/protocol test
 
 Expected: fail because `terminal.signal` is not in `ClientMessageSchema`.
 
-- [ ] **Step 3: Implement protocol schema**
+- [x] **Step 3: Implement protocol schema**
 
 在 `ClientMessageSchema` 的 terminal messages 附近加入：
 
@@ -81,7 +81,7 @@ message({
 })
 ```
 
-- [ ] **Step 4: Run green protocol tests**
+- [x] **Step 4: Run green protocol tests**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/protocol test
@@ -95,7 +95,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/protocol test
 - Modify: `apps/server/src/sessionHub.ts`
 - Modify: `apps/server/src/ws.ts`
 
-- [ ] **Step 1: Write failing server tests**
+- [x] **Step 1: Write failing server tests**
 
 在 `sessionHub.test.ts` 增加 signal routes from mobile to agent。
 
@@ -104,7 +104,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/protocol test
 - Mobile 发送 `terminal.signal SIGINT` 后 Agent 收到同一 message。
 - `terminal.signal` 在 input byte limit 已耗尽后仍可路由。
 
-- [ ] **Step 2: Run red**
+- [x] **Step 2: Run red**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test
@@ -112,7 +112,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test
 
 Expected: fail because server does not treat `terminal.signal` as routable.
 
-- [ ] **Step 3: Implement server routing**
+- [x] **Step 3: Implement server routing**
 
 - `MobileRoutableMessage` 加入 `terminal.signal`。
 - `AgentSendCallback` 加入 `terminal.signal`。
@@ -121,7 +121,7 @@ Expected: fail because server does not treat `terminal.signal` as routable.
 - `isMobileRoutableMessage()` 返回 true when `message.type === "terminal.signal"`。
 - 保持 `assertTerminalInputSize()` 和 input byte limiter 只处理 `terminal.input`。
 
-- [ ] **Step 4: Run green server tests**
+- [x] **Step 4: Run green server tests**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test
@@ -135,7 +135,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test
 - Modify: `apps/agent/src/terminalSession.ts`
 - Modify: `apps/agent/src/agentClient.ts`
 
-- [ ] **Step 1: Write failing Agent tests**
+- [x] **Step 1: Write failing Agent tests**
 
 覆盖：
 
@@ -143,7 +143,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test
 - `TerminalSession.sendSignal("EOF")` 写入 `\x04`。
 - `AgentClient` 收到 `terminal.signal` 后调用 session signal。
 
-- [ ] **Step 2: Run red**
+- [x] **Step 2: Run red**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent test
@@ -151,7 +151,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent test
 
 Expected: fail because `sendSignal()` and AgentClient handling do not exist.
 
-- [ ] **Step 3: Implement Agent signal handling**
+- [x] **Step 3: Implement Agent signal handling**
 
 - `TerminalSession` 新增 `sendSignal(signal: "SIGINT" | "EOF")`。
 - `SIGINT` 写入 `\x03`。
@@ -159,7 +159,7 @@ Expected: fail because `sendSignal()` and AgentClient handling do not exist.
 - `AgentClient.handleMessage()` 增加 `terminal.signal` branch。
 - 新增 `handleTerminalSignal()` 调用当前 session `sendSignal()`。
 
-- [ ] **Step 4: Run green Agent tests**
+- [x] **Step 4: Run green Agent tests**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent test
@@ -174,7 +174,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent test
 - Modify: `apps/mobile/src/components/terminalShortcuts.ts`
 - Modify: `apps/mobile/src/components/TerminalScreen.tsx`
 
-- [ ] **Step 1: Write failing Mobile tests**
+- [x] **Step 1: Write failing Mobile tests**
 
 覆盖：
 
@@ -182,7 +182,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent test
 - 未打开 session 时 signal 抛出明确错误。
 - `Ctrl+C` shortcut 是 signal action，其他快捷键是 input action。
 
-- [ ] **Step 2: Run red**
+- [x] **Step 2: Run red**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile test
@@ -190,7 +190,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile test
 
 Expected: fail because Mobile has no signal API/action.
 
-- [ ] **Step 3: Implement Mobile signal sending**
+- [x] **Step 3: Implement Mobile signal sending**
 
 - `SessionClient` 新增 `sendTerminalSignal(signal: "SIGINT" | "EOF")`。
 - `terminalShortcuts.ts` 把 shortcut 从 `{ label, payload }` 改为 discriminated action：
@@ -204,7 +204,7 @@ type TerminalShortcut =
 - `Ctrl+C` 使用 `{ label: "Ctrl+C", type: "signal", signal: "SIGINT" }`。
 - `TerminalScreen` 点击 signal shortcut 时调用 `client.sendTerminalSignal()`.
 
-- [ ] **Step 4: Run green Mobile tests**
+- [x] **Step 4: Run green Mobile tests**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile test
@@ -216,7 +216,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile test
 - Modify: `docs/superpowers/plans/2026-05-03-terminal-signal-message-plan.md`
 - Modify: `docs/superpowers/records/feature-log.md`
 
-- [ ] **Step 1: Full verification**
+- [x] **Step 1: Full verification**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm test
@@ -224,22 +224,22 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm build
 ```
 
-- [ ] **Step 2: Commit implementation**
+- [x] **Step 2: Commit implementation**
 
 ```bash
 git add packages/protocol/src/messages.ts packages/protocol/tests/messages.test.ts apps/server/src/sessionHub.ts apps/server/src/ws.ts apps/server/tests/sessionHub.test.ts apps/server/tests/ws.test.ts apps/agent/src/terminalSession.ts apps/agent/src/agentClient.ts apps/agent/tests/terminalSession.test.ts apps/agent/tests/agentClient.test.ts apps/mobile/src/protocol/sessionClient.ts apps/mobile/src/components/terminalShortcuts.ts apps/mobile/src/components/TerminalScreen.tsx apps/mobile/tests/sessionClient.test.ts apps/mobile/tests/terminalShortcuts.test.ts
 git commit -m "feat: route terminal signal messages"
 ```
 
-- [ ] **Step 3: Mark completed plan steps**
+- [x] **Step 3: Mark completed plan steps**
 
 把本计划执行过且验证通过的步骤改为 `- [x]`。
 
-- [ ] **Step 4: Record delivery**
+- [x] **Step 4: Record delivery**
 
 在 `docs/superpowers/records/feature-log.md` 追加设计提交、计划提交、实现提交、TDD 红绿记录、验证结果和风险。
 
-- [ ] **Step 5: Commit record**
+- [x] **Step 5: Commit record**
 
 ```bash
 git add docs/superpowers/plans/2026-05-03-terminal-signal-message-plan.md docs/superpowers/records/feature-log.md

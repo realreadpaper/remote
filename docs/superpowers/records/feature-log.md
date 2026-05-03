@@ -1128,3 +1128,67 @@
 - 准备真实域名和 VPS 后按 runbook 执行外网蜂窝验收。
 - 决定云端持久化方案，优先 SQLite/Postgres，避免多实例 JSON 写入风险。
 - 推进 iOS TestFlight 和 macOS Agent 可安装版本。
+
+## 2026-05-03 Terminal Signal Message
+
+**状态：** completed
+
+**提交：**
+- `861fb49` `docs: design terminal signal message`
+- `01e10ee` `docs: plan terminal signal message`
+- `9ed68fc` `feat: route terminal signal messages`
+
+**实现内容：**
+- 协议新增 Mobile -> Agent `terminal.signal` client message。
+- 支持 `SIGINT` 和 `EOF` 两种 signal。
+- Server 将 `terminal.signal` 作为 session-owned routable message 转发给 Agent。
+- `terminal.signal` 不计入单条 terminal input size guard，也不计入 Mobile input byte rate limiter。
+- Agent `TerminalSession.sendSignal()` 将 `SIGINT` 映射为 PTY `\x03`，将 `EOF` 映射为 PTY `\x04`。
+- AgentClient 收到 `terminal.signal` 后路由到对应 `TerminalSession`。
+- Mobile `SessionClient.sendTerminalSignal()` 发送 `terminal.signal`。
+- Mobile `Ctrl+C` shortcut 改发 `terminal.signal SIGINT`，其他快捷键继续发送 input payload。
+
+**涉及文件：**
+- `docs/superpowers/specs/2026-05-03-terminal-signal-message-design.md`
+- `docs/superpowers/plans/2026-05-03-terminal-signal-message-plan.md`
+- `docs/superpowers/plans/2026-05-02-ios-mac-installable-mvp-plan.md`
+- `packages/protocol/src/messages.ts`
+- `packages/protocol/tests/messages.test.ts`
+- `apps/server/src/sessionHub.ts`
+- `apps/server/src/ws.ts`
+- `apps/server/tests/sessionHub.test.ts`
+- `apps/server/tests/ws.test.ts`
+- `apps/agent/src/terminalSession.ts`
+- `apps/agent/src/agentClient.ts`
+- `apps/agent/tests/terminalSession.test.ts`
+- `apps/agent/tests/agentClient.test.ts`
+- `apps/mobile/src/protocol/sessionClient.ts`
+- `apps/mobile/src/components/terminalShortcuts.ts`
+- `apps/mobile/src/components/TerminalScreen.tsx`
+- `apps/mobile/tests/sessionClient.test.ts`
+- `apps/mobile/tests/terminalShortcuts.test.ts`
+
+**TDD 记录：**
+- Protocol 红灯：`PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/protocol test` 失败，`terminal.signal` 不在 client discriminator union 中。
+- Protocol 绿灯：加入 `terminal.signal` schema 后，protocol 测试通过，19 tests passed。
+- Server 红灯：`PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test` 失败，Mobile signal 没有转发给 Agent。
+- Server 绿灯：接入 `MobileRoutableMessage` 和 `SessionHub.routeFromMobile()` 后，Server 测试通过，104 tests passed。
+- Agent 红灯：`PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent test` 失败，`sendSignal()` 不存在，AgentClient 未处理 signal。
+- Agent 绿灯：实现 PTY 映射和 AgentClient signal 分发后，Agent 测试通过，38 tests passed。
+- Mobile 红灯：`PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile test` 失败，`sendTerminalSignal()` 不存在，Ctrl+C 仍是 input payload。
+- Mobile 绿灯：实现 signal API 和 shortcut action 后，Mobile 测试通过，47 tests passed。
+
+**验证：**
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm test`: pass，208 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm build`: pass。
+
+**已知风险：**
+- 当前实现仍是 PTY 控制字节映射，不是 OS-level process signal。
+- `EOF` 对不同 shell/程序的效果取决于 PTY 前台程序行为。
+- 旧客户端仍可通过 `terminal.input` 发送 `\x03`，Server 保持兼容。
+
+**后续：**
+- 增加 `terminal.signal` 的 UI/审计语义。
+- 继续实现 terminal session recovery 和 snapshot 恢复。
+- macOS Agent 桌面壳后续可把 signal 暴露为更明确的控制按钮。
