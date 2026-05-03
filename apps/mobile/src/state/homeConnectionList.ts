@@ -53,7 +53,7 @@ export function getOnlineStatusNotice(state: OnlineStatusState, savedConnectionC
   return null;
 }
 
-export function shouldUseDevelopmentPreviewConnections(env: RuntimeEnv = process.env): boolean {
+export function shouldUseDevelopmentPreviewConnections(env: RuntimeEnv = readRuntimeEnv()): boolean {
   return env.EXPO_PUBLIC_REMOTE_DEMO_CONNECTIONS === "1" && env.EXPO_PUBLIC_REMOTE_RELEASE !== "1";
 }
 
@@ -89,6 +89,11 @@ function buildStatus(
   return deviceStatus.online
     ? { label: "Online", tone: "online" }
     : { label: "Offline", tone: "offline" };
+}
+
+function readRuntimeEnv(): RuntimeEnv {
+  const processLike = (globalThis as { process?: { env?: RuntimeEnv } }).process;
+  return processLike?.env ?? {};
 }
 
 function formatPairedAt(value: string, now: Date): string {

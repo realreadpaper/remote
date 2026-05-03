@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   buildConnectionListItems,
   buildDeviceStatusLookup,
@@ -23,6 +23,10 @@ const expiredRecord: PairingTokenRecord = {
 };
 
 describe("home connection list", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it("builds ready device cards with a concise status and subtitle", () => {
     expect(
       buildConnectionListItems([readyRecord], {
@@ -104,6 +108,12 @@ describe("home connection list", () => {
       })
     ).toBe(false);
     expect(shouldUseDevelopmentPreviewConnections({})).toBe(false);
+  });
+
+  it("does not enable preview connections when process is unavailable", () => {
+    vi.stubGlobal("process", undefined);
+
+    expect(shouldUseDevelopmentPreviewConnections()).toBe(false);
   });
 
   it("builds stable preview connections for simulator visual checks", () => {

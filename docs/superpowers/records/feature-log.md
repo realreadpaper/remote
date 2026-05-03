@@ -2155,3 +2155,42 @@
 - `EXPO_PUBLIC_REMOTE_RELEASE=1 EXPO_PUBLIC_REMOTE_DEMO_CONNECTIONS=1 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile exec expo run:ios --device "iPhone 15"`: build succeeded，首页已打开，无根组件配置异常。
 - `EXPO_PUBLIC_REMOTE_RELEASE=1 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile exec expo run:ios --device "iPhone 15"`: build succeeded，首页已打开，无根组件配置异常。
 - iOS 模拟器截图：`/tmp/remote-terminal-release-home-fixed.png`，确认 release 配置不完整时首页可打开。
+
+## 2026-05-03 iOS Process Env Startup Crash Fix
+
+**状态：** completed
+
+**问题现象：**
+- 用户反馈真机“直接崩溃”，模拟器开发构建不稳定复现。
+
+**根因：**
+- 移动端多个函数默认参数直接写了 `env = process.env`。
+- React Native 真机/非开发运行时不能假设存在 Node 风格 `process` 全局；一旦 `process` 不存在，函数调用阶段会先执行默认参数表达式并抛 `ReferenceError` / `TypeError`，页面来不及降级。
+
+**实现内容：**
+- `runtimeConfig`、`homeConnectionList`、`homeDeviceStatus` 都改为通过 `globalThis.process?.env ?? {}` 安全读取环境变量。
+- 移除移动端源码中直接 `process.env` 默认参数入口。
+- 增加无 `process` 全局的回归测试，覆盖首页状态、运行时配置和开发预览连接判断。
+
+**涉及文件：**
+- `apps/mobile/src/config/runtimeConfig.ts`
+- `apps/mobile/src/state/homeConnectionList.ts`
+- `apps/mobile/src/state/homeDeviceStatus.ts`
+- `apps/mobile/tests/runtimeConfig.test.ts`
+- `apps/mobile/tests/homeConnectionList.test.ts`
+- `apps/mobile/tests/homeDeviceStatus.test.ts`
+- `docs/superpowers/records/feature-log.md`
+
+**TDD 记录：**
+- 红灯：将测试里的 `globalThis.process` stub 为 `undefined` 后，`tryLoadMobileRuntimeConfig()`、`createOptionalHomeDeviceStatusClient()`、`shouldUseDevelopmentPreviewConnections()` 均因读取 `process.env` 失败。
+- 绿灯：实现安全 env 读取后，专项测试通过。
+
+**验证：**
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile test -- runtimeConfig.test.ts homeDeviceStatus.test.ts homeConnectionList.test.ts`: pass，78 tests passed。
+- `rg "process\\.env|= process\\.env" apps/mobile/src apps/mobile/tests -n`: pass，无匹配。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile test`: pass，78 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm test`: pass，284 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm build`: pass。
+- 清理 Metro 缓存、卸载模拟器旧 App 后执行 `EXPO_PUBLIC_REMOTE_RELEASE=1 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile exec expo run:ios --device "iPhone 15"`: build succeeded，首页可打开。
+- iOS 模拟器截图：`/tmp/remote-terminal-no-process-env-fixed.png`。

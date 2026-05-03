@@ -1,7 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { loadMobileRuntimeConfig, shouldAutoConnectTerminal, tryLoadMobileRuntimeConfig } from "../src/config/runtimeConfig";
 
 describe("mobile runtime config", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it("uses simulator-friendly defaults", () => {
     expect(loadMobileRuntimeConfig({})).toEqual({
       sessionUrl: "ws://127.0.0.1:8787/ws/mobile",
@@ -151,6 +155,18 @@ describe("mobile runtime config", () => {
     ).toEqual({
       ok: false,
       error: "EXPO_PUBLIC_REMOTE_DEV_TOKEN is required when EXPO_PUBLIC_REMOTE_RELEASE=1"
+    });
+  });
+
+  it("uses defaults when the React Native runtime has no process global", () => {
+    vi.stubGlobal("process", undefined);
+
+    expect(tryLoadMobileRuntimeConfig()).toMatchObject({
+      ok: true,
+      config: {
+        apiBaseUrl: "http://127.0.0.1:8787",
+        sessionUrl: "ws://127.0.0.1:8787/ws/mobile"
+      }
     });
   });
 

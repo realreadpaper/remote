@@ -3,7 +3,7 @@ import { DeviceStatusClient } from "../protocol/deviceStatusClient";
 
 type RuntimeEnv = Record<string, string | undefined>;
 
-export function createOptionalHomeDeviceStatusClient(env: RuntimeEnv = process.env): DeviceStatusClient | null {
+export function createOptionalHomeDeviceStatusClient(env: RuntimeEnv = readRuntimeEnv()): DeviceStatusClient | null {
   try {
     const runtimeConfig = loadMobileRuntimeConfig(env);
     return new DeviceStatusClient({
@@ -13,4 +13,9 @@ export function createOptionalHomeDeviceStatusClient(env: RuntimeEnv = process.e
   } catch {
     return null;
   }
+}
+
+function readRuntimeEnv(): RuntimeEnv {
+  const processLike = (globalThis as { process?: { env?: RuntimeEnv } }).process;
+  return processLike?.env ?? {};
 }

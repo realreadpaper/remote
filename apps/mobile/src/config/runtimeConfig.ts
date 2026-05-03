@@ -25,7 +25,7 @@ export type MobileRuntimeConfigResult =
   | { ok: true; config: MobileRuntimeConfig }
   | { ok: false; error: string };
 
-export function loadMobileRuntimeConfig(env: RuntimeEnv = process.env): MobileRuntimeConfig {
+export function loadMobileRuntimeConfig(env: RuntimeEnv = readRuntimeEnv()): MobileRuntimeConfig {
   const smokeCommand = env.EXPO_PUBLIC_REMOTE_SMOKE_COMMAND?.trim();
   const autoPairingCode = normalizeOptional(env.EXPO_PUBLIC_REMOTE_AUTO_PAIRING_CODE);
   const release = env.EXPO_PUBLIC_REMOTE_RELEASE === "1";
@@ -63,7 +63,7 @@ export function loadMobileRuntimeConfig(env: RuntimeEnv = process.env): MobileRu
   };
 }
 
-export function tryLoadMobileRuntimeConfig(env: RuntimeEnv = process.env): MobileRuntimeConfigResult {
+export function tryLoadMobileRuntimeConfig(env: RuntimeEnv = readRuntimeEnv()): MobileRuntimeConfigResult {
   try {
     return { ok: true, config: loadMobileRuntimeConfig(env) };
   } catch (error) {
@@ -72,6 +72,11 @@ export function tryLoadMobileRuntimeConfig(env: RuntimeEnv = process.env): Mobil
       error: error instanceof Error ? error.message : "Remote server config is invalid."
     };
   }
+}
+
+function readRuntimeEnv(): RuntimeEnv {
+  const processLike = (globalThis as { process?: { env?: RuntimeEnv } }).process;
+  return processLike?.env ?? {};
 }
 
 function isPlaceholderToken(token: string): boolean {
