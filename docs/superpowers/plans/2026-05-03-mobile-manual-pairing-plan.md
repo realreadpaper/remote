@@ -26,7 +26,7 @@ docs/superpowers/records/feature-log.md
 **Files:**
 - Modify: `apps/mobile/tests/runtimeConfig.test.ts`
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 覆盖：
 
@@ -35,7 +35,7 @@ docs/superpowers/records/feature-log.md
 - `EXPO_PUBLIC_REMOTE_API_URL` 可覆盖推导。
 - 默认 `mobileClientId` 为 `mobile-dev`，默认 `mobileName` 为 `iPhone`。
 
-- [ ] **Step 2: Run red test**
+- [x] **Step 2: Run red test**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile test
@@ -48,7 +48,7 @@ Expected: fail because config does not expose API fields.
 **Files:**
 - Modify: `apps/mobile/src/config/runtimeConfig.ts`
 
-- [ ] **Step 1: Add fields**
+- [x] **Step 1: Add fields**
 
 新增：
 
@@ -57,7 +57,7 @@ Expected: fail because config does not expose API fields.
 - `mobileClientId`
 - `mobileName`
 
-- [ ] **Step 2: Run green test**
+- [x] **Step 2: Run green test**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile test
@@ -69,7 +69,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile test
 - Create: `apps/mobile/src/protocol/pairingClient.ts`
 - Create: `apps/mobile/tests/pairingClient.test.ts`
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 覆盖：
 
@@ -77,20 +77,20 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile test
 - HTTP 400 使用 `{ error }`。
 - 响应缺少 `pairingRequestId` 失败。
 
-- [ ] **Step 2: Run red test**
+- [x] **Step 2: Run red test**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile test
 ```
 
-- [ ] **Step 3: Implement pairing client**
+- [x] **Step 3: Implement pairing client**
 
 导出：
 
 - `PairingClient`
 - `PairingRequestResult`
 
-- [ ] **Step 4: Run green test**
+- [x] **Step 4: Run green test**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile test
@@ -101,19 +101,19 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile test
 **Files:**
 - Modify: `apps/mobile/src/components/TerminalScreen.tsx`
 
-- [ ] **Step 1: Add UI state**
+- [x] **Step 1: Add UI state**
 
 新增 pairing code、pairing status、pairing error state。
 
-- [ ] **Step 2: Add compact panel**
+- [x] **Step 2: Add compact panel**
 
 放在 header 和 error banner 之间，包含输入框和 `Pair` 按钮。
 
-- [ ] **Step 3: Wire submit**
+- [x] **Step 3: Wire submit**
 
 调用 `PairingClient.requestPairing()`，成功后显示 pending 并 append local output。
 
-- [ ] **Step 4: Run mobile tests**
+- [x] **Step 4: Run mobile tests**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile test
@@ -128,7 +128,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile test
 - Modify: `apps/mobile/tests/runtimeConfig.test.ts`
 - Create: `apps/mobile/tests/pairingClient.test.ts`
 
-- [ ] **Step 1: Full verification**
+- [x] **Step 1: Full verification**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm test
@@ -136,7 +136,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm build
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add apps/mobile/src/config/runtimeConfig.ts apps/mobile/src/protocol/pairingClient.ts apps/mobile/src/components/TerminalScreen.tsx apps/mobile/tests/runtimeConfig.test.ts apps/mobile/tests/pairingClient.test.ts
@@ -148,11 +148,11 @@ git commit -m "feat: add mobile manual pairing flow"
 **Files:**
 - Modify: `docs/superpowers/records/feature-log.md`
 
-- [ ] **Step 1: Update feature log**
+- [x] **Step 1: Update feature log**
 
 记录提交、验证命令、风险和下一步扫码/secure storage。
 
-- [ ] **Step 2: Commit record**
+- [x] **Step 2: Commit record**
 
 ```bash
 git add docs/superpowers/records/feature-log.md

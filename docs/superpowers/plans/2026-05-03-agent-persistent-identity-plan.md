@@ -25,7 +25,7 @@ docs/superpowers/records/feature-log.md
 **Files:**
 - Create: `apps/agent/tests/identity.test.ts`
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 测试：
 
@@ -35,7 +35,7 @@ docs/superpowers/records/feature-log.md
 - 缺失关键字段抛出 `Agent identity file is invalid`。
 - 默认路径是 `~/.remote-terminal-agent/identity.json`。
 
-- [ ] **Step 2: Run red test**
+- [x] **Step 2: Run red test**
 
 Run:
 
@@ -50,7 +50,7 @@ Expected: fail because `../src/identity.js` does not exist.
 **Files:**
 - Create: `apps/agent/src/identity.ts`
 
-- [ ] **Step 1: Implement types and default path**
+- [x] **Step 1: Implement types and default path**
 
 导出：
 
@@ -58,15 +58,15 @@ Expected: fail because `../src/identity.js` does not exist.
 - `DeviceIdentityStore`
 - `getDefaultIdentityPath(homeDir = os.homedir())`
 
-- [ ] **Step 2: Implement file store**
+- [x] **Step 2: Implement file store**
 
 文件 store 负责读取 JSON、strict 校验、创建目录、保存 JSON。
 
-- [ ] **Step 3: Implement load-or-create**
+- [x] **Step 3: Implement load-or-create**
 
 `loadOrCreateDeviceIdentity(options?)` 读取已有身份；不存在时用 `crypto.randomUUID()` 和 `crypto.generateKeyPairSync("ed25519")` 创建身份。
 
-- [ ] **Step 4: Run green test**
+- [x] **Step 4: Run green test**
 
 Run:
 
@@ -82,11 +82,11 @@ Expected: identity tests pass.
 - Modify: `apps/agent/src/config.ts`
 - Modify: `apps/agent/tests/config.test.ts`
 
-- [ ] **Step 1: Write failing config test**
+- [x] **Step 1: Write failing config test**
 
 测试未设置 `REMOTE_DEVICE_ID` 时，`loadAgentConfig()` 使用注入的 identity `deviceId`。
 
-- [ ] **Step 2: Run red test**
+- [x] **Step 2: Run red test**
 
 Run:
 
@@ -96,11 +96,11 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent test
 
 Expected: fail because `loadAgentConfig` still derives `${hostname}-dev`.
 
-- [ ] **Step 3: Update config implementation**
+- [x] **Step 3: Update config implementation**
 
 让 `loadAgentConfig(options?)` 接收可选 `loadIdentity` 注入；默认调用 `loadOrCreateDeviceIdentity()`。
 
-- [ ] **Step 4: Run green test**
+- [x] **Step 4: Run green test**
 
 Run:
 
@@ -118,19 +118,19 @@ Expected: all Agent tests pass.
 - Create: `apps/agent/tests/identity.test.ts`
 - Modify: `apps/agent/tests/config.test.ts`
 
-- [ ] **Step 1: Typecheck Agent**
+- [x] **Step 1: Typecheck Agent**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent typecheck
 ```
 
-- [ ] **Step 2: Run workspace tests**
+- [x] **Step 2: Run workspace tests**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm test
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add apps/agent/src/identity.ts apps/agent/src/config.ts apps/agent/tests/identity.test.ts apps/agent/tests/config.test.ts
@@ -142,11 +142,11 @@ git commit -m "feat: persist agent device identity"
 **Files:**
 - Modify: `docs/superpowers/records/feature-log.md`
 
-- [ ] **Step 1: Update feature log**
+- [x] **Step 1: Update feature log**
 
 记录提交、验证命令、已知风险和下一步 Server 配对状态机。
 
-- [ ] **Step 2: Commit record**
+- [x] **Step 2: Commit record**
 
 ```bash
 git add docs/superpowers/records/feature-log.md

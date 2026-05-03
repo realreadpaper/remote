@@ -105,7 +105,7 @@ Responsibility boundaries:
 - Create: `vitest.config.ts`
 - Create: `.gitignore`
 
-- [ ] **Step 1: Initialize git repository**
+- [x] **Step 1: Initialize git repository**
 
 Run:
 
@@ -115,7 +115,7 @@ git init
 
 Expected: repository initialized in `/Users/hejianglong/Desktop/code/remote`.
 
-- [ ] **Step 2: Create root package manifest**
+- [x] **Step 2: Create root package manifest**
 
 Create `package.json`:
 
@@ -141,7 +141,7 @@ Create `package.json`:
 }
 ```
 
-- [ ] **Step 3: Create pnpm workspace config**
+- [x] **Step 3: Create pnpm workspace config**
 
 Create `pnpm-workspace.yaml`:
 
@@ -151,7 +151,7 @@ packages:
   - "packages/*"
 ```
 
-- [ ] **Step 4: Create shared TypeScript config**
+- [x] **Step 4: Create shared TypeScript config**
 
 Create `tsconfig.base.json`:
 
@@ -172,7 +172,7 @@ Create `tsconfig.base.json`:
 }
 ```
 
-- [ ] **Step 5: Create Vitest config**
+- [x] **Step 5: Create Vitest config**
 
 Create `vitest.config.ts`:
 
@@ -187,7 +187,7 @@ export default defineConfig({
 });
 ```
 
-- [ ] **Step 6: Create gitignore**
+- [x] **Step 6: Create gitignore**
 
 Create `.gitignore`:
 
@@ -201,7 +201,7 @@ dist/
 coverage/
 ```
 
-- [ ] **Step 7: Install dependencies**
+- [x] **Step 7: Install dependencies**
 
 Run:
 
@@ -211,7 +211,7 @@ pnpm install
 
 Expected: lockfile created and install exits with code 0.
 
-- [ ] **Step 8: Commit scaffold**
+- [x] **Step 8: Commit scaffold**
 
 Run:
 
@@ -232,7 +232,7 @@ Expected: one commit with root workspace files.
 - Create: `packages/protocol/src/index.ts`
 - Test: `packages/protocol/tests/messages.test.ts`
 
-- [ ] **Step 1: Create package manifest**
+- [x] **Step 1: Create package manifest**
 
 Create `packages/protocol/package.json`:
 
@@ -255,7 +255,7 @@ Create `packages/protocol/package.json`:
 }
 ```
 
-- [ ] **Step 2: Create package TypeScript config**
+- [x] **Step 2: Create package TypeScript config**
 
 Create `packages/protocol/tsconfig.json`:
 
@@ -270,7 +270,7 @@ Create `packages/protocol/tsconfig.json`:
 }
 ```
 
-- [ ] **Step 3: Write failing protocol tests**
+- [x] **Step 3: Write failing protocol tests**
 
 Create `packages/protocol/tests/messages.test.ts`:
 
@@ -313,7 +313,7 @@ describe("protocol messages", () => {
 });
 ```
 
-- [ ] **Step 4: Run protocol tests and verify failure**
+- [x] **Step 4: Run protocol tests and verify failure**
 
 Run:
 
@@ -323,7 +323,7 @@ pnpm --filter @remote/protocol test
 
 Expected: FAIL because `../src/messages` does not exist.
 
-- [ ] **Step 5: Implement channel names**
+- [x] **Step 5: Implement channel names**
 
 Create `packages/protocol/src/channels.ts`:
 
@@ -338,7 +338,7 @@ export const Channel = {
 export type ChannelName = (typeof Channel)[keyof typeof Channel];
 ```
 
-- [ ] **Step 6: Implement message schemas**
+- [x] **Step 6: Implement message schemas**
 
 Create `packages/protocol/src/messages.ts`:
 
@@ -414,7 +414,7 @@ export function encodeMessage(message: ClientMessage | ServerMessage): string {
 }
 ```
 
-- [ ] **Step 7: Export protocol API**
+- [x] **Step 7: Export protocol API**
 
 Create `packages/protocol/src/index.ts`:
 
@@ -423,7 +423,7 @@ export * from "./channels.js";
 export * from "./messages.js";
 ```
 
-- [ ] **Step 8: Run protocol tests and typecheck**
+- [x] **Step 8: Run protocol tests and typecheck**
 
 Run:
 
@@ -434,7 +434,7 @@ pnpm --filter @remote/protocol typecheck
 
 Expected: tests pass and typecheck exits with code 0.
 
-- [ ] **Step 9: Commit protocol package**
+- [x] **Step 9: Commit protocol package**
 
 Run:
 
@@ -453,7 +453,7 @@ Expected: one commit containing protocol package and tests.
 - Create: `apps/server/src/deviceRegistry.ts`
 - Test: `apps/server/tests/deviceRegistry.test.ts`
 
-- [ ] **Step 1: Create server package manifest**
+- [x] **Step 1: Create server package manifest**
 
 Create `apps/server/package.json`:
 
@@ -482,7 +482,7 @@ Create `apps/server/package.json`:
 }
 ```
 
-- [ ] **Step 2: Create server TypeScript config**
+- [x] **Step 2: Create server TypeScript config**
 
 Create `apps/server/tsconfig.json`:
 
@@ -497,7 +497,7 @@ Create `apps/server/tsconfig.json`:
 }
 ```
 
-- [ ] **Step 3: Write failing registry tests**
+- [x] **Step 3: Write failing registry tests**
 
 Create `apps/server/tests/deviceRegistry.test.ts`:
 
@@ -537,7 +537,7 @@ describe("DeviceRegistry", () => {
 });
 ```
 
-- [ ] **Step 4: Run registry tests and verify failure**
+- [x] **Step 4: Run registry tests and verify failure**
 
 Run:
 
@@ -547,7 +547,7 @@ pnpm --filter @remote/server test
 
 Expected: FAIL because `../src/deviceRegistry` does not exist.
 
-- [ ] **Step 5: Implement device registry**
+- [x] **Step 5: Implement device registry**
 
 Create `apps/server/src/deviceRegistry.ts`:
 
@@ -600,7 +600,7 @@ export class DeviceRegistry {
 }
 ```
 
-- [ ] **Step 6: Run registry tests**
+- [x] **Step 6: Run registry tests**
 
 Run:
 
@@ -611,7 +611,7 @@ pnpm --filter @remote/server typecheck
 
 Expected: tests pass and typecheck exits with code 0.
 
-- [ ] **Step 7: Commit registry**
+- [x] **Step 7: Commit registry**
 
 Run:
 
@@ -628,7 +628,7 @@ Expected: one commit containing server package and registry tests.
 - Create: `apps/server/src/sessionHub.ts`
 - Test: `apps/server/tests/sessionHub.test.ts`
 
-- [ ] **Step 1: Write failing session hub tests**
+- [x] **Step 1: Write failing session hub tests**
 
 Create `apps/server/tests/sessionHub.test.ts`:
 
@@ -697,7 +697,7 @@ describe("SessionHub", () => {
 });
 ```
 
-- [ ] **Step 2: Run tests and verify failure**
+- [x] **Step 2: Run tests and verify failure**
 
 Run:
 
@@ -707,7 +707,7 @@ pnpm --filter @remote/server test
 
 Expected: FAIL because `../src/sessionHub` does not exist.
 
-- [ ] **Step 3: Implement session hub**
+- [x] **Step 3: Implement session hub**
 
 Create `apps/server/src/sessionHub.ts`:
 
@@ -788,7 +788,7 @@ export class SessionHub {
 }
 ```
 
-- [ ] **Step 4: Run session hub tests**
+- [x] **Step 4: Run session hub tests**
 
 Run:
 
@@ -799,7 +799,7 @@ pnpm --filter @remote/server typecheck
 
 Expected: tests pass and typecheck exits with code 0.
 
-- [ ] **Step 5: Commit session hub**
+- [x] **Step 5: Commit session hub**
 
 Run:
 
@@ -816,7 +816,7 @@ Expected: one commit containing session routing.
 - Create: `apps/server/src/ws.ts`
 - Create: `apps/server/src/index.ts`
 
-- [ ] **Step 1: Implement WebSocket routes**
+- [x] **Step 1: Implement WebSocket routes**
 
 Create `apps/server/src/ws.ts`:
 
@@ -924,7 +924,7 @@ export function registerWsRoutes(app: FastifyInstance): void {
 }
 ```
 
-- [ ] **Step 2: Implement server entrypoint**
+- [x] **Step 2: Implement server entrypoint**
 
 Create `apps/server/src/index.ts`:
 
@@ -943,7 +943,7 @@ const host = process.env.HOST ?? "127.0.0.1";
 await app.listen({ port, host });
 ```
 
-- [ ] **Step 3: Run server typecheck**
+- [x] **Step 3: Run server typecheck**
 
 Run:
 
@@ -953,7 +953,7 @@ pnpm --filter @remote/server typecheck
 
 Expected: typecheck exits with code 0.
 
-- [ ] **Step 4: Run server locally**
+- [x] **Step 4: Run server locally**
 
 Run:
 
@@ -963,7 +963,7 @@ pnpm dev:server
 
 Expected: Fastify logs show server listening on `127.0.0.1:8787`.
 
-- [ ] **Step 5: Verify health endpoint**
+- [x] **Step 5: Verify health endpoint**
 
 In another terminal, run:
 
@@ -977,7 +977,7 @@ Expected:
 {"ok":true}
 ```
 
-- [ ] **Step 6: Commit WebSocket API**
+- [x] **Step 6: Commit WebSocket API**
 
 Run:
 
@@ -996,7 +996,7 @@ Expected: one commit containing server WebSocket API.
 - Create: `apps/agent/src/terminalSession.ts`
 - Test: `apps/agent/tests/terminalSession.test.ts`
 
-- [ ] **Step 1: Create agent package manifest**
+- [x] **Step 1: Create agent package manifest**
 
 Create `apps/agent/package.json`:
 
@@ -1023,7 +1023,7 @@ Create `apps/agent/package.json`:
 }
 ```
 
-- [ ] **Step 2: Create agent TypeScript config**
+- [x] **Step 2: Create agent TypeScript config**
 
 Create `apps/agent/tsconfig.json`:
 
@@ -1038,7 +1038,7 @@ Create `apps/agent/tsconfig.json`:
 }
 ```
 
-- [ ] **Step 3: Write failing terminal session tests**
+- [x] **Step 3: Write failing terminal session tests**
 
 Create `apps/agent/tests/terminalSession.test.ts`:
 
@@ -1079,7 +1079,7 @@ describe("TerminalSession", () => {
 });
 ```
 
-- [ ] **Step 4: Run tests and verify failure**
+- [x] **Step 4: Run tests and verify failure**
 
 Run:
 
@@ -1089,7 +1089,7 @@ pnpm --filter @remote/agent test
 
 Expected: FAIL because `../src/terminalSession` does not exist.
 
-- [ ] **Step 5: Implement terminal session wrapper**
+- [x] **Step 5: Implement terminal session wrapper**
 
 Create `apps/agent/src/terminalSession.ts`:
 
@@ -1130,7 +1130,7 @@ export class TerminalSession {
 }
 ```
 
-- [ ] **Step 6: Run agent tests**
+- [x] **Step 6: Run agent tests**
 
 Run:
 
@@ -1141,7 +1141,7 @@ pnpm --filter @remote/agent typecheck
 
 Expected: tests pass and typecheck exits with code 0.
 
-- [ ] **Step 7: Commit terminal session wrapper**
+- [x] **Step 7: Commit terminal session wrapper**
 
 Run:
 
@@ -1159,7 +1159,7 @@ Expected: one commit containing agent package and terminal tests.
 - Create: `apps/agent/src/agentClient.ts`
 - Create: `apps/agent/src/index.ts`
 
-- [ ] **Step 1: Implement agent config**
+- [x] **Step 1: Implement agent config**
 
 Create `apps/agent/src/config.ts`:
 
@@ -1183,7 +1183,7 @@ export function loadAgentConfig(): AgentConfig {
 }
 ```
 
-- [ ] **Step 2: Implement agent WebSocket client**
+- [x] **Step 2: Implement agent WebSocket client**
 
 Create `apps/agent/src/agentClient.ts`:
 
@@ -1274,7 +1274,7 @@ export class AgentClient {
 }
 ```
 
-- [ ] **Step 3: Implement agent entrypoint**
+- [x] **Step 3: Implement agent entrypoint**
 
 Create `apps/agent/src/index.ts`:
 
@@ -1286,7 +1286,7 @@ const client = new AgentClient(loadAgentConfig());
 client.connect();
 ```
 
-- [ ] **Step 4: Run typecheck**
+- [x] **Step 4: Run typecheck**
 
 Run:
 
@@ -1296,7 +1296,7 @@ pnpm --filter @remote/agent typecheck
 
 Expected: typecheck exits with code 0.
 
-- [ ] **Step 5: Commit agent client**
+- [x] **Step 5: Commit agent client**
 
 Run:
 
@@ -1316,7 +1316,7 @@ Expected: one commit containing Agent WebSocket client.
 - Create: `apps/mobile/src/state/terminalStore.ts`
 - Test: `apps/mobile/tests/terminalStore.test.ts`
 
-- [ ] **Step 1: Create mobile package manifest**
+- [x] **Step 1: Create mobile package manifest**
 
 Create `apps/mobile/package.json`:
 
@@ -1343,7 +1343,7 @@ Create `apps/mobile/package.json`:
 }
 ```
 
-- [ ] **Step 2: Create mobile TypeScript config**
+- [x] **Step 2: Create mobile TypeScript config**
 
 Create `apps/mobile/tsconfig.json`:
 
@@ -1358,7 +1358,7 @@ Create `apps/mobile/tsconfig.json`:
 }
 ```
 
-- [ ] **Step 3: Create Expo app config**
+- [x] **Step 3: Create Expo app config**
 
 Create `apps/mobile/app.json`:
 
@@ -1374,7 +1374,7 @@ Create `apps/mobile/app.json`:
 }
 ```
 
-- [ ] **Step 4: Write failing terminal store tests**
+- [x] **Step 4: Write failing terminal store tests**
 
 Create `apps/mobile/tests/terminalStore.test.ts`:
 
@@ -1409,7 +1409,7 @@ describe("terminal store", () => {
 });
 ```
 
-- [ ] **Step 5: Run tests and verify failure**
+- [x] **Step 5: Run tests and verify failure**
 
 Run:
 
@@ -1419,7 +1419,7 @@ pnpm --filter @remote/mobile test
 
 Expected: FAIL because `../src/state/terminalStore` does not exist.
 
-- [ ] **Step 6: Implement terminal state**
+- [x] **Step 6: Implement terminal state**
 
 Create `apps/mobile/src/state/terminalStore.ts`:
 
@@ -1471,7 +1471,7 @@ export function createTerminalState() {
 }
 ```
 
-- [ ] **Step 7: Run mobile state tests**
+- [x] **Step 7: Run mobile state tests**
 
 Run:
 
@@ -1482,7 +1482,7 @@ pnpm --filter @remote/mobile typecheck
 
 Expected: tests pass and typecheck exits with code 0.
 
-- [ ] **Step 8: Commit mobile state**
+- [x] **Step 8: Commit mobile state**
 
 Run:
 
@@ -1500,7 +1500,7 @@ Expected: one commit containing mobile package and terminal state tests.
 - Create: `apps/mobile/src/components/TerminalScreen.tsx`
 - Create: `apps/mobile/App.tsx`
 
-- [ ] **Step 1: Implement mobile session client**
+- [x] **Step 1: Implement mobile session client**
 
 Create `apps/mobile/src/protocol/sessionClient.ts`:
 
@@ -1557,7 +1557,7 @@ export class SessionClient {
 }
 ```
 
-- [ ] **Step 2: Implement terminal screen**
+- [x] **Step 2: Implement terminal screen**
 
 Create `apps/mobile/src/components/TerminalScreen.tsx`:
 
@@ -1673,7 +1673,7 @@ const styles = StyleSheet.create({
 });
 ```
 
-- [ ] **Step 3: Implement mobile app entrypoint**
+- [x] **Step 3: Implement mobile app entrypoint**
 
 Create `apps/mobile/App.tsx`:
 
@@ -1685,7 +1685,7 @@ export default function App() {
 }
 ```
 
-- [ ] **Step 4: Run mobile typecheck**
+- [x] **Step 4: Run mobile typecheck**
 
 Run:
 
@@ -1695,7 +1695,7 @@ pnpm --filter @remote/mobile typecheck
 
 Expected: typecheck exits with code 0.
 
-- [ ] **Step 5: Commit mobile terminal UI**
+- [x] **Step 5: Commit mobile terminal UI**
 
 Run:
 
@@ -1711,7 +1711,7 @@ Expected: one commit containing mobile session client and terminal screen.
 **Files:**
 - Modify: `README.md`
 
-- [ ] **Step 1: Create local runbook**
+- [x] **Step 1: Create local runbook**
 
 Create `README.md`:
 
@@ -1743,7 +1743,7 @@ In the mobile app, tap `Connect`, type `pwd`, and tap `发送`.
 Expected result: terminal output from the macOS Agent appears in the mobile terminal output panel.
 ````
 
-- [ ] **Step 2: Run all tests**
+- [x] **Step 2: Run all tests**
 
 Run:
 
@@ -1753,7 +1753,7 @@ pnpm test
 
 Expected: all Vitest suites pass.
 
-- [ ] **Step 3: Run all typechecks**
+- [x] **Step 3: Run all typechecks**
 
 Run:
 
@@ -1763,7 +1763,7 @@ pnpm typecheck
 
 Expected: all packages typecheck with exit code 0.
 
-- [ ] **Step 4: Run local server**
+- [x] **Step 4: Run local server**
 
 Run:
 
@@ -1773,7 +1773,7 @@ pnpm dev:server
 
 Expected: server listens on `127.0.0.1:8787`.
 
-- [ ] **Step 5: Run local Agent**
+- [x] **Step 5: Run local Agent**
 
 In a second terminal, run:
 
@@ -1783,7 +1783,7 @@ REMOTE_DEVICE_ID=mac-dev pnpm dev:agent
 
 Expected: Agent connects to server and registers `mac-dev`.
 
-- [ ] **Step 6: Check device list**
+- [x] **Step 6: Check device list**
 
 In a third terminal, run:
 
@@ -1806,7 +1806,7 @@ Expected response includes:
 }
 ```
 
-- [ ] **Step 7: Run mobile app**
+- [x] **Step 7: Run mobile app**
 
 Run:
 
@@ -1816,7 +1816,7 @@ pnpm dev:mobile
 
 Expected: Expo starts and shows `Remote Terminal`.
 
-- [ ] **Step 8: Verify command execution manually**
+- [x] **Step 8: Verify command execution manually**
 
 In the mobile app:
 
@@ -1826,7 +1826,7 @@ In the mobile app:
 
 Expected: macOS working directory output appears in the terminal output panel.
 
-- [ ] **Step 9: Commit runbook**
+- [x] **Step 9: Commit runbook**
 
 Run:
 

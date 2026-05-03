@@ -37,11 +37,11 @@ docs/superpowers/records/feature-log.md
 - Modify: `apps/server/src/index.ts`
 - Test: `apps/server/tests/config.test.ts`
 
-- [ ] **Step 1: Write failing config tests**
+- [x] **Step 1: Write failing config tests**
 
 Add tests for defaults, explicit env values, invalid port, and `REMOTE_REQUIRE_DEV_TOKEN=1` without `REMOTE_DEV_TOKEN`.
 
-- [ ] **Step 2: Run red test**
+- [x] **Step 2: Run red test**
 
 Run:
 
@@ -51,7 +51,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test
 
 Expected: fail because `../src/config.js` does not exist.
 
-- [ ] **Step 3: Implement config**
+- [x] **Step 3: Implement config**
 
 Create `loadServerConfig(env = process.env)` returning:
 
@@ -67,11 +67,11 @@ Create `loadServerConfig(env = process.env)` returning:
 
 Throw clear errors for invalid port and required token missing.
 
-- [ ] **Step 4: Wire `index.ts`**
+- [x] **Step 4: Wire `index.ts`**
 
 `createServer(options, config = loadServerConfig())` should pass config to `registerWsRoutes`. The CLI path should use `config.host` and `config.port`.
 
-- [ ] **Step 5: Verify and commit**
+- [x] **Step 5: Verify and commit**
 
 Run server tests, then commit:
 
@@ -88,7 +88,7 @@ git commit -m "feat: add server runtime config"
 - Test: `apps/server/tests/auth/devToken.test.ts`
 - Test: `apps/server/tests/ws.test.ts`
 
-- [ ] **Step 1: Write failing token tests**
+- [x] **Step 1: Write failing token tests**
 
 Add unit tests for:
 
@@ -104,7 +104,7 @@ Add WebSocket tests for token mode:
 - `/ws/mobile` without token cannot open session
 - correct token keeps existing route flow working
 
-- [ ] **Step 2: Run red test**
+- [x] **Step 2: Run red test**
 
 Run:
 
@@ -114,7 +114,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test
 
 Expected: fail because `auth/devToken.ts` and token checks do not exist.
 
-- [ ] **Step 3: Implement token helper**
+- [x] **Step 3: Implement token helper**
 
 Create:
 
@@ -128,11 +128,11 @@ export function getProvidedDevToken(request: { url: string; headers: Record<stri
 export function validateDevToken(config: DevTokenGuardConfig, providedToken: string | null): boolean
 ```
 
-- [ ] **Step 4: Guard WebSocket routes**
+- [x] **Step 4: Guard WebSocket routes**
 
 At the start of `/ws/agent` and `/ws/mobile`, close socket when token is invalid. Do not expose expected token.
 
-- [ ] **Step 5: Verify and commit**
+- [x] **Step 5: Verify and commit**
 
 Run server tests, then commit:
 
@@ -149,11 +149,11 @@ git commit -m "feat: guard websocket relay with dev token"
 - Test: `apps/agent/tests/config.test.ts`
 - Test: `apps/agent/tests/agentClient.test.ts`
 
-- [ ] **Step 1: Write failing Agent tests**
+- [x] **Step 1: Write failing Agent tests**
 
 Add tests for `REMOTE_DEV_TOKEN` loading and socket factory URL containing `?token=...` or `&token=...`.
 
-- [ ] **Step 2: Run red test**
+- [x] **Step 2: Run red test**
 
 Run:
 
@@ -161,11 +161,11 @@ Run:
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent test
 ```
 
-- [ ] **Step 3: Implement Agent URL helper**
+- [x] **Step 3: Implement Agent URL helper**
 
 Add `devToken: string | null` to `AgentConfig`. Add a helper that returns the WebSocket URL with token appended only when configured.
 
-- [ ] **Step 4: Verify and commit**
+- [x] **Step 4: Verify and commit**
 
 Run agent tests, then commit:
 
@@ -181,11 +181,11 @@ git commit -m "feat: support agent dev token relay auth"
 - Modify: `apps/mobile/src/components/TerminalScreen.tsx`
 - Test: `apps/mobile/tests/runtimeConfig.test.ts`
 
-- [ ] **Step 1: Write failing Mobile tests**
+- [x] **Step 1: Write failing Mobile tests**
 
 Add tests for `EXPO_PUBLIC_REMOTE_DEV_TOKEN`, query append, existing query append, and redacted display URL.
 
-- [ ] **Step 2: Run red test**
+- [x] **Step 2: Run red test**
 
 Run:
 
@@ -193,7 +193,7 @@ Run:
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile test
 ```
 
-- [ ] **Step 3: Implement runtime config**
+- [x] **Step 3: Implement runtime config**
 
 Add:
 
@@ -205,11 +205,11 @@ devToken: string | null;
 
 Append token to `sessionUrl`; redact token in `displaySessionUrl`.
 
-- [ ] **Step 4: Update UI**
+- [x] **Step 4: Update UI**
 
 `TerminalScreen` should use `runtimeConfig.sessionUrl` for the socket and `runtimeConfig.displaySessionUrl` for display.
 
-- [ ] **Step 5: Verify and commit**
+- [x] **Step 5: Verify and commit**
 
 Run mobile tests, then commit:
 
@@ -223,7 +223,7 @@ git commit -m "feat: support mobile dev token relay auth"
 **Files:**
 - Modify: `docs/superpowers/records/feature-log.md`
 
-- [ ] **Step 1: Run full verification**
+- [x] **Step 1: Run full verification**
 
 Run:
 
@@ -233,19 +233,19 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm build
 ```
 
-- [ ] **Step 2: Run local no-token smoke**
+- [x] **Step 2: Run local no-token smoke**
 
 Start local server and Agent without token and verify `printf "__LOCAL__%s\n" "$PWD"` returns output.
 
-- [ ] **Step 3: Run token-mode smoke**
+- [x] **Step 3: Run token-mode smoke**
 
 Start server with `REMOTE_REQUIRE_DEV_TOKEN=1 REMOTE_DEV_TOKEN=secret`, start Agent and Mobile/WebSocket probe with matching token, verify `printf "__TOKEN__%s\n" "$PWD"` returns output.
 
-- [ ] **Step 4: Update feature log**
+- [x] **Step 4: Update feature log**
 
 Record commits, verification commands, smoke outputs, known risks, and next steps.
 
-- [ ] **Step 5: Commit log**
+- [x] **Step 5: Commit log**
 
 ```bash
 git add docs/superpowers/records/feature-log.md

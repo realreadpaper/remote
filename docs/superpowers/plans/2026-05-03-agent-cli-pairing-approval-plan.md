@@ -24,7 +24,7 @@ docs/superpowers/records/feature-log.md
 **Files:**
 - Modify: `apps/agent/tests/agentClient.test.ts`
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 覆盖：
 
@@ -33,7 +33,7 @@ docs/superpowers/records/feature-log.md
 - 收到 `pairing.requested` 且 approval approve 后发送 `pairing.approved`。
 - 收到 `pairing.requested` 且 approval reject 后发送 `pairing.rejected`。
 
-- [ ] **Step 2: Run red test**
+- [x] **Step 2: Run red test**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent test
@@ -46,7 +46,7 @@ Expected: fail because AgentClient ignores pairing messages.
 **Files:**
 - Create: `apps/agent/src/pairing.ts`
 
-- [ ] **Step 1: Implement types**
+- [x] **Step 1: Implement types**
 
 导出：
 
@@ -54,11 +54,11 @@ Expected: fail because AgentClient ignores pairing messages.
 - `PairingCodeDisplay`
 - `PairingApprovalPrompt`
 
-- [ ] **Step 2: Implement default display**
+- [x] **Step 2: Implement default display**
 
 `displayPairingCode()` 使用 `console.info()` 打印 code、serverUrl、expiresAt。
 
-- [ ] **Step 3: Implement prompt**
+- [x] **Step 3: Implement prompt**
 
 `promptPairingApproval()` 使用 readline；非 TTY 返回 rejected。
 
@@ -67,26 +67,26 @@ Expected: fail because AgentClient ignores pairing messages.
 **Files:**
 - Modify: `apps/agent/src/agentClient.ts`
 
-- [ ] **Step 1: Extend dependencies**
+- [x] **Step 1: Extend dependencies**
 
 新增：
 
 - `displayPairingCode`
 - `approvePairingRequest`
 
-- [ ] **Step 2: Handle `device.registered`**
+- [x] **Step 2: Handle `device.registered`**
 
 parse server message 后发送 `pairing.create`。
 
-- [ ] **Step 3: Handle `pairing.created`**
+- [x] **Step 3: Handle `pairing.created`**
 
 调用 display 函数。
 
-- [ ] **Step 4: Handle `pairing.requested`**
+- [x] **Step 4: Handle `pairing.requested`**
 
 调用 approval prompt，approve 发送 `pairing.approved`，reject 发送 `pairing.rejected`。
 
-- [ ] **Step 5: Run green Agent tests**
+- [x] **Step 5: Run green Agent tests**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent test
@@ -99,7 +99,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent test
 - Modify: `apps/agent/src/agentClient.ts`
 - Modify: `apps/agent/tests/agentClient.test.ts`
 
-- [ ] **Step 1: Full verification**
+- [x] **Step 1: Full verification**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm test
@@ -107,7 +107,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm build
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add apps/agent/src/pairing.ts apps/agent/src/agentClient.ts apps/agent/tests/agentClient.test.ts
@@ -119,11 +119,11 @@ git commit -m "feat: add agent cli pairing approval"
 **Files:**
 - Modify: `docs/superpowers/records/feature-log.md`
 
-- [ ] **Step 1: Update feature log**
+- [x] **Step 1: Update feature log**
 
 记录提交、验证命令、风险和下一步二维码/安装版 UI。
 
-- [ ] **Step 2: Commit record**
+- [x] **Step 2: Commit record**
 
 ```bash
 git add docs/superpowers/records/feature-log.md

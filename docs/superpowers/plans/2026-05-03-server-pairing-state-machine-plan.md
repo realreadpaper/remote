@@ -26,7 +26,7 @@ docs/superpowers/records/feature-log.md
 **Files:**
 - Create: `apps/server/tests/pairing/pairingService.test.ts`
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 覆盖：
 
@@ -36,7 +36,7 @@ docs/superpowers/records/feature-log.md
 - Agent 拒绝请求后状态为 rejected。
 - Agent approve 后创建 binding。
 
-- [ ] **Step 2: Run red test**
+- [x] **Step 2: Run red test**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test
@@ -50,11 +50,11 @@ Expected: fail because `pairingService.ts` does not exist.
 - Create: `apps/server/src/pairing/pairingStore.ts`
 - Create: `apps/server/src/pairing/pairingService.ts`
 
-- [ ] **Step 1: Implement store types**
+- [x] **Step 1: Implement store types**
 
 定义 `PairingCodeRecord`、`PairingRequestRecord`、`DeviceBindingRecord` 和 `MemoryPairingStore`。
 
-- [ ] **Step 2: Implement service**
+- [x] **Step 2: Implement service**
 
 实现：
 
@@ -64,7 +64,7 @@ Expected: fail because `pairingService.ts` does not exist.
 - `rejectPairingRequest(input)`
 - `listBindings()`
 
-- [ ] **Step 3: Run green service tests**
+- [x] **Step 3: Run green service tests**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test
@@ -78,7 +78,7 @@ Expected: service tests pass.
 - Modify: `apps/server/src/ws.ts`
 - Modify: `apps/server/tests/ws.test.ts`
 
-- [ ] **Step 1: Write failing integration tests**
+- [x] **Step 1: Write failing integration tests**
 
 覆盖：
 
@@ -86,7 +86,7 @@ Expected: service tests pass.
 - `POST /pairing/requests` 后 Agent 收到 `pairing.requested`。
 - Agent approve 后 `GET /pairing/bindings` 返回 binding。
 
-- [ ] **Step 2: Run red integration tests**
+- [x] **Step 2: Run red integration tests**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test
@@ -94,7 +94,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test
 
 Expected: fail because routes are not wired.
 
-- [ ] **Step 3: Wire routes**
+- [x] **Step 3: Wire routes**
 
 在 `registerWsRoutes` 中创建 `MemoryPairingStore` 和 `PairingService`。
 
@@ -105,7 +105,7 @@ Expected: fail because routes are not wired.
 
 Agent socket 注册后支持配对消息。
 
-- [ ] **Step 4: Run green server tests**
+- [x] **Step 4: Run green server tests**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test
@@ -122,7 +122,7 @@ Expected: all server tests pass.
 - Create: `apps/server/tests/pairing/pairingService.test.ts`
 - Modify: `apps/server/tests/ws.test.ts`
 
-- [ ] **Step 1: Full verification**
+- [x] **Step 1: Full verification**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm test
@@ -130,7 +130,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm build
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add apps/server/src/pairing/pairingStore.ts apps/server/src/pairing/pairingService.ts apps/server/src/ws.ts apps/server/tests/pairing/pairingService.test.ts apps/server/tests/ws.test.ts
@@ -142,11 +142,11 @@ git commit -m "feat: add device pairing state machine"
 **Files:**
 - Modify: `docs/superpowers/records/feature-log.md`
 
-- [ ] **Step 1: Update feature log**
+- [x] **Step 1: Update feature log**
 
 记录提交、验证命令、风险和下一步 Mobile 配对 UI / Agent 配对确认。
 
-- [ ] **Step 2: Commit record**
+- [x] **Step 2: Commit record**
 
 ```bash
 git add docs/superpowers/records/feature-log.md

@@ -23,7 +23,7 @@ docs/superpowers/records/feature-log.md
 **Files:**
 - Modify: `packages/protocol/tests/messages.test.ts`
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 新增测试：
 
@@ -37,7 +37,7 @@ docs/superpowers/records/feature-log.md
 - `parses terminal snapshot request and response`
 - `rejects pairing messages missing required fields`
 
-- [ ] **Step 2: Run red test**
+- [x] **Step 2: Run red test**
 
 Run:
 
@@ -52,7 +52,7 @@ Expected: fail because new message types are not in the discriminated unions.
 **Files:**
 - Modify: `packages/protocol/src/messages.ts`
 
-- [ ] **Step 1: Add client message schemas**
+- [x] **Step 1: Add client message schemas**
 
 新增：
 
@@ -63,7 +63,7 @@ Expected: fail because new message types are not in the discriminated unions.
 
 并给 `session.open` 增加可选 `sessionToken`。
 
-- [ ] **Step 2: Add server message schemas**
+- [x] **Step 2: Add server message schemas**
 
 新增：
 
@@ -73,7 +73,7 @@ Expected: fail because new message types are not in the discriminated unions.
 - `device.status`
 - `terminal.snapshot`
 
-- [ ] **Step 3: Run green test**
+- [x] **Step 3: Run green test**
 
 Run:
 
@@ -89,7 +89,7 @@ Expected: all protocol tests pass.
 - Modify: `packages/protocol/src/messages.ts`
 - Modify: `packages/protocol/tests/messages.test.ts`
 
-- [ ] **Step 1: Typecheck protocol**
+- [x] **Step 1: Typecheck protocol**
 
 Run:
 
@@ -99,7 +99,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/protocol typecheck
 
 Expected: pass.
 
-- [ ] **Step 2: Run workspace tests**
+- [x] **Step 2: Run workspace tests**
 
 Run:
 
@@ -109,7 +109,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm test
 
 Expected: all workspace tests pass.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add packages/protocol/src/messages.ts packages/protocol/tests/messages.test.ts
@@ -121,7 +121,7 @@ git commit -m "feat: add pairing and auth protocol messages"
 **Files:**
 - Modify: `docs/superpowers/records/feature-log.md`
 
-- [ ] **Step 1: Update feature log**
+- [x] **Step 1: Update feature log**
 
 记录：
 
@@ -132,7 +132,7 @@ git commit -m "feat: add pairing and auth protocol messages"
 - known risks
 - next step: Server pairing state machine
 
-- [ ] **Step 2: Commit record**
+- [x] **Step 2: Commit record**
 
 ```bash
 git add docs/superpowers/records/feature-log.md

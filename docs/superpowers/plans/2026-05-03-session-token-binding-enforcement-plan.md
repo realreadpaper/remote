@@ -30,7 +30,7 @@ docs/superpowers/records/feature-log.md
 **Files:**
 - Create: `apps/server/tests/auth/sessionTokens.test.ts`
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 覆盖：
 
@@ -40,7 +40,7 @@ docs/superpowers/records/feature-log.md
 - `verifySessionToken()` 拒绝过期 token。
 - `verifySessionToken()` 拒绝设备不匹配 token。
 
-- [ ] **Step 2: Run red test**
+- [x] **Step 2: Run red test**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test
@@ -53,7 +53,7 @@ Expected: fail because `apps/server/src/auth/sessionTokens.ts` does not exist.
 **Files:**
 - Create: `apps/server/src/auth/sessionTokens.ts`
 
-- [ ] **Step 1: Implement token store**
+- [x] **Step 1: Implement token store**
 
 导出：
 
@@ -64,7 +64,7 @@ Expected: fail because `apps/server/src/auth/sessionTokens.ts` does not exist.
 
 默认 TTL 为 `24 * 60 * 60_000`。
 
-- [ ] **Step 2: Run green server auth tests**
+- [x] **Step 2: Run green server auth tests**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test
@@ -77,7 +77,7 @@ Expected: server tests pass.
 **Files:**
 - Modify: `apps/server/tests/ws.test.ts`
 
-- [ ] **Step 1: Write failing websocket/API tests**
+- [x] **Step 1: Write failing websocket/API tests**
 
 覆盖：
 
@@ -89,7 +89,7 @@ Expected: server tests pass.
 - `session.open` with valid token opens a session。
 - token for another device is rejected。
 
-- [ ] **Step 2: Run red server tests**
+- [x] **Step 2: Run red server tests**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test
@@ -102,11 +102,11 @@ Expected: fail because routes and validation are not implemented.
 **Files:**
 - Modify: `apps/server/src/ws.ts`
 
-- [ ] **Step 1: Instantiate token store**
+- [x] **Step 1: Instantiate token store**
 
 在 `registerWsRoutes()` 中创建 `MemorySessionTokenStore`。
 
-- [ ] **Step 2: Generate token on approve**
+- [x] **Step 2: Generate token on approve**
 
 `pairing.approved` 后：
 
@@ -114,7 +114,7 @@ Expected: fail because routes and validation are not implemented.
 - 调用 `sessionTokens.issueSessionToken()` 生成 token。
 - 建立 `pairingRequestId -> token` 映射，供状态查询使用。
 
-- [ ] **Step 3: Add request status route**
+- [x] **Step 3: Add request status route**
 
 新增：
 
@@ -124,11 +124,11 @@ GET /pairing/requests/:pairingRequestId
 
 返回 pending/rejected/approved。
 
-- [ ] **Step 4: Enforce token on session.open**
+- [x] **Step 4: Enforce token on session.open**
 
 `session.open` 前调用 `sessionTokens.verifySessionToken()`，失败时抛出明确错误。
 
-- [ ] **Step 5: Run green server tests**
+- [x] **Step 5: Run green server tests**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test
@@ -136,7 +136,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test
 
 Expected: server tests pass.
 
-- [ ] **Step 6: Commit server implementation**
+- [x] **Step 6: Commit server implementation**
 
 ```bash
 git add apps/server/src/auth/sessionTokens.ts apps/server/src/ws.ts apps/server/tests/auth/sessionTokens.test.ts apps/server/tests/ws.test.ts
@@ -149,7 +149,7 @@ git commit -m "feat: enforce session token binding on server"
 - Modify: `apps/mobile/tests/pairingClient.test.ts`
 - Modify: `apps/mobile/tests/sessionClient.test.ts`
 
-- [ ] **Step 1: Write failing PairingClient tests**
+- [x] **Step 1: Write failing PairingClient tests**
 
 覆盖：
 
@@ -159,14 +159,14 @@ git commit -m "feat: enforce session token binding on server"
 - `waitForApproval()` 在 approved 时返回 auth。
 - `waitForApproval()` 在 rejected 时抛错。
 
-- [ ] **Step 2: Write failing SessionClient test**
+- [x] **Step 2: Write failing SessionClient test**
 
 覆盖：
 
 - options 有 `sessionToken` 时，socket open 发送带 token 的 `session.open`。
 - options 无 `sessionToken` 时，保持现有不带 token 的 `session.open`。
 
-- [ ] **Step 3: Run red mobile tests**
+- [x] **Step 3: Run red mobile tests**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile test
@@ -180,7 +180,7 @@ Expected: fail because client methods/options are not implemented.
 - Modify: `apps/mobile/src/protocol/pairingClient.ts`
 - Modify: `apps/mobile/src/protocol/sessionClient.ts`
 
-- [ ] **Step 1: Implement PairingClient status types**
+- [x] **Step 1: Implement PairingClient status types**
 
 新增：
 
@@ -190,19 +190,19 @@ Expected: fail because client methods/options are not implemented.
 - `RejectedPairingRequestResult`
 - `WaitForApprovalOptions`
 
-- [ ] **Step 2: Implement getPairingRequest**
+- [x] **Step 2: Implement getPairingRequest**
 
 调用 `GET /pairing/requests/:id` 并严格解析 pending/approved/rejected。
 
-- [ ] **Step 3: Implement waitForApproval**
+- [x] **Step 3: Implement waitForApproval**
 
 轮询直到 approved/rejected/timeout。
 
-- [ ] **Step 4: Implement SessionClient sessionToken option**
+- [x] **Step 4: Implement SessionClient sessionToken option**
 
 `SessionClientOptions` 增加 `sessionToken?: string | null`，发送 `session.open` 时有 token 则带上。
 
-- [ ] **Step 5: Run green mobile protocol tests**
+- [x] **Step 5: Run green mobile protocol tests**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile test
@@ -215,19 +215,19 @@ Expected: mobile tests pass.
 **Files:**
 - Modify: `apps/mobile/src/components/TerminalScreen.tsx`
 
-- [ ] **Step 1: Store token in component state**
+- [x] **Step 1: Store token in component state**
 
 新增 `sessionToken` state，初始为 `null`。
 
-- [ ] **Step 2: Pairing submit waits for approval**
+- [x] **Step 2: Pairing submit waits for approval**
 
 提交 pairing request 后调用 `waitForApproval()`；approved 时保存 token 并显示 paired，rejected/timeout 显示错误。
 
-- [ ] **Step 3: Pass token to SessionClient**
+- [x] **Step 3: Pass token to SessionClient**
 
 创建 `SessionClient` 时传入 `sessionToken`。
 
-- [ ] **Step 4: Run mobile test/typecheck**
+- [x] **Step 4: Run mobile test/typecheck**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile test
@@ -236,7 +236,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile typecheck
 
 Expected: pass.
 
-- [ ] **Step 5: Commit mobile implementation**
+- [x] **Step 5: Commit mobile implementation**
 
 ```bash
 git add apps/mobile/src/protocol/pairingClient.ts apps/mobile/src/protocol/sessionClient.ts apps/mobile/src/components/TerminalScreen.tsx apps/mobile/tests/pairingClient.test.ts apps/mobile/tests/sessionClient.test.ts
@@ -248,7 +248,7 @@ git commit -m "feat: carry session token from mobile pairing"
 **Files:**
 - Modify: `docs/superpowers/records/feature-log.md`
 
-- [ ] **Step 1: Full verification**
+- [x] **Step 1: Full verification**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm test
@@ -256,7 +256,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm build
 ```
 
-- [ ] **Step 2: Update feature log**
+- [x] **Step 2: Update feature log**
 
 记录：
 
@@ -267,7 +267,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm build
 - known risks：内存 token、Mobile 内存保存、无 refresh/revoke、无账号。
 - next：SecureStore、持久化 binding/token、设备列表。
 
-- [ ] **Step 3: Commit record**
+- [x] **Step 3: Commit record**
 
 ```bash
 git add docs/superpowers/records/feature-log.md
