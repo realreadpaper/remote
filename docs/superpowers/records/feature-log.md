@@ -1203,7 +1203,7 @@
 **实现内容：**
 - 新增 `apps/mobile/eas.json`。
 - EAS build profiles 包含 `development`、`preview`、`production`。
-- `preview` 和 `production` 默认指向云中转示例地址 `https://api.example.com` / `wss://api.example.com/ws/mobile`，真实构建前需要替换或用 EAS env 覆盖。
+- `preview` 和 `production` 后续已改为 release guard 占位 host/token；真实构建必须用 EAS env 覆盖。
 - `apps/mobile/app.json` 增加 `ios.bundleIdentifier=com.terminalfirst.remote`、`ios.buildNumber=1`、`ios.supportsTablet=false`。
 - 新增 `docs/runbooks/testflight-build.md`，记录 EAS 登录、环境变量、preview build、production build、submit/TestFlight、验收和排障步骤。
 - README 增加 TestFlight runbook 入口。
@@ -1914,3 +1914,19 @@
 - Render Web Service 创建后设置 `REMOTE_RELAY_HOST=<render-host>` 并 redeploy。
 - EAS production/preview 环境设置 `EXPO_PUBLIC_REMOTE_RELAY_HOST=<render-host>` 和真实 `EXPO_PUBLIC_REMOTE_DEV_TOKEN`。
 - 执行云端蜂窝 smoke，并把结果记录到 MVP acceptance。
+
+## 2026-05-03 TestFlight Relay Placeholder Runbook Cleanup
+
+**状态：** completed
+
+**实现内容：**
+- 将 TestFlight runbook 中默认移动端 relay 路径改为 `wss://${REMOTE_RELAY_HOST}/ws/mobile`。
+- 将 TestFlight 验收中的 macOS Agent relay 路径改为 `wss://${REMOTE_RELAY_HOST}/ws/agent`。
+- 保留 `api.example.com`、`remote-terminal.example.invalid` 和 `<relay-host>` 作为 release guard 拒绝示例，避免把示例地址误当成可用公网地址。
+
+**涉及文件：**
+- `docs/runbooks/testflight-build.md`
+- `docs/superpowers/records/feature-log.md`
+
+**验证：**
+- `rg -n "api\\.example\\.com|wss://\\$\\{REMOTE_RELAY_HOST\\}|remote-terminal\\.example\\.invalid|<relay-host>" docs/runbooks/testflight-build.md apps/mobile/eas.json` 确认操作步骤使用 `${REMOTE_RELAY_HOST}`，占位符只保留在说明和默认占位配置中。

@@ -7,7 +7,7 @@ Build the iOS mobile app with Expo EAS and submit it to TestFlight for internal 
 This runbook prepares the client for the default cloud relay path:
 
 ```text
-iPhone TestFlight app -> wss://api.example.com/ws/mobile
+iPhone TestFlight app -> wss://${REMOTE_RELAY_HOST}/ws/mobile
 ```
 
 ## References
@@ -174,7 +174,7 @@ On an invited tester iPhone:
 
 1. Install the build from TestFlight.
 2. Ensure the cloud relay is running.
-3. Ensure the home macOS Agent is connected to `wss://api.example.com/ws/agent`.
+3. Ensure the home macOS Agent is connected to `wss://${REMOTE_RELAY_HOST}/ws/agent`.
 4. Pair the phone with the Agent.
 5. Tap `Connect`.
 6. Run:
