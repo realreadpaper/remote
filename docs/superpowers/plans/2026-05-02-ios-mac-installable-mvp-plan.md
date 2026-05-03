@@ -279,12 +279,12 @@ docs/runbooks/macos-agent-package.md
 - Create: `apps/server/src/persistence/bindingRepository.ts`
 - Test: `apps/server/tests/persistence/deviceRepository.test.ts`
 
-- [ ] 增加 PostgreSQL schema：users、devices、mobile_clients、device_bindings、sessions。
-- [ ] 增加 repository，server 业务层不直接写 SQL。
-- [ ] 开发测试使用本地数据库或 test container。
-- [ ] 测试：设备注册 upsert、绑定创建、撤销绑定、查询用户设备列表。
-- [ ] 运行：`pnpm --filter @remote/server test`。
-- [ ] 提交：`git commit -m "feat: persist devices and bindings"`。
+- [x] 增加 PostgreSQL schema：users、devices、mobile_clients、device_bindings、sessions。
+- [x] 增加 repository，server 业务层不直接写 SQL。
+- [x] 开发测试使用本地数据库或 test container。
+- [x] 测试：设备注册 upsert、绑定创建、撤销绑定、查询用户设备列表。
+- [x] 运行：`pnpm --filter @remote/server test`。
+- [x] 提交：`git commit -m "feat: persist devices and bindings"`。
 
 ### Task 15: Redis 在线状态
 

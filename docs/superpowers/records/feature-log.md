@@ -1505,3 +1505,54 @@
 **后续：**
 - 云端化后验证 iPhone 蜂窝网络下 background/foreground 恢复。
 - 引入 RN 组件测试后补充 AppState UI 自动化覆盖。
+
+## 2026-05-03 Postgres Devices and Bindings Persistence
+
+**状态：** completed
+
+**提交：**
+- `2fc4946` `docs: design postgres devices bindings`
+- `f3dc31c` `docs: plan postgres devices bindings`
+- `264db3f` `feat: persist devices and bindings`
+
+**实现内容：**
+- Server 新增 `pg` runtime dependency。
+- Server 新增 `pg-mem` 和 `@types/pg` dev dependency。
+- 新增 `apps/server/src/persistence/schema.sql`，包含：
+  - `users`
+  - `devices`
+  - `mobile_clients`
+  - `device_bindings`
+  - `sessions`
+- 新增 `apps/server/src/persistence/db.ts`，提供 `Queryable` 边界和 `createPostgresPool()`。
+- 新增 `DeviceRepository`：
+  - `upsertUser()`
+  - `upsertDevice()`
+  - `getDevice()`
+  - `listDevicesForUser()`
+- 新增 `BindingRepository`：
+  - `upsertMobileClient()`
+  - `createBinding()`
+  - `revokeBinding()`
+  - `listActiveBindingsForUser()`
+- Repository 测试使用 `pg-mem` 执行同一份 `schema.sql`。
+- 测试覆盖 device upsert、binding create/revoke、query user device list。
+- 主计划 Task 14 已同步勾选。
+
+**验证：**
+- Repository 红灯：`PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test` 失败，`bindingRepository.js` 不存在。
+- Repository 绿灯：实现 repository 后，`PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test` pass，112 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server build`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm test`: pass，242 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm build`: pass。
+
+**已知风险：**
+- 当前只新增 schema/repository，现有 WebSocket 和 PairingService 仍使用内存/JSON store。
+- `pg-mem` 不是完整 PostgreSQL，云端上线前需要真实 PostgreSQL 验收。
+- 尚未加入 migration versioning，后续需要选择迁移工具或自研 migration runner。
+
+**后续：**
+- Task 15 抽象在线状态 store，并加入 Redis-backed presence。
+- 后续云端化时把 PairingStore 和 SessionTokenStore 迁移到 PostgreSQL repository。

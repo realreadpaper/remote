@@ -32,14 +32,14 @@ docs/superpowers/records/feature-log.md
 - Create: `apps/server/src/persistence/db.ts`
 - Create: `apps/server/src/persistence/schema.sql`
 
-- [ ] **Step 1: Add dependencies**
+- [x] **Step 1: Add dependencies**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server add pg
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server add -D @types/pg pg-mem
 ```
 
-- [ ] **Step 2: Create db adapter**
+- [x] **Step 2: Create db adapter**
 
 Create `apps/server/src/persistence/db.ts`:
 
@@ -59,11 +59,11 @@ export function createPostgresPool(connectionString: string): Pool {
 }
 ```
 
-- [ ] **Step 3: Create schema.sql**
+- [x] **Step 3: Create schema.sql**
 
 Create PostgreSQL DDL for `users`, `devices`, `mobile_clients`, `device_bindings`, `sessions` with indexes for user/device lookup.
 
-- [ ] **Step 4: Run server typecheck checkpoint**
+- [x] **Step 4: Run server typecheck checkpoint**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server typecheck
@@ -77,7 +77,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server typecheck
 - Create: `apps/server/src/persistence/deviceRepository.ts`
 - Create: `apps/server/src/persistence/bindingRepository.ts`
 
-- [ ] **Step 1: Write failing repository tests**
+- [x] **Step 1: Write failing repository tests**
 
 Tests must cover:
 
@@ -86,7 +86,7 @@ Tests must cover:
 - revoke binding removes it from active list.
 - list devices for user returns only active bound devices.
 
-- [ ] **Step 2: Run red server tests**
+- [x] **Step 2: Run red server tests**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test
@@ -94,11 +94,11 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test
 
 Expected: fail because repository modules do not exist.
 
-- [ ] **Step 3: Implement repository test DB**
+- [x] **Step 3: Implement repository test DB**
 
 Use `pg-mem` and execute `schema.sql`.
 
-- [ ] **Step 4: Implement DeviceRepository**
+- [x] **Step 4: Implement DeviceRepository**
 
 Methods:
 
@@ -108,7 +108,7 @@ getDevice(deviceId: string): Promise<DeviceRecord | undefined>
 listDevicesForUser(userId: string): Promise<DeviceRecord[]>
 ```
 
-- [ ] **Step 5: Implement BindingRepository**
+- [x] **Step 5: Implement BindingRepository**
 
 Methods:
 
@@ -119,7 +119,7 @@ revokeBinding(bindingId: string, revokedAt: string): Promise<boolean>
 listActiveBindingsForUser(userId: string): Promise<DeviceBindingRecord[]>
 ```
 
-- [ ] **Step 6: Run green server tests**
+- [x] **Step 6: Run green server tests**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test
@@ -132,7 +132,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test
 - Modify: `docs/superpowers/plans/2026-05-03-postgres-devices-bindings-plan.md`
 - Modify: `docs/superpowers/records/feature-log.md`
 
-- [ ] **Step 1: Full verification**
+- [x] **Step 1: Full verification**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test
@@ -143,18 +143,18 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm build
 ```
 
-- [ ] **Step 2: Commit implementation**
+- [x] **Step 2: Commit implementation**
 
 ```bash
 git add apps/server/package.json apps/server/src/persistence apps/server/tests/persistence pnpm-lock.yaml
 git commit -m "feat: persist devices and bindings"
 ```
 
-- [ ] **Step 3: Mark plan and log delivery**
+- [x] **Step 3: Mark plan and log delivery**
 
 Mark this plan and Task 14 complete. Append feature log with commits and verification.
 
-- [ ] **Step 4: Commit records**
+- [x] **Step 4: Commit records**
 
 ```bash
 git add docs/superpowers/plans/2026-05-02-ios-mac-installable-mvp-plan.md docs/superpowers/plans/2026-05-03-postgres-devices-bindings-plan.md docs/superpowers/records/feature-log.md
