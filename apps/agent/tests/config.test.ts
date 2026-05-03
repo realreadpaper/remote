@@ -18,6 +18,7 @@ describe("loadAgentConfig", () => {
     process.env.REMOTE_DEVICE_ID = "mac-123";
     process.env.REMOTE_DEVICE_NAME = "Build Mac";
     process.env.REMOTE_DEV_TOKEN = "secret";
+    process.env.REMOTE_TERMINAL_OUTPUT_CHUNK_BYTES = "4096";
     process.env.SHELL = "/bin/bash";
 
     expect(loadAgentConfig()).toEqual({
@@ -25,6 +26,7 @@ describe("loadAgentConfig", () => {
       deviceId: "mac-123",
       deviceName: "Build Mac",
       devToken: "secret",
+      terminalOutputChunkBytes: 4_096,
       shell: "/bin/bash"
     });
   });
@@ -34,6 +36,7 @@ describe("loadAgentConfig", () => {
     delete process.env.REMOTE_DEVICE_ID;
     delete process.env.REMOTE_DEVICE_NAME;
     delete process.env.REMOTE_DEV_TOKEN;
+    delete process.env.REMOTE_TERMINAL_OUTPUT_CHUNK_BYTES;
     delete process.env.SHELL;
 
     expect(
@@ -51,7 +54,16 @@ describe("loadAgentConfig", () => {
       deviceId: "persistent-device-id",
       deviceName: os.hostname(),
       devToken: null,
+      terminalOutputChunkBytes: 16_384,
       shell: "/bin/zsh"
     });
+  });
+
+  it("rejects invalid terminal output chunk bytes", () => {
+    process.env.REMOTE_TERMINAL_OUTPUT_CHUNK_BYTES = "0";
+    expect(() => loadAgentConfig()).toThrow("REMOTE_TERMINAL_OUTPUT_CHUNK_BYTES must be a positive integer");
+
+    process.env.REMOTE_TERMINAL_OUTPUT_CHUNK_BYTES = "abc";
+    expect(() => loadAgentConfig()).toThrow("REMOTE_TERMINAL_OUTPUT_CHUNK_BYTES must be a positive integer");
   });
 });

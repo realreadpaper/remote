@@ -101,6 +101,30 @@ function messageType(payload: unknown): string | undefined {
   return typeof type === "string" ? type : undefined;
 }
 
+function splitUtf8ByBytes(input: string, maxBytes: number): string[] {
+  const chunks: string[] = [];
+  let current = "";
+  let currentBytes = 0;
+
+  for (const char of input) {
+    const charBytes = Buffer.byteLength(char, "utf8");
+    if (current.length > 0 && currentBytes + charBytes > maxBytes) {
+      chunks.push(current);
+      current = "";
+      currentBytes = 0;
+    }
+
+    current += char;
+    currentBytes += charBytes;
+  }
+
+  if (current.length > 0) {
+    chunks.push(current);
+  }
+
+  return chunks;
+}
+
 export class AgentClient {
   private socket?: AgentSocket;
   private readonly sessions = new Map<string, TerminalSession>();
@@ -200,12 +224,14 @@ export class AgentClient {
         return;
       }
 
-      this.sendMessage({
-        type: "terminal.output",
-        sessionId: message.sessionId,
-        stream: "stdout",
-        data
-      });
+      for (const chunk of splitUtf8ByBytes(data, this.config.terminalOutputChunkBytes)) {
+        this.sendMessage({
+          type: "terminal.output",
+          sessionId: message.sessionId,
+          stream: "stdout",
+          data: chunk
+        });
+      }
     });
     session.onExit((exitCode) => {
       if (this.sessions.get(message.sessionId) !== session) {

@@ -78,11 +78,12 @@ const config: AgentConfig = {
   deviceId: "device-1",
   deviceName: "Mac",
   devToken: null,
-  shell: "/bin/zsh"
+  shell: "/bin/zsh",
+  terminalOutputChunkBytes: 16_384
 };
 
 const createHarness = (
-  configOverride: AgentConfig = config,
+  configOverride: Partial<AgentConfig> = {},
   dependencyOverride: Record<string, unknown> = {}
 ) => {
   const socket = new FakeSocket();
@@ -93,7 +94,7 @@ const createHarness = (
     terminals.set(sessionId, terminal);
     return terminal as unknown as TerminalSession;
   });
-  const client = new AgentClient(configOverride, {
+  const client = new AgentClient({ ...config, ...configOverride }, {
     createSocket,
     createTerminal,
     ...dependencyOverride
@@ -325,6 +326,56 @@ describe("AgentClient", () => {
       stream: "stdout",
       data: "ready"
     });
+  });
+
+  it("splits large terminal output into configured byte chunks", () => {
+    const { socket, terminals } = createHarness({ terminalOutputChunkBytes: 4 });
+
+    socket.emit(
+      "message",
+      encodeMessage({ type: "session.opened", sessionId: "session-1", deviceId: "device-1" })
+    );
+    terminals.get("session-1")?.emitOutput("abcdef");
+
+    expect(socket.sent.map((message) => parseServerMessage(JSON.parse(message)))).toEqual([
+      {
+        type: "terminal.output",
+        sessionId: "session-1",
+        stream: "stdout",
+        data: "abcd"
+      },
+      {
+        type: "terminal.output",
+        sessionId: "session-1",
+        stream: "stdout",
+        data: "ef"
+      }
+    ]);
+  });
+
+  it("splits terminal output by UTF-8 bytes without breaking characters", () => {
+    const { socket, terminals } = createHarness({ terminalOutputChunkBytes: 4 });
+
+    socket.emit(
+      "message",
+      encodeMessage({ type: "session.opened", sessionId: "session-1", deviceId: "device-1" })
+    );
+    terminals.get("session-1")?.emitOutput("你好");
+
+    expect(socket.sent.map((message) => parseServerMessage(JSON.parse(message)))).toEqual([
+      {
+        type: "terminal.output",
+        sessionId: "session-1",
+        stream: "stdout",
+        data: "你"
+      },
+      {
+        type: "terminal.output",
+        sessionId: "session-1",
+        stream: "stdout",
+        data: "好"
+      }
+    ]);
   });
 
   it("sends terminal.exit and removes the session when a terminal exits", () => {

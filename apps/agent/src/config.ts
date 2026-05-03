@@ -7,6 +7,7 @@ export interface AgentConfig {
   deviceName: string;
   devToken: string | null;
   shell: string;
+  terminalOutputChunkBytes: number;
 }
 
 export interface LoadAgentConfigOptions {
@@ -21,11 +22,30 @@ export function loadAgentConfig(options: LoadAgentConfigOptions = {}): AgentConf
     deviceId: normalizeOptional(process.env.REMOTE_DEVICE_ID) ?? loadIdentity().deviceId,
     deviceName: process.env.REMOTE_DEVICE_NAME ?? os.hostname(),
     devToken: normalizeOptional(process.env.REMOTE_DEV_TOKEN),
-    shell: process.env.SHELL ?? "/bin/zsh"
+    shell: process.env.SHELL ?? "/bin/zsh",
+    terminalOutputChunkBytes: parsePositiveIntegerEnv(
+      process.env.REMOTE_TERMINAL_OUTPUT_CHUNK_BYTES,
+      16_384,
+      "REMOTE_TERMINAL_OUTPUT_CHUNK_BYTES"
+    )
   };
 }
 
 function normalizeOptional(value: string | undefined): string | null {
   const normalized = value?.trim();
   return normalized && normalized.length > 0 ? normalized : null;
+}
+
+function parsePositiveIntegerEnv(rawValue: string | undefined, defaultValue: number, envName: string): number {
+  const normalized = normalizeOptional(rawValue);
+  if (!normalized) {
+    return defaultValue;
+  }
+
+  const value = Number(normalized);
+  if (!Number.isInteger(value) || value < 1) {
+    throw new Error(`${envName} must be a positive integer`);
+  }
+
+  return value;
 }
