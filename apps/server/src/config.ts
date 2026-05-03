@@ -7,6 +7,8 @@ export interface ServerConfig {
   dataDir: string | null;
   rateLimitWindowMs: number;
   rateLimitMaxRequests: number;
+  wsMessageRateLimitWindowMs: number;
+  wsMessageRateLimitMaxRequests: number;
 }
 
 type ServerEnv = Record<string, string | undefined>;
@@ -33,7 +35,19 @@ export function loadServerConfig(env: ServerEnv = process.env): ServerConfig {
       "REMOTE_HTTP_RATE_LIMIT_WINDOW_MS",
       1_000
     ),
-    rateLimitMaxRequests: parseIntegerEnv(env.REMOTE_HTTP_RATE_LIMIT_MAX, 120, "REMOTE_HTTP_RATE_LIMIT_MAX", 1)
+    rateLimitMaxRequests: parseIntegerEnv(env.REMOTE_HTTP_RATE_LIMIT_MAX, 120, "REMOTE_HTTP_RATE_LIMIT_MAX", 1),
+    wsMessageRateLimitWindowMs: parseIntegerEnv(
+      env.REMOTE_WS_MESSAGE_RATE_LIMIT_WINDOW_MS,
+      10_000,
+      "REMOTE_WS_MESSAGE_RATE_LIMIT_WINDOW_MS",
+      1_000
+    ),
+    wsMessageRateLimitMaxRequests: parseIntegerEnv(
+      env.REMOTE_WS_MESSAGE_RATE_LIMIT_MAX,
+      200,
+      "REMOTE_WS_MESSAGE_RATE_LIMIT_MAX",
+      1
+    )
   };
 }
 

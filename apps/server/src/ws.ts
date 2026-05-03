@@ -142,6 +142,10 @@ function isAllowedHttpRate(
   return false;
 }
 
+function isAllowedWebSocketMessageRate(limiter: MemoryRateLimiter, key: string): boolean {
+  return limiter.check(key).allowed;
+}
+
 function clientKey(request: FastifyRequest): string {
   const forwardedFor = request.headers["x-forwarded-for"];
   if (typeof forwardedFor === "string" && forwardedFor.trim().length > 0) {
@@ -181,6 +185,10 @@ export function registerWsRoutes(app: FastifyInstance, config: ServerConfig): vo
   const httpRateLimiter = new MemoryRateLimiter({
     windowMs: config.rateLimitWindowMs,
     maxRequests: config.rateLimitMaxRequests
+  });
+  const wsMessageRateLimiter = new MemoryRateLimiter({
+    windowMs: config.wsMessageRateLimitWindowMs,
+    maxRequests: config.wsMessageRateLimitMaxRequests
   });
 
   app.get("/health", async () => ({ ok: true }));
@@ -410,6 +418,7 @@ export function registerWsRoutes(app: FastifyInstance, config: ServerConfig): vo
     const mobileSend = (message: Extract<ServerMessage, { type: "terminal.output" | "terminal.exit" }>): void => {
       sendJson(socket, message);
     };
+    const mobileRateLimitKey = `ws.mobile.messages:${clientKey(request)}`;
 
     socket.on("message", (data) => {
       let sessionId: string | undefined;
@@ -442,6 +451,10 @@ export function registerWsRoutes(app: FastifyInstance, config: ServerConfig): vo
 
         if (!isMobileRoutableMessage(message)) {
           throw new Error(`Unsupported mobile message type ${message.type}`);
+        }
+
+        if (!isAllowedWebSocketMessageRate(wsMessageRateLimiter, mobileRateLimitKey)) {
+          throw new Error("Rate limit exceeded");
         }
 
         hub.routeFromMobile(mobileSend, message);

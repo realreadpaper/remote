@@ -106,7 +106,9 @@ const tokenServerConfig: ServerConfig = {
   publicBaseUrl: null,
   dataDir: null,
   rateLimitWindowMs: 60_000,
-  rateLimitMaxRequests: 120
+  rateLimitMaxRequests: 120,
+  wsMessageRateLimitWindowMs: 10_000,
+  wsMessageRateLimitMaxRequests: 200
 };
 
 async function registerAgent(app: FastifyInstance, deviceId = "mac-1"): Promise<WebSocket> {
@@ -853,6 +855,87 @@ describe("server websocket API", () => {
 
     agent.terminate();
     mobile.terminate();
+  });
+
+  it("rate limits mobile terminal messages before routing to the agent", async () => {
+    await app.close();
+    app = await createServer(
+      { logger: false },
+      { ...tokenServerConfig, requireDevToken: false, devToken: null, wsMessageRateLimitMaxRequests: 1 }
+    );
+    await app.ready();
+
+    const agent = await registerAgent(app);
+    const { sessionToken } = await approvePairingRequest(app, agent);
+    const mobile = await app.injectWS("/ws/mobile", { headers: { "x-forwarded-for": "203.0.113.20" } });
+    const agentOpened = nextJson(agent);
+    const mobileOpened = nextJson(mobile);
+    mobile.send(JSON.stringify({ type: "session.open", deviceId: "mac-1", sessionToken }));
+
+    await agentOpened;
+    const opened = (await mobileOpened) as { sessionId: string };
+    const firstRoutedInput = nextJson(agent);
+    mobile.send(JSON.stringify({ type: "terminal.input", sessionId: opened.sessionId, data: "pwd\n" }));
+    expect(await firstRoutedInput).toEqual({
+      type: "terminal.input",
+      sessionId: opened.sessionId,
+      data: "pwd\n"
+    });
+
+    const rateLimitError = nextJson(mobile);
+    mobile.send(JSON.stringify({ type: "terminal.input", sessionId: opened.sessionId, data: "whoami\n" }));
+    expect(await rateLimitError).toEqual({
+      type: "session.error",
+      code: "SESSION_ERROR",
+      message: "Rate limit exceeded",
+      sessionId: opened.sessionId
+    });
+    await noJson(agent);
+
+    agent.terminate();
+    mobile.terminate();
+  });
+
+  it("keeps mobile websocket message rate limit buckets separate by forwarded IP", async () => {
+    await app.close();
+    app = await createServer(
+      { logger: false },
+      { ...tokenServerConfig, requireDevToken: false, devToken: null, wsMessageRateLimitMaxRequests: 1 }
+    );
+    await app.ready();
+
+    const agent = await registerAgent(app);
+    const { sessionToken } = await approvePairingRequest(app, agent);
+    const firstMobile = await app.injectWS("/ws/mobile", { headers: { "x-forwarded-for": "203.0.113.21" } });
+    const secondMobile = await app.injectWS("/ws/mobile", { headers: { "x-forwarded-for": "203.0.113.22" } });
+
+    const firstAgentOpened = nextJson(agent);
+    const firstMobileOpened = nextJson(firstMobile);
+    firstMobile.send(JSON.stringify({ type: "session.open", deviceId: "mac-1", sessionToken }));
+    await firstAgentOpened;
+    const firstOpened = (await firstMobileOpened) as { sessionId: string };
+
+    const firstRoutedInput = nextJson(agent);
+    firstMobile.send(JSON.stringify({ type: "terminal.input", sessionId: firstOpened.sessionId, data: "pwd\n" }));
+    await firstRoutedInput;
+
+    const secondAgentOpened = nextJson(agent);
+    const secondMobileOpened = nextJson(secondMobile);
+    secondMobile.send(JSON.stringify({ type: "session.open", deviceId: "mac-1", sessionToken }));
+    await secondAgentOpened;
+    const secondOpened = (await secondMobileOpened) as { sessionId: string };
+
+    const secondRoutedInput = nextJson(agent);
+    secondMobile.send(JSON.stringify({ type: "terminal.input", sessionId: secondOpened.sessionId, data: "date\n" }));
+    expect(await secondRoutedInput).toEqual({
+      type: "terminal.input",
+      sessionId: secondOpened.sessionId,
+      data: "date\n"
+    });
+
+    agent.terminate();
+    firstMobile.terminate();
+    secondMobile.terminate();
   });
 
   it("routes agent terminal output to the mobile socket", async () => {
