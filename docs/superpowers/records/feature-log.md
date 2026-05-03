@@ -805,3 +805,50 @@
 - 增加 terminal input 单条字节数限制。
 - 增加 Agent output 背压和输出限速。
 - 云中转多实例时把 WebSocket 限流迁移到 Redis/Postgres。
+
+## 2026-05-03 Terminal Input Size Limit
+
+**状态：** completed
+
+**提交：**
+- `ee316da` `docs: design terminal input size limit`
+- `cbba7eb` `docs: plan terminal input size limit`
+- `9477596` `feat: limit terminal input size`
+
+**实现内容：**
+- Server 配置新增 `REMOTE_TERMINAL_INPUT_MAX_BYTES`。
+- 默认单条 `terminal.input.data` 限制为 16 KiB。
+- `/ws/mobile` 在路由 `terminal.input` 给 Agent 前使用 `Buffer.byteLength(data, "utf8")` 校验 UTF-8 字节数。
+- 超限时返回 `session.error`，message 为 `Terminal input exceeds <N> bytes`，保留原始 `sessionId`。
+- 超限 input 不转发给 Agent，不关闭 WebSocket。
+- `terminal.resize` 不受该字节限制影响。
+
+**涉及文件：**
+- `docs/superpowers/specs/2026-05-03-terminal-input-size-limit-design.md`
+- `docs/superpowers/plans/2026-05-03-terminal-input-size-limit-plan.md`
+- `apps/server/src/config.ts`
+- `apps/server/src/ws.ts`
+- `apps/server/tests/config.test.ts`
+- `apps/server/tests/ws.test.ts`
+
+**TDD 记录：**
+- Config 红灯：`PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test -- apps/server/tests/config.test.ts` 失败，`ServerConfig` 缺少 `terminalInputMaxBytes`，非法配置未抛错。
+- Config 绿灯：实现 `terminalInputMaxBytes` 和 `REMOTE_TERMINAL_INPUT_MAX_BYTES` 解析后，config 测试通过。
+- Route 红灯：`PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test -- apps/server/tests/ws.test.ts` 失败，超限 input 后 Mobile 等不到错误，说明消息仍被转发。
+- Route 绿灯：增加 `assertTerminalInputSize()` 后，Server 测试通过，88 tests passed。
+
+**验证：**
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test`: pass，88 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm test`: pass，182 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm build`: pass。
+
+**已知风险：**
+- JSON parse 仍发生在大小校验之前，超大原始 WebSocket frame 还可能造成解析压力。
+- 当前没有累计字节限流，客户端仍可能发送多条接近上限的输入。
+- 长脚本和大内容不适合走 terminal input，后续应通过文件传输或脚本上传能力处理。
+
+**后续：**
+- 增加 WebSocket raw message size guard。
+- 增加 terminal input 累计字节限流。
+- 设计文件传输和脚本上传能力。
