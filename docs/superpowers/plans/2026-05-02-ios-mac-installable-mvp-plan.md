@@ -10,6 +10,15 @@
 
 ---
 
+## Current Status 2026-05-03
+
+- 本地/LAN MVP、iOS 模拟器链路、macOS Agent core、Electron Agent 壳、EAS 配置、Render/Docker 配置、release 占位符防呆和部署状态接口已完成并验证。
+- 当前剩余 12 个未勾选项集中在真实外部环境：Render 实例、真实 `REMOTE_RELAY_HOST`、真实 `REMOTE_DEV_TOKEN`、EAS/TestFlight 构建、macOS Agent 外网连接、iPhone 蜂窝 smoke 和 MVP 真机验收。
+- 占位符允许文档和默认配置可提交，但 release 模式会拒绝 `api.example.com`、`.example.invalid`、`<relay-host>` 和占位 token；不能用占位符冒充真实公网验收完成。
+- 发布就绪审查记录见 `docs/runbooks/release-readiness-audit.md`。
+
+---
+
 ## Scope Boundary
 
 本计划交付：

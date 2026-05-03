@@ -18,6 +18,7 @@
 - [External network smoke test runbook](docs/runbooks/external-network-smoke-test.md)
 - [TestFlight build runbook](docs/runbooks/testflight-build.md)
 - [macOS Agent desktop runbook](docs/runbooks/macos-agent-package.md)
+- [Release readiness audit](docs/runbooks/release-readiness-audit.md)
 
 ## Local MVP Foundation
 

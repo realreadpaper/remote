@@ -15,7 +15,7 @@ The iPhone should be able to open a remote terminal and run a command while Wi-F
 Replace these values before running:
 
 ```bash
-export REMOTE_RELAY_HOST="api.example.com"
+export REMOTE_RELAY_HOST="<relay-host>"
 export REMOTE_DEV_TOKEN="<secret>"
 export REMOTE_DEVICE_ID="home-mac"
 ```
@@ -23,9 +23,9 @@ export REMOTE_DEVICE_ID="home-mac"
 Expected URLs:
 
 ```text
-wss://api.example.com/ws/agent
-wss://api.example.com/ws/mobile
-https://api.example.com
+wss://${REMOTE_RELAY_HOST}/ws/agent
+wss://${REMOTE_RELAY_HOST}/ws/mobile
+https://${REMOTE_RELAY_HOST}
 ```
 
 ## Preflight
@@ -112,7 +112,7 @@ On the iPhone:
 1. Disable Wi-Fi.
 2. Confirm cellular data is active.
 3. Open the app.
-4. Confirm the app displays `wss://api.example.com/ws/mobile` or the configured relay host.
+4. Confirm the app displays `wss://${REMOTE_RELAY_HOST}/ws/mobile`.
 
 ## Pair
 

@@ -7,8 +7,8 @@ Deploy the development relay so both the macOS Agent and iPhone connect outward 
 Default product path:
 
 ```text
-macOS Agent -> wss://api.example.com/ws/agent
-iPhone App   -> wss://api.example.com/ws/mobile
+macOS Agent -> wss://${REMOTE_RELAY_HOST}/ws/agent
+iPhone App   -> wss://${REMOTE_RELAY_HOST}/ws/mobile
 ```
 
 Home DDNS, port forwarding, IPv6 direct access, and reverse tunnels remain advanced self-hosted options. They are not required for the default user flow.
@@ -16,7 +16,7 @@ Home DDNS, port forwarding, IPv6 direct access, and reverse tunnels remain advan
 ## Prerequisites
 
 - A VPS or cloud VM with a public IPv4 or IPv6 address.
-- A DNS record such as `api.example.com` pointing to the VPS.
+- A DNS record such as `<relay-host>` pointing to the VPS.
 - Node.js 22 or newer.
 - Corepack and `pnpm@9.15.0`.
 - Caddy or Nginx for TLS termination.
@@ -38,7 +38,8 @@ export HOST=127.0.0.1
 export PORT=8787
 export REMOTE_REQUIRE_DEV_TOKEN=1
 export REMOTE_DEV_TOKEN="<secret>"
-export REMOTE_PUBLIC_BASE_URL="https://api.example.com"
+export REMOTE_RELAY_HOST="<relay-host>"
+export REMOTE_PUBLIC_BASE_URL="https://${REMOTE_RELAY_HOST}"
 export REMOTE_DATA_DIR="/var/lib/terminal-first-remote"
 ```
 
@@ -69,7 +70,7 @@ HOST=127.0.0.1 \
 PORT=8787 \
 REMOTE_REQUIRE_DEV_TOKEN=1 \
 REMOTE_DEV_TOKEN="<secret>" \
-REMOTE_PUBLIC_BASE_URL="https://api.example.com" \
+REMOTE_RELAY_HOST="<relay-host>" \
 REMOTE_DATA_DIR="/var/lib/terminal-first-remote" \
 node apps/server/dist/index.js
 ```
@@ -91,7 +92,7 @@ Expected:
 Install Caddy, then create `/etc/caddy/Caddyfile`:
 
 ```caddyfile
-api.example.com {
+<relay-host> {
   reverse_proxy 127.0.0.1:8787
 }
 ```
@@ -106,7 +107,7 @@ sudo systemctl reload caddy
 Verify public HTTPS:
 
 ```bash
-curl https://api.example.com/health
+curl "https://${REMOTE_RELAY_HOST}/health"
 ```
 
 Expected:
@@ -122,10 +123,10 @@ Use this only if Caddy is not available. The key requirement is WebSocket upgrad
 ```nginx
 server {
   listen 443 ssl http2;
-  server_name api.example.com;
+  server_name <relay-host>;
 
-  ssl_certificate /etc/letsencrypt/live/api.example.com/fullchain.pem;
-  ssl_certificate_key /etc/letsencrypt/live/api.example.com/privkey.pem;
+  ssl_certificate /etc/letsencrypt/live/<relay-host>/fullchain.pem;
+  ssl_certificate_key /etc/letsencrypt/live/<relay-host>/privkey.pem;
 
   location / {
     proxy_pass http://127.0.0.1:8787;
@@ -155,7 +156,7 @@ Environment=HOST=127.0.0.1
 Environment=PORT=8787
 Environment=REMOTE_REQUIRE_DEV_TOKEN=1
 Environment=REMOTE_DEV_TOKEN=<secret>
-Environment=REMOTE_PUBLIC_BASE_URL=https://api.example.com
+Environment=REMOTE_RELAY_HOST=<relay-host>
 Environment=REMOTE_DATA_DIR=/var/lib/terminal-first-remote
 ExecStart=/usr/bin/node apps/server/dist/index.js
 Restart=always
@@ -191,7 +192,7 @@ HOST=127.0.0.1 \
 PORT=8787 \
 REMOTE_REQUIRE_DEV_TOKEN=1 \
 REMOTE_DEV_TOKEN="<secret>" \
-REMOTE_PUBLIC_BASE_URL="https://api.example.com" \
+REMOTE_RELAY_HOST="<relay-host>" \
 REMOTE_DATA_DIR="/var/lib/terminal-first-remote" \
 pm2 start apps/server/dist/index.js --name terminal-first-remote
 pm2 save
@@ -204,7 +205,12 @@ Unauthorized sockets should be closed:
 ```bash
 node --input-type=module <<'EOF'
 import WebSocket from "ws";
-const ws = new WebSocket("wss://api.example.com/ws/mobile");
+const host = process.env.REMOTE_RELAY_HOST;
+if (!host) {
+  console.error("REMOTE_RELAY_HOST is required");
+  process.exit(1);
+}
+const ws = new WebSocket(`wss://${host}/ws/mobile`);
 ws.on("close", (code, reason) => {
   console.log({ code, reason: reason.toString() });
   process.exit(code === 1008 ? 0 : 1);
@@ -230,7 +236,7 @@ Authorized Agent and Mobile checks are covered in `docs/runbooks/external-networ
 Check:
 
 ```bash
-dig api.example.com
+dig "${REMOTE_RELAY_HOST}"
 sudo ss -ltnp | grep -E ':80|:443|:8787'
 sudo systemctl status caddy
 ```
@@ -243,7 +249,7 @@ sudo systemctl status caddy
 
 ### Agent connects but Mobile cannot pair
 
-- Confirm `REMOTE_PUBLIC_BASE_URL=https://api.example.com`.
+- Confirm `REMOTE_RELAY_HOST=<relay-host>` or `REMOTE_PUBLIC_BASE_URL=https://<relay-host>`.
 - Confirm HTTP pairing routes carry `Authorization: Bearer <secret>`.
 - Check server logs for `Unauthorized`, `Rate limit exceeded`, or pairing code errors.
 

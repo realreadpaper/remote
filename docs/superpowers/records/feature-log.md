@@ -1930,3 +1930,28 @@
 
 **验证：**
 - `rg -n "api\\.example\\.com|wss://\\$\\{REMOTE_RELAY_HOST\\}|remote-terminal\\.example\\.invalid|<relay-host>" docs/runbooks/testflight-build.md apps/mobile/eas.json` 确认操作步骤使用 `${REMOTE_RELAY_HOST}`，占位符只保留在说明和默认占位配置中。
+
+## 2026-05-03 Release Readiness Audit Docs
+
+**状态：** completed
+
+**实现内容：**
+- 新增 `docs/runbooks/release-readiness-audit.md`，列出已实现功能、占位符策略、剩余发布阻塞项和验证命令。
+- README 增加发布就绪审查入口。
+- 主 MVP 计划增加 2026-05-03 当前状态，明确剩余 12 项都依赖真实外部环境或人工验收。
+- 外网冒烟手册和自托管云中转手册统一使用 `<relay-host>` / `${REMOTE_RELAY_HOST}`，避免把 `api.example.com` 写成默认操作地址。
+
+**涉及文件：**
+- `README.md`
+- `docs/runbooks/release-readiness-audit.md`
+- `docs/runbooks/external-network-smoke-test.md`
+- `docs/runbooks/cloud-relay-dev-deploy.md`
+- `docs/superpowers/plans/2026-05-02-ios-mac-installable-mvp-plan.md`
+- `docs/superpowers/records/feature-log.md`
+
+**验证：**
+- `git diff --check`: pass，无输出。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm test`: pass，265 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm build`: pass。
+- `rg -n 'api\\.example\\.com|wss://api\\.example\\.com|https://api\\.example\\.com' docs/runbooks README.md apps/mobile/eas.json render.yaml` 确认操作手册中 `api.example.com` 只保留为 release guard 拒绝示例或可选自定义域名示例。
