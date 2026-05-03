@@ -105,6 +105,8 @@ const tokenServerConfig: ServerConfig = {
   devToken: "secret",
   publicBaseUrl: null,
   dataDir: null,
+  databaseUrl: null,
+  redisUrl: null,
   rateLimitWindowMs: 60_000,
   rateLimitMaxRequests: 120,
   wsMessageRateLimitWindowMs: 10_000,

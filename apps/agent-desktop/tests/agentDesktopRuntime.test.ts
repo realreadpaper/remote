@@ -8,6 +8,7 @@ const config: AgentConfig = {
   deviceId: "mac-1",
   deviceName: "MacBook Pro",
   devToken: null,
+  capabilities: ["terminal"],
   shell: "/bin/zsh",
   terminalOutputChunkBytes: 16_384
 };

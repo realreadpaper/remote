@@ -1724,3 +1724,30 @@
 - README 本地 smoke 不再使用旧的无 token raw WebSocket probe。
 - README 改为要求通过 Mobile pairing panel 配对、Agent 终端批准后再运行 `printf "__PWD__%s\n" "$PWD"`。
 - README 明确无 `sessionToken` 的 `session.open` 会按设计被拒绝。
+
+## 2026-05-03 Server Cloud Runtime Config
+
+**状态：** completed
+
+**提交：**
+- `cca04c3` `docs: design server cloud runtime config`
+- `9d06a2b` `docs: plan server cloud runtime config`
+
+**实现内容：**
+- `ServerConfig` 增加 `databaseUrl` 和 `redisUrl`。
+- `loadServerConfig()` 读取 `DATABASE_URL` 和 `REDIS_URL`。
+- 空字符串归一为 `null`。
+- 非法 URL 抛出 `DATABASE_URL must be a valid URL` 或 `REDIS_URL must be a valid URL`。
+- `docs/runbooks/cloud-test-environment.md` 更新为：server config 已读取 URL，但业务 store wiring 仍待后续任务完成。
+
+**TDD 证据：**
+- 红灯：`PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test` 失败，默认 config 缺少 `databaseUrl`/`redisUrl`，显式云端值未读取，非法 URL 未拒绝。
+- 绿灯：`PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test`: pass，121 tests passed。
+
+**验证：**
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm test`: pass，253 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm build`: pass。
+
+**已知风险：**
+- 本任务只完成 config readiness，尚未把 PostgreSQL/Redis 接入业务 store。

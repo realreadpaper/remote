@@ -10,6 +10,8 @@ describe("loadServerConfig", () => {
       devToken: null,
       publicBaseUrl: null,
       dataDir: null,
+      databaseUrl: null,
+      redisUrl: null,
       rateLimitWindowMs: 60_000,
       rateLimitMaxRequests: 120,
       wsMessageRateLimitWindowMs: 10_000,
@@ -34,6 +36,8 @@ describe("loadServerConfig", () => {
         REMOTE_DEV_TOKEN: "secret",
         REMOTE_PUBLIC_BASE_URL: "https://dev-api.example.com",
         REMOTE_DATA_DIR: "/var/lib/remote",
+        DATABASE_URL: "postgres://remote:secret@postgres.internal:5432/remote",
+        REDIS_URL: "redis://redis.internal:6379",
         REMOTE_HTTP_RATE_LIMIT_WINDOW_MS: "30000",
         REMOTE_HTTP_RATE_LIMIT_MAX: "30",
         REMOTE_WS_MESSAGE_RATE_LIMIT_WINDOW_MS: "5000",
@@ -54,6 +58,8 @@ describe("loadServerConfig", () => {
       devToken: "secret",
       publicBaseUrl: "https://dev-api.example.com",
       dataDir: "/var/lib/remote",
+      databaseUrl: "postgres://remote:secret@postgres.internal:5432/remote",
+      redisUrl: "redis://redis.internal:6379",
       rateLimitWindowMs: 30_000,
       rateLimitMaxRequests: 30,
       wsMessageRateLimitWindowMs: 5_000,
@@ -78,6 +84,11 @@ describe("loadServerConfig", () => {
     expect(() => loadServerConfig({ REMOTE_REQUIRE_DEV_TOKEN: "1" })).toThrow(
       "REMOTE_DEV_TOKEN is required when REMOTE_REQUIRE_DEV_TOKEN=1"
     );
+  });
+
+  it("rejects invalid datastore URLs", () => {
+    expect(() => loadServerConfig({ DATABASE_URL: "not a url" })).toThrow("DATABASE_URL must be a valid URL");
+    expect(() => loadServerConfig({ REDIS_URL: "not a url" })).toThrow("REDIS_URL must be a valid URL");
   });
 
   it("rejects invalid HTTP rate limit config", () => {

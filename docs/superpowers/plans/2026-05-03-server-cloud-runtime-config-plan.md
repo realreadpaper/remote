@@ -26,7 +26,7 @@ docs/superpowers/records/feature-log.md
 - Modify: `apps/server/tests/config.test.ts`
 - Modify: `apps/server/src/config.ts`
 
-- [ ] **Step 1: Add failing tests**
+- [x] **Step 1: Add failing tests**
 
 Add expectations:
 
@@ -34,17 +34,17 @@ Add expectations:
 - cloud env returns `databaseUrl` and `redisUrl`.
 - invalid values throw `DATABASE_URL must be a valid URL` and `REDIS_URL must be a valid URL`.
 
-- [ ] **Step 2: Run red tests**
+- [x] **Step 2: Run red tests**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test
 ```
 
-- [ ] **Step 3: Implement config fields**
+- [x] **Step 3: Implement config fields**
 
 Add fields and URL parser in `apps/server/src/config.ts`.
 
-- [ ] **Step 4: Run green tests**
+- [x] **Step 4: Run green tests**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test
@@ -57,11 +57,11 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test
 - Modify: `docs/superpowers/plans/2026-05-03-server-cloud-runtime-config-plan.md`
 - Modify: `docs/superpowers/records/feature-log.md`
 
-- [ ] **Step 1: Update runbook**
+- [x] **Step 1: Update runbook**
 
 Change the cloud runbook current status from “server runtime wiring pending” to “server reads URLs, store wiring pending”.
 
-- [ ] **Step 2: Full verification**
+- [x] **Step 2: Full verification**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test
@@ -70,7 +70,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm build
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add apps/server/src/config.ts apps/server/tests/config.test.ts docs/runbooks/cloud-test-environment.md docs/superpowers/plans/2026-05-03-server-cloud-runtime-config-plan.md docs/superpowers/records/feature-log.md

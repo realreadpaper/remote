@@ -5,6 +5,8 @@ export interface ServerConfig {
   devToken: string | null;
   publicBaseUrl: string | null;
   dataDir: string | null;
+  databaseUrl: string | null;
+  redisUrl: string | null;
   rateLimitWindowMs: number;
   rateLimitMaxRequests: number;
   wsMessageRateLimitWindowMs: number;
@@ -37,6 +39,8 @@ export function loadServerConfig(env: ServerEnv = process.env): ServerConfig {
     devToken,
     publicBaseUrl: normalizeOptional(env.REMOTE_PUBLIC_BASE_URL),
     dataDir: normalizeOptional(env.REMOTE_DATA_DIR),
+    databaseUrl: parseOptionalUrl(env.DATABASE_URL, "DATABASE_URL"),
+    redisUrl: parseOptionalUrl(env.REDIS_URL, "REDIS_URL"),
     rateLimitWindowMs: parseIntegerEnv(
       env.REMOTE_HTTP_RATE_LIMIT_WINDOW_MS,
       60_000,
@@ -123,6 +127,19 @@ function parsePort(rawPort: string | undefined): number {
 function normalizeOptional(value: string | undefined): string | null {
   const normalized = value?.trim();
   return normalized && normalized.length > 0 ? normalized : null;
+}
+
+function parseOptionalUrl(rawValue: string | undefined, envName: string): string | null {
+  const normalized = normalizeOptional(rawValue);
+  if (!normalized) {
+    return null;
+  }
+
+  try {
+    return new URL(normalized).toString();
+  } catch {
+    throw new Error(`${envName} must be a valid URL`);
+  }
 }
 
 function parseIntegerEnv(

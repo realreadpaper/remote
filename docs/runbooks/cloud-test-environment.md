@@ -89,8 +89,9 @@ Current status:
 
 - Task 14 added PostgreSQL schema and repositories.
 - Task 15 added Redis-compatible presence store.
-- Server runtime wiring is still pending, so the smoke test must use one Web Service instance.
-- Do not mark multi-instance cloud readiness complete until `DATABASE_URL` and `REDIS_URL` are read by server runtime config.
+- Server runtime config reads `DATABASE_URL` and `REDIS_URL`.
+- Business store wiring is still pending, so the smoke test must use one Web Service instance.
+- Do not mark multi-instance cloud readiness complete until pairing/session token stores use PostgreSQL and presence uses Redis in the running server.
 
 ## Public Health Check
 
