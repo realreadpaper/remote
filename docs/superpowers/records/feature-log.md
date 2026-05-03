@@ -1864,3 +1864,53 @@
 - 按 `docs/runbooks/cloud-test-environment.md` 在 Render 创建 Blueprint，记录公网 URL 和 `REMOTE_DEV_TOKEN`。
 - 用真机蜂窝网络连接云 relay，执行 `printf "__CLOUD__%s\n" "$PWD"`。
 - 后续推进 TestFlight、macOS 签名公证、Postgres/Redis 业务 store wiring 和发布前验收。
+
+## 2026-05-03 Release Placeholder Guard And Deployment Status
+
+**状态：** completed
+
+**提交：**
+- `7f77f60` `feat: guard release placeholder config`
+
+**实现内容：**
+- Mobile 支持 `EXPO_PUBLIC_REMOTE_RELAY_HOST`，自动推导 `wss://<host>/ws/mobile` 和 `https://<host>`。
+- Mobile release 模式 `EXPO_PUBLIC_REMOTE_RELEASE=1` 会拒绝 `api.example.com`、`.example.invalid`、`<relay-host>` 等占位 host。
+- Mobile release 模式要求 `EXPO_PUBLIC_REMOTE_DEV_TOKEN` 存在，并拒绝 `replace-with-render-dev-token` 这类占位 token。
+- Server 支持 `REMOTE_RELAY_HOST`，自动推导 `REMOTE_PUBLIC_BASE_URL=https://<host>`。
+- Server release 模式 `REMOTE_RELEASE=1` 要求 `REMOTE_REQUIRE_DEV_TOKEN=1`。
+- Server release 模式拒绝占位公网 host。
+- Render Blueprint 默认开启 `REMOTE_RELEASE=1`，避免公网服务误以裸奔模式运行。
+- 新增 `GET /deployment/status`，用于云端验证公网 base URL、dev token guard 和当前 store 模式；响应不泄露 token。
+- EAS `preview`/`production` 改为占位 host/token 配置；真实构建必须用 EAS env 覆盖。
+
+**涉及文件：**
+- `apps/mobile/src/config/runtimeConfig.ts`
+- `apps/mobile/tests/runtimeConfig.test.ts`
+- `apps/mobile/eas.json`
+- `apps/server/src/config.ts`
+- `apps/server/src/ws.ts`
+- `apps/server/tests/config.test.ts`
+- `apps/server/tests/ws.test.ts`
+- `render.yaml`
+- `docs/runbooks/testflight-build.md`
+- `docs/runbooks/cloud-test-environment.md`
+- `docs/superpowers/plans/2026-05-02-ios-mac-installable-mvp-plan.md`
+
+**TDD 记录：**
+- Mobile 红灯：`runtimeConfig.test.ts` 失败，原因是 relay host 未推导、release 占位 host 未拒绝、release token 未强制。
+- Server 红灯：`config.test.ts` 失败，原因是 `REMOTE_RELAY_HOST` 未推导、release 占位 host 和未启用 token guard 未拒绝。
+- Server 红灯：`ws.test.ts` 失败，原因是 `/deployment/status` 404。
+
+**验证：**
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile test -- runtimeConfig.test.ts`: pass，59 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test -- config.test.ts`: pass，138 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test -- ws.test.ts`: pass，125 tests passed。
+
+**已知风险：**
+- `/deployment/status` 明确报告当前 store 模式；本阶段仍是单实例优先，不宣称多实例云端完成。
+- 真实 Render host、`REMOTE_DEV_TOKEN`、Apple/EAS 凭据必须由部署环境注入，仓库只保留占位值。
+
+**后续：**
+- Render Web Service 创建后设置 `REMOTE_RELAY_HOST=<render-host>` 并 redeploy。
+- EAS production/preview 环境设置 `EXPO_PUBLIC_REMOTE_RELAY_HOST=<render-host>` 和真实 `EXPO_PUBLIC_REMOTE_DEV_TOKEN`。
+- 执行云端蜂窝 smoke，并把结果记录到 MVP acceptance。
