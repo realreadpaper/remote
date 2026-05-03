@@ -756,3 +756,52 @@
 - 云中转多实例时实现 Redis/Postgres rate limit store。
 - 增加 WebSocket 消息级限流。
 - 增加账号级、设备级、pairing code 级组合限流。
+
+## 2026-05-03 WebSocket Message Rate Limit
+
+**状态：** completed
+
+**提交：**
+- `659acba` `docs: design websocket message rate limit`
+- `03fc7f3` `docs: plan websocket message rate limit`
+- `5e234c7` `feat: rate limit mobile websocket messages`
+
+**实现内容：**
+- Server 配置新增 `REMOTE_WS_MESSAGE_RATE_LIMIT_WINDOW_MS` 和 `REMOTE_WS_MESSAGE_RATE_LIMIT_MAX`。
+- 默认 Mobile WebSocket terminal 消息限流为 10 秒窗口、每客户端 200 条消息。
+- `/ws/mobile` 的 `terminal.input` 和 `terminal.resize` 在路由给 Agent 前检查限流。
+- `session.open` 不计入 terminal message 限流额度，避免连接建立影响后续输入。
+- 限流 key 使用 `ws.mobile.messages:<clientKey>`，`clientKey` 优先取 `x-forwarded-for` 第一个 IP，其次取 `request.ip`。
+- 超限时 Server 向 Mobile 返回 `session.error`，message 为 `Rate limit exceeded`，并保留原始 `sessionId`。
+- 超限不关闭 WebSocket，用户等待窗口恢复后可继续使用。
+
+**涉及文件：**
+- `docs/superpowers/specs/2026-05-03-websocket-message-rate-limit-design.md`
+- `docs/superpowers/plans/2026-05-03-websocket-message-rate-limit-plan.md`
+- `apps/server/src/config.ts`
+- `apps/server/src/ws.ts`
+- `apps/server/tests/config.test.ts`
+- `apps/server/tests/ws.test.ts`
+
+**TDD 记录：**
+- Config 红灯：`PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test -- apps/server/tests/config.test.ts` 失败，`ServerConfig` 缺少 WebSocket message rate limit 字段，非法配置未抛错。
+- Config 绿灯：实现 `wsMessageRateLimitWindowMs`、`wsMessageRateLimitMaxRequests` 和环境变量解析后，config 测试通过。
+- Route 红灯：`PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test -- apps/server/tests/ws.test.ts` 失败，第二条 `terminal.input` 后 Mobile 等不到 `Rate limit exceeded`。
+- Route 绿灯：在 `/ws/mobile` 路由到 Agent 前接入 `MemoryRateLimiter`，Server 测试通过，86 tests passed。
+
+**验证：**
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test`: pass，86 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm test`: pass，180 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm build`: pass。
+
+**已知风险：**
+- 内存限流只对单 Server 进程生效，多实例云中转需要共享 store。
+- IP 级 WebSocket 限流可能误伤同一 NAT 出口下的多个用户。
+- 当前只按消息数限流，没有限制单条 `terminal.input.data` 的字节数。
+- Agent 到 Mobile 的 `terminal.output` 仍没有输出背压和限速。
+
+**后续：**
+- 增加 terminal input 单条字节数限制。
+- 增加 Agent output 背压和输出限速。
+- 云中转多实例时把 WebSocket 限流迁移到 Redis/Postgres。
