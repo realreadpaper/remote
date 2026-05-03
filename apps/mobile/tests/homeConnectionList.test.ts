@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   buildConnectionListItems,
+  buildDeviceStatusLookup,
   buildDevelopmentPreviewConnections,
+  getOnlineStatusNotice,
   shouldUseDevelopmentPreviewConnections
 } from "../src/state/homeConnectionList";
 import type { PairingTokenRecord } from "../src/state/pairingTokenStore";
@@ -48,6 +50,49 @@ describe("home connection list", () => {
       statusTone: "expired",
       subtitle: "Pair again"
     });
+  });
+
+  it("uses live server device status when it is available", () => {
+    const statuses = buildDeviceStatusLookup([
+      {
+        deviceId: "macbook-pro",
+        deviceName: "He MacBook Pro",
+        capabilities: ["terminal"],
+        online: true,
+        lastSeenAt: "2026-05-03T11:58:00.000Z"
+      },
+      {
+        deviceId: "old-mac",
+        deviceName: "Old Mac",
+        capabilities: ["terminal"],
+        online: false,
+        lastSeenAt: "2026-05-03T08:00:00.000Z"
+      }
+    ]);
+
+    expect(
+      buildConnectionListItems([readyRecord, expiredRecord], {
+        now: () => new Date("2026-05-03T12:00:00.000Z"),
+        deviceStatusesById: statuses
+      })
+    ).toEqual([
+      expect.objectContaining({
+        title: "He MacBook Pro",
+        statusLabel: "Online",
+        statusTone: "online"
+      }),
+      expect.objectContaining({
+        title: "Old Mac",
+        statusLabel: "Expired",
+        statusTone: "expired"
+      })
+    ]);
+  });
+
+  it("keeps a concise notice when online status cannot be loaded", () => {
+    expect(getOnlineStatusNotice("unavailable", 2)).toBe("Online status unavailable. You can still open terminal.");
+    expect(getOnlineStatusNotice("ready", 2)).toBeNull();
+    expect(getOnlineStatusNotice("unavailable", 0)).toBeNull();
   });
 
   it("only enables preview connections in explicit non-release development mode", () => {

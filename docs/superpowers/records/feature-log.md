@@ -2066,3 +2066,46 @@
 
 **已知风险：**
 - 预览连接只用于 UI 验证，不能代表真实 Agent 在线状态；真实连接列表仍需要配对后由 SecureStore token 填充。
+
+## 2026-05-03 iOS Home Live Device Status
+
+**状态：** completed
+
+**实现前方案：**
+- 复用服务端已有 `GET /devices`，不新增服务端协议。
+- 手机端新增只读 `DeviceStatusClient`，负责拉取 Agent 注册设备的 `online`、`deviceName`、`lastSeenAt` 和能力列表。
+- 首页列表继续以 SecureStore 中已保存的配对 token 为主；服务端状态只做增强展示，不决定本地连接是否存在。
+- 如果服务端在线状态获取失败，保留本地连接列表，并显示 `Online status unavailable. You can still open terminal.`，不阻塞用户进入终端。
+
+**实现内容：**
+- 新增 `apps/mobile/src/protocol/deviceStatusClient.ts`，解析 `/devices` 响应并在配置 dev token 时附带 `Authorization`。
+- `App.tsx` 在刷新本地连接后拉取服务端设备状态，成功时合并到首页，失败时清空在线状态并设置不可用提示。
+- `homeConnectionList` 支持服务端状态 lookup：未过期 token 有服务端状态时显示 `Online` / `Offline`，过期 token 仍优先显示 `Expired`。
+- `HomeScreen` 增加不可用提示条，并为 `Offline` 状态使用灰色状态胶囊。
+
+**涉及文件：**
+- `apps/mobile/App.tsx`
+- `apps/mobile/src/components/HomeScreen.tsx`
+- `apps/mobile/src/protocol/deviceStatusClient.ts`
+- `apps/mobile/src/state/homeConnectionList.ts`
+- `apps/mobile/tests/deviceStatusClient.test.ts`
+- `apps/mobile/tests/homeConnectionList.test.ts`
+- `docs/superpowers/records/feature-log.md`
+
+**TDD 记录：**
+- 红灯：`deviceStatusClient.test.ts` 失败，原因是 `deviceStatusClient` 模块不存在。
+- 红灯：`homeConnectionList.test.ts` 失败，原因是 `buildDeviceStatusLookup`、`getOnlineStatusNotice` 不存在。
+- 绿灯：实现设备状态客户端、状态 lookup、Online/Offline 合并和不可用提示后，移动端相关测试通过。
+
+**验证：**
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile test -- homeConnectionList.test.ts deviceStatusClient.test.ts`: pass，73 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile test`: pass，73 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm test`: pass，279 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm build`: pass。
+- `EXPO_PUBLIC_REMOTE_DEMO_CONNECTIONS=1 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile exec expo run:ios --device "iPhone 15"`: build succeeded，开发构建已安装并打开。
+- iOS 模拟器截图：`/tmp/remote-terminal-home-live-status-notice.png`，确认服务端不可用时显示在线状态提示，连接列表仍可见。
+
+**已知风险：**
+- 当前 `/devices` 是全局注册设备列表，手机端只按本地保存的 `deviceId` 合并显示；后续多用户云端化后应切换为用户绑定设备列表或服务端过滤后的绑定视图。
+- 在线状态只在首页刷新时获取一次，暂未做后台轮询或 App 回到前台自动刷新。

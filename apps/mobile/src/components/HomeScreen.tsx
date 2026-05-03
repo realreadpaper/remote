@@ -1,17 +1,20 @@
 import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
 import { buildConnectionListItems } from "../state/homeConnectionList";
+import type { RegisteredDeviceStatus } from "../protocol/deviceStatusClient";
 import type { PairingTokenRecord } from "../state/pairingTokenStore";
 import { mobileShellTheme } from "./mobileShellTheme";
 
 export interface HomeScreenProps {
   devices: PairingTokenRecord[];
+  deviceStatusesById?: Record<string, RegisteredDeviceStatus>;
   loading: boolean;
+  statusNotice?: string | null;
   onNewConnection: () => void;
   onSelectDevice: (device: PairingTokenRecord) => void;
 }
 
-export function HomeScreen({ devices, loading, onNewConnection, onSelectDevice }: HomeScreenProps) {
-  const connectionItems = buildConnectionListItems(devices);
+export function HomeScreen({ devices, deviceStatusesById, loading, statusNotice, onNewConnection, onSelectDevice }: HomeScreenProps) {
+  const connectionItems = buildConnectionListItems(devices, { deviceStatusesById });
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -26,6 +29,12 @@ export function HomeScreen({ devices, loading, onNewConnection, onSelectDevice }
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
+        {statusNotice ? (
+          <View style={styles.noticePanel}>
+            <Text style={styles.noticeText}>{statusNotice}</Text>
+          </View>
+        ) : null}
+
         {devices.length === 0 ? (
           <View style={styles.emptyPanel}>
             <Text style={styles.emptyTitle}>No connections</Text>
@@ -47,8 +56,20 @@ export function HomeScreen({ devices, loading, onNewConnection, onSelectDevice }
                   <Text numberOfLines={1} style={styles.deviceName}>{item.title}</Text>
                   <Text numberOfLines={1} style={styles.deviceDetail}>{item.subtitle}</Text>
                 </View>
-                <View style={[styles.statusPill, item.statusTone === "expired" && styles.statusPillExpired]}>
-                  <Text style={[styles.statusPillText, item.statusTone === "expired" && styles.statusPillTextExpired]}>
+                <View
+                  style={[
+                    styles.statusPill,
+                    item.statusTone === "expired" && styles.statusPillExpired,
+                    item.statusTone === "offline" && styles.statusPillOffline
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.statusPillText,
+                      item.statusTone === "expired" && styles.statusPillTextExpired,
+                      item.statusTone === "offline" && styles.statusPillTextOffline
+                    ]}
+                  >
                     {item.statusLabel}
                   </Text>
                 </View>
@@ -146,6 +167,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center"
   },
+  noticePanel: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: layout.panelRadius,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.panelBorder,
+    backgroundColor: colors.warningSurface
+  },
+  noticeText: {
+    color: colors.warning,
+    fontSize: 13,
+    fontWeight: "600",
+    lineHeight: 18
+  },
   connectionCard: {
     minHeight: 112,
     padding: 14,
@@ -187,6 +222,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center"
   },
+  statusPillOffline: {
+    backgroundColor: colors.panelMuted
+  },
   statusPillExpired: {
     backgroundColor: colors.dangerSurface
   },
@@ -197,6 +235,9 @@ const styles = StyleSheet.create({
   },
   statusPillTextExpired: {
     color: colors.danger
+  },
+  statusPillTextOffline: {
+    color: colors.offline
   },
   connectionBottomRow: {
     borderTopWidth: StyleSheet.hairlineWidth,
