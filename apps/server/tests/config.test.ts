@@ -19,7 +19,9 @@ describe("loadServerConfig", () => {
       agentOutputRateLimitWindowMs: 10_000,
       agentOutputRateLimitMaxMessages: 1000,
       agentOutputByteRateLimitWindowMs: 10_000,
-      agentOutputByteRateLimitMaxBytes: 1_048_576
+      agentOutputByteRateLimitMaxBytes: 1_048_576,
+      mobileInputByteRateLimitWindowMs: 10_000,
+      mobileInputByteRateLimitMaxBytes: 262_144
     });
   });
 
@@ -41,7 +43,9 @@ describe("loadServerConfig", () => {
         REMOTE_AGENT_OUTPUT_RATE_LIMIT_WINDOW_MS: "5000",
         REMOTE_AGENT_OUTPUT_RATE_LIMIT_MAX: "50",
         REMOTE_AGENT_OUTPUT_BYTE_RATE_LIMIT_WINDOW_MS: "5000",
-        REMOTE_AGENT_OUTPUT_BYTE_RATE_LIMIT_MAX: "4096"
+        REMOTE_AGENT_OUTPUT_BYTE_RATE_LIMIT_MAX: "4096",
+        REMOTE_MOBILE_INPUT_BYTE_RATE_LIMIT_WINDOW_MS: "5000",
+        REMOTE_MOBILE_INPUT_BYTE_RATE_LIMIT_MAX: "4096"
       })
     ).toEqual({
       host: "0.0.0.0",
@@ -59,7 +63,9 @@ describe("loadServerConfig", () => {
       agentOutputRateLimitWindowMs: 5_000,
       agentOutputRateLimitMaxMessages: 50,
       agentOutputByteRateLimitWindowMs: 5_000,
-      agentOutputByteRateLimitMaxBytes: 4_096
+      agentOutputByteRateLimitMaxBytes: 4_096,
+      mobileInputByteRateLimitWindowMs: 5_000,
+      mobileInputByteRateLimitMaxBytes: 4_096
     });
   });
 
@@ -134,6 +140,18 @@ describe("loadServerConfig", () => {
     );
     expect(() => loadServerConfig({ REMOTE_AGENT_OUTPUT_BYTE_RATE_LIMIT_MAX: "abc" })).toThrow(
       "REMOTE_AGENT_OUTPUT_BYTE_RATE_LIMIT_MAX must be a positive integer"
+    );
+    expect(() => loadServerConfig({ REMOTE_MOBILE_INPUT_BYTE_RATE_LIMIT_WINDOW_MS: "999" })).toThrow(
+      "REMOTE_MOBILE_INPUT_BYTE_RATE_LIMIT_WINDOW_MS must be an integer greater than or equal to 1000"
+    );
+    expect(() => loadServerConfig({ REMOTE_MOBILE_INPUT_BYTE_RATE_LIMIT_WINDOW_MS: "abc" })).toThrow(
+      "REMOTE_MOBILE_INPUT_BYTE_RATE_LIMIT_WINDOW_MS must be an integer greater than or equal to 1000"
+    );
+    expect(() => loadServerConfig({ REMOTE_MOBILE_INPUT_BYTE_RATE_LIMIT_MAX: "0" })).toThrow(
+      "REMOTE_MOBILE_INPUT_BYTE_RATE_LIMIT_MAX must be a positive integer"
+    );
+    expect(() => loadServerConfig({ REMOTE_MOBILE_INPUT_BYTE_RATE_LIMIT_MAX: "abc" })).toThrow(
+      "REMOTE_MOBILE_INPUT_BYTE_RATE_LIMIT_MAX must be a positive integer"
     );
   });
 });

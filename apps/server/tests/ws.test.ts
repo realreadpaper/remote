@@ -114,7 +114,9 @@ const tokenServerConfig: ServerConfig = {
   agentOutputRateLimitWindowMs: 10_000,
   agentOutputRateLimitMaxMessages: 1000,
   agentOutputByteRateLimitWindowMs: 10_000,
-  agentOutputByteRateLimitMaxBytes: 1_048_576
+  agentOutputByteRateLimitMaxBytes: 1_048_576,
+  mobileInputByteRateLimitWindowMs: 10_000,
+  mobileInputByteRateLimitMaxBytes: 262_144
 };
 
 async function registerAgent(app: FastifyInstance, deviceId = "mac-1"): Promise<WebSocket> {
@@ -1051,6 +1053,114 @@ describe("server websocket API", () => {
       sessionId: opened.sessionId
     });
     await noJson(agent);
+
+    agent.terminate();
+    mobile.terminate();
+  });
+
+  it("rate limits mobile terminal input by UTF-8 bytes before routing to the agent", async () => {
+    await app.close();
+    app = await createServer(
+      { logger: false },
+      { ...tokenServerConfig, requireDevToken: false, devToken: null, mobileInputByteRateLimitMaxBytes: 4 }
+    );
+    await app.ready();
+
+    const agent = await registerAgent(app);
+    const { sessionToken } = await approvePairingRequest(app, agent);
+    const mobile = await app.injectWS("/ws/mobile", { headers: { "x-forwarded-for": "203.0.113.30" } });
+    const agentOpened = nextJson(agent);
+    const mobileOpened = nextJson(mobile);
+    mobile.send(JSON.stringify({ type: "session.open", deviceId: "mac-1", sessionToken }));
+
+    await agentOpened;
+    const opened = (await mobileOpened) as { sessionId: string };
+    const firstInput = nextJson(agent);
+    mobile.send(JSON.stringify({ type: "terminal.input", sessionId: opened.sessionId, data: "abcd" }));
+    expect(await firstInput).toEqual({
+      type: "terminal.input",
+      sessionId: opened.sessionId,
+      data: "abcd"
+    });
+
+    const rateLimitError = nextJson(mobile);
+    mobile.send(JSON.stringify({ type: "terminal.input", sessionId: opened.sessionId, data: "e" }));
+    expect(await rateLimitError).toEqual({
+      type: "session.error",
+      code: "SESSION_ERROR",
+      message: "Rate limit exceeded",
+      sessionId: opened.sessionId
+    });
+    await noJson(agent);
+
+    agent.terminate();
+    mobile.terminate();
+  });
+
+  it("counts mobile terminal input byte rate by UTF-8 bytes", async () => {
+    await app.close();
+    app = await createServer(
+      { logger: false },
+      { ...tokenServerConfig, requireDevToken: false, devToken: null, mobileInputByteRateLimitMaxBytes: 4 }
+    );
+    await app.ready();
+
+    const agent = await registerAgent(app);
+    const { sessionToken } = await approvePairingRequest(app, agent);
+    const mobile = await app.injectWS("/ws/mobile", { headers: { "x-forwarded-for": "203.0.113.31" } });
+    const agentOpened = nextJson(agent);
+    const mobileOpened = nextJson(mobile);
+    mobile.send(JSON.stringify({ type: "session.open", deviceId: "mac-1", sessionToken }));
+
+    await agentOpened;
+    const opened = (await mobileOpened) as { sessionId: string };
+    const rateLimitError = nextJson(mobile);
+    mobile.send(JSON.stringify({ type: "terminal.input", sessionId: opened.sessionId, data: "你好" }));
+    expect(await rateLimitError).toEqual({
+      type: "session.error",
+      code: "SESSION_ERROR",
+      message: "Rate limit exceeded",
+      sessionId: opened.sessionId
+    });
+    await noJson(agent);
+
+    agent.terminate();
+    mobile.terminate();
+  });
+
+  it("routes terminal resize after mobile input byte rate limit is exceeded", async () => {
+    await app.close();
+    app = await createServer(
+      { logger: false },
+      { ...tokenServerConfig, requireDevToken: false, devToken: null, mobileInputByteRateLimitMaxBytes: 4 }
+    );
+    await app.ready();
+
+    const agent = await registerAgent(app);
+    const { sessionToken } = await approvePairingRequest(app, agent);
+    const mobile = await app.injectWS("/ws/mobile", { headers: { "x-forwarded-for": "203.0.113.32" } });
+    const agentOpened = nextJson(agent);
+    const mobileOpened = nextJson(mobile);
+    mobile.send(JSON.stringify({ type: "session.open", deviceId: "mac-1", sessionToken }));
+
+    await agentOpened;
+    const opened = (await mobileOpened) as { sessionId: string };
+    const firstInput = nextJson(agent);
+    mobile.send(JSON.stringify({ type: "terminal.input", sessionId: opened.sessionId, data: "abcd" }));
+    await firstInput;
+
+    const rateLimitError = nextJson(mobile);
+    mobile.send(JSON.stringify({ type: "terminal.input", sessionId: opened.sessionId, data: "e" }));
+    await rateLimitError;
+
+    const resizeMessage = nextJson(agent);
+    mobile.send(JSON.stringify({ type: "terminal.resize", sessionId: opened.sessionId, cols: 120, rows: 40 }));
+    expect(await resizeMessage).toEqual({
+      type: "terminal.resize",
+      sessionId: opened.sessionId,
+      cols: 120,
+      rows: 40
+    });
 
     agent.terminate();
     mobile.terminate();

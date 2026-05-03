@@ -175,6 +175,14 @@ function isAllowedAgentOutputByteRate(
   return limiter.check(`ws.agent.output.bytes:${deviceId}`, Buffer.byteLength(message.data, "utf8")).allowed;
 }
 
+function isAllowedMobileInputByteRate(
+  limiter: MemoryWeightedRateLimiter,
+  key: string,
+  message: Extract<ClientMessage, { type: "terminal.input" }>
+): boolean {
+  return limiter.check(key, Buffer.byteLength(message.data, "utf8")).allowed;
+}
+
 function clientKey(request: FastifyRequest): string {
   const forwardedFor = request.headers["x-forwarded-for"];
   if (typeof forwardedFor === "string" && forwardedFor.trim().length > 0) {
@@ -236,6 +244,10 @@ export function registerWsRoutes(app: FastifyInstance, config: ServerConfig): vo
   const agentOutputByteRateLimiter = new MemoryWeightedRateLimiter({
     windowMs: config.agentOutputByteRateLimitWindowMs,
     maxRequests: config.agentOutputByteRateLimitMaxBytes
+  });
+  const mobileInputByteRateLimiter = new MemoryWeightedRateLimiter({
+    windowMs: config.mobileInputByteRateLimitWindowMs,
+    maxRequests: config.mobileInputByteRateLimitMaxBytes
   });
 
   app.get("/health", async () => ({ ok: true }));
@@ -479,6 +491,7 @@ export function registerWsRoutes(app: FastifyInstance, config: ServerConfig): vo
       sendJson(socket, message);
     };
     const mobileRateLimitKey = `ws.mobile.messages:${clientKey(request)}`;
+    const mobileInputByteRateLimitKey = `ws.mobile.input.bytes:${clientKey(request)}`;
 
     socket.on("message", (data) => {
       let sessionId: string | undefined;
@@ -516,6 +529,12 @@ export function registerWsRoutes(app: FastifyInstance, config: ServerConfig): vo
         assertTerminalInputSize(message, config.terminalInputMaxBytes);
 
         if (!isAllowedWebSocketMessageRate(wsMessageRateLimiter, mobileRateLimitKey)) {
+          throw new Error("Rate limit exceeded");
+        }
+        if (
+          message.type === "terminal.input" &&
+          !isAllowedMobileInputByteRate(mobileInputByteRateLimiter, mobileInputByteRateLimitKey, message)
+        ) {
           throw new Error("Rate limit exceeded");
         }
 

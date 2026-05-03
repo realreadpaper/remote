@@ -15,6 +15,8 @@ export interface ServerConfig {
   agentOutputRateLimitMaxMessages: number;
   agentOutputByteRateLimitWindowMs: number;
   agentOutputByteRateLimitMaxBytes: number;
+  mobileInputByteRateLimitWindowMs: number;
+  mobileInputByteRateLimitMaxBytes: number;
 }
 
 type ServerEnv = Record<string, string | undefined>;
@@ -88,6 +90,18 @@ export function loadServerConfig(env: ServerEnv = process.env): ServerConfig {
       env.REMOTE_AGENT_OUTPUT_BYTE_RATE_LIMIT_MAX,
       1_048_576,
       "REMOTE_AGENT_OUTPUT_BYTE_RATE_LIMIT_MAX",
+      1
+    ),
+    mobileInputByteRateLimitWindowMs: parseIntegerEnv(
+      env.REMOTE_MOBILE_INPUT_BYTE_RATE_LIMIT_WINDOW_MS,
+      10_000,
+      "REMOTE_MOBILE_INPUT_BYTE_RATE_LIMIT_WINDOW_MS",
+      1_000
+    ),
+    mobileInputByteRateLimitMaxBytes: parseIntegerEnv(
+      env.REMOTE_MOBILE_INPUT_BYTE_RATE_LIMIT_MAX,
+      262_144,
+      "REMOTE_MOBILE_INPUT_BYTE_RATE_LIMIT_MAX",
       1
     )
   };
