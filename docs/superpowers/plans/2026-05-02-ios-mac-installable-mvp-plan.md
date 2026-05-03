@@ -314,7 +314,7 @@ docs/runbooks/macos-agent-package.md
 - [ ] 用 TestFlight App 连接云端 server。
 - [ ] 用 macOS Agent 连接云端 server。
 - [ ] 执行 `printf "__CLOUD__%s\n" "$PWD"` 冒烟测试。
-- [ ] 提交：`git commit -m "docs: add cloud test environment runbook"`。
+- [x] 提交：`git commit -m "docs: add cloud test environment runbook"`。
 
 ## Phase 7: 发布前验收
 
