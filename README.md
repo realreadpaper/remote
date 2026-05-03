@@ -192,55 +192,20 @@ Verify the local vertical slice:
 
    Expected response includes `mac-dev`, capabilities `["terminal"]`, and `online: true`.
 
-5. Optionally verify WebSocket terminal routing with a smoke probe:
+5. Verify terminal routing through the current pairing flow:
 
-   ```bash
-   pnpm --filter @remote/server exec node --input-type=module <<'EOF'
-   import WebSocket from "ws";
+   - Use the pairing panel in the mobile app to submit the pairing code printed by the Agent.
+   - Approve the pairing request in the Agent terminal.
+   - Tap `Connect` in the mobile app.
+   - Run:
 
-   const ws = new WebSocket("ws://127.0.0.1:8787/ws/mobile");
-   const timeout = setTimeout(() => {
-     console.error("Timed out waiting for __PWD__ marker output.");
-     ws.close();
-     process.exit(1);
-   }, 5000);
-   let buffer = "";
+     ```bash
+     printf "__PWD__%s\n" "$PWD"
+     ```
 
-   ws.on("open", () => {
-     ws.send(JSON.stringify({ type: "session.open", deviceId: "mac-dev" }));
-   });
+   Expected output contains `__PWD__`. The Agent PTY starts in `$HOME` by default, so the marker commonly prints `__PWD__/Users/<name>` on macOS.
 
-   ws.on("message", (data) => {
-     const message = JSON.parse(data.toString());
-     console.log(message);
-
-     if (message.type === "session.opened") {
-       ws.send(JSON.stringify({
-         type: "terminal.input",
-         sessionId: message.sessionId,
-         data: "printf \"__PWD__%s\\n\" \"$PWD\"\n"
-       }));
-       return;
-     }
-
-     if (message.type === "terminal.output") {
-       buffer += message.data;
-       if (/__PWD__\/[^\r\n]+/.test(buffer)) {
-         clearTimeout(timeout);
-         ws.close();
-       }
-     }
-   });
-
-   ws.on("error", (error) => {
-     clearTimeout(timeout);
-     console.error(error);
-     process.exit(1);
-   });
-   EOF
-   ```
-
-   The Agent PTY starts in `$HOME` by default, so the marker commonly prints `__PWD__/Users/<name>` on macOS.
+   Raw WebSocket probes must include a valid `sessionToken`. A `session.open` message without `sessionToken` is rejected by design.
 
 6. Verify the Expo command does not fail immediately:
 

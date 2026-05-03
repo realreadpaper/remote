@@ -1719,3 +1719,8 @@
 - `PATH="/tmp/codex-corepack-shims:$PATH" pnpm test`: pass，252 tests passed。
 - `PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck`: pass。
 - `PATH="/tmp/codex-corepack-shims:$PATH" pnpm build`: pass。
+
+**文档修正：**
+- README 本地 smoke 不再使用旧的无 token raw WebSocket probe。
+- README 改为要求通过 Mobile pairing panel 配对、Agent 终端批准后再运行 `printf "__PWD__%s\n" "$PWD"`。
+- README 明确无 `sessionToken` 的 `session.open` 会按设计被拒绝。
