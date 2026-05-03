@@ -112,7 +112,9 @@ const tokenServerConfig: ServerConfig = {
   terminalInputMaxBytes: 16_384,
   wsRawMessageMaxBytes: 65_536,
   agentOutputRateLimitWindowMs: 10_000,
-  agentOutputRateLimitMaxMessages: 1000
+  agentOutputRateLimitMaxMessages: 1000,
+  agentOutputByteRateLimitWindowMs: 10_000,
+  agentOutputByteRateLimitMaxBytes: 1_048_576
 };
 
 async function registerAgent(app: FastifyInstance, deviceId = "mac-1"): Promise<WebSocket> {
@@ -1159,6 +1161,72 @@ describe("server websocket API", () => {
       sessionId: opened.sessionId,
       exitCode: 0
     });
+
+    agent.terminate();
+    mobile.terminate();
+  });
+
+  it("rate limits agent terminal output by UTF-8 bytes before routing to mobile", async () => {
+    await app.close();
+    app = await createServer(
+      { logger: false },
+      { ...tokenServerConfig, requireDevToken: false, devToken: null, agentOutputByteRateLimitMaxBytes: 4 }
+    );
+    await app.ready();
+
+    const agent = await registerAgent(app);
+    const { sessionToken } = await approvePairingRequest(app, agent);
+    const mobile = await app.injectWS("/ws/mobile");
+    const agentOpened = nextJson(agent);
+    const mobileOpened = nextJson(mobile);
+    mobile.send(JSON.stringify({ type: "session.open", deviceId: "mac-1", sessionToken }));
+
+    await agentOpened;
+    const opened = (await mobileOpened) as { sessionId: string };
+    const firstOutput = nextJson(mobile);
+    agent.send(JSON.stringify({ type: "terminal.output", sessionId: opened.sessionId, stream: "stdout", data: "abcd" }));
+    await firstOutput;
+
+    const rateLimitError = nextJson(agent);
+    agent.send(JSON.stringify({ type: "terminal.output", sessionId: opened.sessionId, stream: "stdout", data: "e" }));
+    expect(await rateLimitError).toEqual({
+      type: "session.error",
+      code: "SESSION_ERROR",
+      message: "Rate limit exceeded",
+      sessionId: opened.sessionId
+    });
+    await noJson(mobile);
+
+    agent.terminate();
+    mobile.terminate();
+  });
+
+  it("counts agent terminal output byte rate by UTF-8 bytes", async () => {
+    await app.close();
+    app = await createServer(
+      { logger: false },
+      { ...tokenServerConfig, requireDevToken: false, devToken: null, agentOutputByteRateLimitMaxBytes: 4 }
+    );
+    await app.ready();
+
+    const agent = await registerAgent(app);
+    const { sessionToken } = await approvePairingRequest(app, agent);
+    const mobile = await app.injectWS("/ws/mobile");
+    const agentOpened = nextJson(agent);
+    const mobileOpened = nextJson(mobile);
+    mobile.send(JSON.stringify({ type: "session.open", deviceId: "mac-1", sessionToken }));
+
+    await agentOpened;
+    const opened = (await mobileOpened) as { sessionId: string };
+    const rateLimitError = nextJson(agent);
+    agent.send(JSON.stringify({ type: "terminal.output", sessionId: opened.sessionId, stream: "stdout", data: "你好" }));
+    expect(await rateLimitError).toEqual({
+      type: "session.error",
+      code: "SESSION_ERROR",
+      message: "Rate limit exceeded",
+      sessionId: opened.sessionId
+    });
+    await noJson(mobile);
 
     agent.terminate();
     mobile.terminate();

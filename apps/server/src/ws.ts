@@ -15,7 +15,7 @@ import { getProvidedDevToken, validateDevToken } from "./auth/devToken.js";
 import { JsonFileSessionTokenStore, MemorySessionTokenStore, type SessionTokenStore } from "./auth/sessionTokens.js";
 import { JsonFilePairingStore, MemoryPairingStore, type PairingStore } from "./pairing/pairingStore.js";
 import { PairingService } from "./pairing/pairingService.js";
-import { MemoryRateLimiter } from "./rateLimit.js";
+import { MemoryRateLimiter, MemoryWeightedRateLimiter } from "./rateLimit.js";
 import { join } from "node:path";
 
 type MobileRoutableMessage = Extract<ClientMessage, { type: "terminal.input" | "terminal.resize" }>;
@@ -167,6 +167,14 @@ function isAllowedAgentOutputRate(limiter: MemoryRateLimiter, deviceId: string):
   return limiter.check(`ws.agent.output:${deviceId}`).allowed;
 }
 
+function isAllowedAgentOutputByteRate(
+  limiter: MemoryWeightedRateLimiter,
+  deviceId: string,
+  message: Extract<ServerMessage, { type: "terminal.output" }>
+): boolean {
+  return limiter.check(`ws.agent.output.bytes:${deviceId}`, Buffer.byteLength(message.data, "utf8")).allowed;
+}
+
 function clientKey(request: FastifyRequest): string {
   const forwardedFor = request.headers["x-forwarded-for"];
   if (typeof forwardedFor === "string" && forwardedFor.trim().length > 0) {
@@ -224,6 +232,10 @@ export function registerWsRoutes(app: FastifyInstance, config: ServerConfig): vo
   const agentOutputRateLimiter = new MemoryRateLimiter({
     windowMs: config.agentOutputRateLimitWindowMs,
     maxRequests: config.agentOutputRateLimitMaxMessages
+  });
+  const agentOutputByteRateLimiter = new MemoryWeightedRateLimiter({
+    windowMs: config.agentOutputByteRateLimitWindowMs,
+    maxRequests: config.agentOutputByteRateLimitMaxBytes
   });
 
   app.get("/health", async () => ({ ok: true }));
@@ -428,6 +440,12 @@ export function registerWsRoutes(app: FastifyInstance, config: ServerConfig): vo
         sessionId = message.sessionId;
 
         if (message.type === "terminal.output" && !isAllowedAgentOutputRate(agentOutputRateLimiter, attachedDeviceId)) {
+          throw new Error("Rate limit exceeded");
+        }
+        if (
+          message.type === "terminal.output" &&
+          !isAllowedAgentOutputByteRate(agentOutputByteRateLimiter, attachedDeviceId, message)
+        ) {
           throw new Error("Rate limit exceeded");
         }
 

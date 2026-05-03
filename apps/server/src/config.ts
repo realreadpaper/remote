@@ -13,6 +13,8 @@ export interface ServerConfig {
   wsRawMessageMaxBytes: number;
   agentOutputRateLimitWindowMs: number;
   agentOutputRateLimitMaxMessages: number;
+  agentOutputByteRateLimitWindowMs: number;
+  agentOutputByteRateLimitMaxBytes: number;
 }
 
 type ServerEnv = Record<string, string | undefined>;
@@ -74,6 +76,18 @@ export function loadServerConfig(env: ServerEnv = process.env): ServerConfig {
       env.REMOTE_AGENT_OUTPUT_RATE_LIMIT_MAX,
       1000,
       "REMOTE_AGENT_OUTPUT_RATE_LIMIT_MAX",
+      1
+    ),
+    agentOutputByteRateLimitWindowMs: parseIntegerEnv(
+      env.REMOTE_AGENT_OUTPUT_BYTE_RATE_LIMIT_WINDOW_MS,
+      10_000,
+      "REMOTE_AGENT_OUTPUT_BYTE_RATE_LIMIT_WINDOW_MS",
+      1_000
+    ),
+    agentOutputByteRateLimitMaxBytes: parseIntegerEnv(
+      env.REMOTE_AGENT_OUTPUT_BYTE_RATE_LIMIT_MAX,
+      1_048_576,
+      "REMOTE_AGENT_OUTPUT_BYTE_RATE_LIMIT_MAX",
       1
     )
   };
