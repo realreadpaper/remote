@@ -246,12 +246,12 @@ docs/runbooks/macos-agent-package.md
 - Modify: `apps/mobile/app.json`
 - Create: `docs/runbooks/testflight-build.md`
 
-- [ ] 配置 bundle identifier。
-- [ ] 配置 iOS build profile：development、preview、production。
+- [x] 配置 bundle identifier。
+- [x] 配置 iOS build profile：development、preview、production。
 - [ ] 配置 app icon、splash、version 和 build number。
-- [ ] 配置 server URL 环境变量。
-- [ ] 写入 EAS 登录、构建、上传 TestFlight 的命令。
-- [ ] 提交：`git commit -m "chore: add eas testflight build config"`。
+- [x] 配置 server URL 环境变量。
+- [x] 写入 EAS 登录、构建、上传 TestFlight 的命令。
+- [x] 提交：`git commit -m "chore: add eas testflight build config"`。
 
 ### Task 13: iOS 前后台和重连
 

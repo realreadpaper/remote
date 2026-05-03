@@ -15,6 +15,7 @@
 - [Feature log](docs/superpowers/records/feature-log.md)
 - [Cloud relay dev deploy runbook](docs/runbooks/cloud-relay-dev-deploy.md)
 - [External network smoke test runbook](docs/runbooks/external-network-smoke-test.md)
+- [TestFlight build runbook](docs/runbooks/testflight-build.md)
 
 ## Local MVP Foundation
 

@@ -9,6 +9,11 @@
       "ios",
       "android"
     ],
+    "ios": {
+      "bundleIdentifier": "com.terminalfirst.remote",
+      "buildNumber": "1",
+      "supportsTablet": false
+    },
     "plugins": [
       "expo-secure-store"
     ]
