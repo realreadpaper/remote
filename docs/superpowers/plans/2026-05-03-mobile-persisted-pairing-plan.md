@@ -27,7 +27,7 @@ docs/superpowers/records/feature-log.md
 - Modify: `apps/mobile/package.json`
 - Modify: `pnpm-lock.yaml`
 
-- [ ] **Step 1: Install dependency**
+- [x] **Step 1: Install dependency**
 
 Run:
 
@@ -37,7 +37,7 @@ pnpm --filter @remote/mobile exec expo install expo-secure-store
 
 Expected: `apps/mobile/package.json` contains `expo-secure-store`, and `pnpm-lock.yaml` updates.
 
-- [ ] **Step 2: Verify package metadata**
+- [x] **Step 2: Verify package metadata**
 
 Run:
 
@@ -52,7 +52,7 @@ Expected: typecheck may still fail because implementation has not imported the m
 **Files:**
 - Create: `apps/mobile/tests/pairingTokenStore.test.ts`
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 覆盖：
 
@@ -62,7 +62,7 @@ Expected: typecheck may still fail because implementation has not imported the m
 - `loadPairingToken()` clears and returns null for invalid JSON.
 - `clearPairingToken()` deletes storage key.
 
-- [ ] **Step 2: Run red test**
+- [x] **Step 2: Run red test**
 
 ```bash
 pnpm --filter @remote/mobile test
@@ -75,7 +75,7 @@ Expected: fail because `apps/mobile/src/state/pairingTokenStore.ts` does not exi
 **Files:**
 - Create: `apps/mobile/src/state/pairingTokenStore.ts`
 
-- [ ] **Step 1: Implement types and key**
+- [x] **Step 1: Implement types and key**
 
 导出：
 
@@ -83,7 +83,7 @@ Expected: fail because `apps/mobile/src/state/pairingTokenStore.ts` does not exi
 - `PairingTokenRecord`
 - `PairingTokenStorage`
 
-- [ ] **Step 2: Implement SecureStore adapter**
+- [x] **Step 2: Implement SecureStore adapter**
 
 导出 `createSecureStorePairingTokenStorage()`，内部动态调用 `expo-secure-store` 的：
 
@@ -91,7 +91,7 @@ Expected: fail because `apps/mobile/src/state/pairingTokenStore.ts` does not exi
 - `setItemAsync`
 - `deleteItemAsync`
 
-- [ ] **Step 3: Implement save/load/clear helpers**
+- [x] **Step 3: Implement save/load/clear helpers**
 
 导出：
 
@@ -99,7 +99,7 @@ Expected: fail because `apps/mobile/src/state/pairingTokenStore.ts` does not exi
 - `loadPairingToken(storage, options)`
 - `clearPairingToken(storage)`
 
-- [ ] **Step 4: Run green mobile tests**
+- [x] **Step 4: Run green mobile tests**
 
 ```bash
 pnpm --filter @remote/mobile test
@@ -112,26 +112,26 @@ Expected: mobile tests pass.
 **Files:**
 - Modify: `apps/mobile/src/components/TerminalScreen.tsx`
 
-- [ ] **Step 1: Create storage instance**
+- [x] **Step 1: Create storage instance**
 
 在组件中创建 `pairingTokenStorage`。
 
-- [ ] **Step 2: Load token on mount**
+- [x] **Step 2: Load token on mount**
 
 `useEffect()` 调用 `loadPairingToken()`；有效时设置：
 
 - `sessionToken`
 - `pairingStatus`
 
-- [ ] **Step 3: Save token after approval**
+- [x] **Step 3: Save token after approval**
 
 `waitForApproval()` 返回 auth 后调用 `savePairingToken()`，保存 `deviceId`、`sessionToken`、`expiresAt`、`pairedAt`。
 
-- [ ] **Step 4: Add compact paired status line**
+- [x] **Step 4: Add compact paired status line**
 
 在 pairing panel 中展示恢复或新配对的 `pairingStatus`，不新增复杂交互。
 
-- [ ] **Step 5: Run mobile test/typecheck**
+- [x] **Step 5: Run mobile test/typecheck**
 
 ```bash
 pnpm --filter @remote/mobile test
@@ -140,7 +140,7 @@ pnpm --filter @remote/mobile typecheck
 
 Expected: pass.
 
-- [ ] **Step 6: Commit mobile implementation**
+- [x] **Step 6: Commit mobile implementation**
 
 ```bash
 git add apps/mobile/package.json pnpm-lock.yaml apps/mobile/src/state/pairingTokenStore.ts apps/mobile/src/components/TerminalScreen.tsx apps/mobile/tests/pairingTokenStore.test.ts
@@ -152,7 +152,7 @@ git commit -m "feat: persist mobile pairing token"
 **Files:**
 - Modify: `docs/superpowers/records/feature-log.md`
 
-- [ ] **Step 1: Full verification**
+- [x] **Step 1: Full verification**
 
 ```bash
 pnpm test
@@ -160,7 +160,7 @@ pnpm typecheck
 pnpm build
 ```
 
-- [ ] **Step 2: Update feature log**
+- [x] **Step 2: Update feature log**
 
 记录：
 
@@ -171,7 +171,7 @@ pnpm build
 - known risks：Server 内存 token、单设备本地记录、无 revoke/refresh。
 - next：多设备列表、Forget device、Server 持久化 token。
 
-- [ ] **Step 3: Commit record**
+- [x] **Step 3: Commit record**
 
 ```bash
 git add docs/superpowers/records/feature-log.md

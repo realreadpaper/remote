@@ -26,7 +26,7 @@ docs/superpowers/records/feature-log.md
 - Modify: `apps/server/tests/config.test.ts`
 - Modify: `apps/server/src/config.ts`
 
-- [ ] **Step 1: Write failing config tests**
+- [x] **Step 1: Write failing config tests**
 
 更新默认配置断言，加入：
 
@@ -57,7 +57,7 @@ expect(() => loadServerConfig({ REMOTE_WS_RAW_MESSAGE_MAX_BYTES: "abc" })).toThr
 );
 ```
 
-- [ ] **Step 2: Run red**
+- [x] **Step 2: Run red**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test -- apps/server/tests/config.test.ts
@@ -65,7 +65,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test -- apps
 
 Expected: fail because `ServerConfig` does not expose `wsRawMessageMaxBytes`.
 
-- [ ] **Step 3: Implement config**
+- [x] **Step 3: Implement config**
 
 在 `ServerConfig` 增加：
 
@@ -84,7 +84,7 @@ wsRawMessageMaxBytes: parseIntegerEnv(
 )
 ```
 
-- [ ] **Step 4: Run green config tests**
+- [x] **Step 4: Run green config tests**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test -- apps/server/tests/config.test.ts
@@ -98,7 +98,7 @@ Expected: config tests pass.
 - Modify: `apps/server/tests/ws.test.ts`
 - Modify: `apps/server/src/ws.ts`
 
-- [ ] **Step 1: Write failing route tests**
+- [x] **Step 1: Write failing route tests**
 
 更新 `tokenServerConfig` 加入：
 
@@ -156,7 +156,7 @@ it("rejects oversized raw agent websocket messages before parsing JSON", async (
 });
 ```
 
-- [ ] **Step 2: Run red**
+- [x] **Step 2: Run red**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test -- apps/server/tests/ws.test.ts
@@ -164,7 +164,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test -- apps
 
 Expected: tests fail because current code sends JSON parse errors instead of raw size errors.
 
-- [ ] **Step 3: Implement raw size guard**
+- [x] **Step 3: Implement raw size guard**
 
 在 `apps/server/src/ws.ts` 修改 `parseJson()`：
 
@@ -205,7 +205,7 @@ const payload = parseJson(data, config.wsRawMessageMaxBytes);
 const message = parseClientMessage(parseJson(data, config.wsRawMessageMaxBytes));
 ```
 
-- [ ] **Step 4: Run green server tests**
+- [x] **Step 4: Run green server tests**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test
@@ -213,7 +213,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test
 
 Expected: server tests pass.
 
-- [ ] **Step 5: Commit implementation**
+- [x] **Step 5: Commit implementation**
 
 ```bash
 git add apps/server/src/config.ts apps/server/src/ws.ts apps/server/tests/config.test.ts apps/server/tests/ws.test.ts
@@ -225,7 +225,7 @@ git commit -m "feat: guard websocket raw message size"
 **Files:**
 - Modify: `docs/superpowers/records/feature-log.md`
 
-- [ ] **Step 1: Full verification**
+- [x] **Step 1: Full verification**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm test
@@ -233,7 +233,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm build
 ```
 
-- [ ] **Step 2: Record delivery**
+- [x] **Step 2: Record delivery**
 
 在 `docs/superpowers/records/feature-log.md` 追加：
 
@@ -246,7 +246,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm build
 - 风险：WebSocket 库仍会接收 frame 到内存，64 KiB 可能影响极端大 output chunk，超限 frame 无法提取 sessionId。
 - 后续：Agent output 分块、背压、评估 `maxPayload`。
 
-- [ ] **Step 3: Commit record**
+- [x] **Step 3: Commit record**
 
 ```bash
 git add docs/superpowers/records/feature-log.md

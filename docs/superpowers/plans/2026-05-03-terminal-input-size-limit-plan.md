@@ -26,7 +26,7 @@ docs/superpowers/records/feature-log.md
 - Modify: `apps/server/tests/config.test.ts`
 - Modify: `apps/server/src/config.ts`
 
-- [ ] **Step 1: Write failing config tests**
+- [x] **Step 1: Write failing config tests**
 
 更新默认配置断言，加入：
 
@@ -57,7 +57,7 @@ expect(() => loadServerConfig({ REMOTE_TERMINAL_INPUT_MAX_BYTES: "abc" })).toThr
 );
 ```
 
-- [ ] **Step 2: Run red**
+- [x] **Step 2: Run red**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test -- apps/server/tests/config.test.ts
@@ -65,7 +65,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test -- apps
 
 Expected: fail because `ServerConfig` does not expose `terminalInputMaxBytes`.
 
-- [ ] **Step 3: Implement config**
+- [x] **Step 3: Implement config**
 
 在 `ServerConfig` 增加：
 
@@ -84,7 +84,7 @@ terminalInputMaxBytes: parseIntegerEnv(
 )
 ```
 
-- [ ] **Step 4: Run green config tests**
+- [x] **Step 4: Run green config tests**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test -- apps/server/tests/config.test.ts
@@ -98,7 +98,7 @@ Expected: config tests pass.
 - Modify: `apps/server/tests/ws.test.ts`
 - Modify: `apps/server/src/ws.ts`
 
-- [ ] **Step 1: Write failing route tests**
+- [x] **Step 1: Write failing route tests**
 
 更新 `tokenServerConfig` 加入：
 
@@ -184,7 +184,7 @@ it("checks terminal input size by UTF-8 bytes", async () => {
 });
 ```
 
-- [ ] **Step 2: Run red**
+- [x] **Step 2: Run red**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test -- apps/server/tests/ws.test.ts
@@ -192,7 +192,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test -- apps
 
 Expected: route tests fail because oversized input is still routed to Agent.
 
-- [ ] **Step 3: Implement route guard**
+- [x] **Step 3: Implement route guard**
 
 在 `apps/server/src/ws.ts` 新增 helper：
 
@@ -214,7 +214,7 @@ function assertTerminalInputSize(message: MobileRoutableMessage, maxBytes: numbe
 assertTerminalInputSize(message, config.terminalInputMaxBytes);
 ```
 
-- [ ] **Step 4: Run green server tests**
+- [x] **Step 4: Run green server tests**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test
@@ -222,7 +222,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test
 
 Expected: server tests pass.
 
-- [ ] **Step 5: Commit implementation**
+- [x] **Step 5: Commit implementation**
 
 ```bash
 git add apps/server/src/config.ts apps/server/src/ws.ts apps/server/tests/config.test.ts apps/server/tests/ws.test.ts
@@ -234,7 +234,7 @@ git commit -m "feat: limit terminal input size"
 **Files:**
 - Modify: `docs/superpowers/records/feature-log.md`
 
-- [ ] **Step 1: Full verification**
+- [x] **Step 1: Full verification**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm test
@@ -242,7 +242,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm build
 ```
 
-- [ ] **Step 2: Record delivery**
+- [x] **Step 2: Record delivery**
 
 在 `docs/superpowers/records/feature-log.md` 追加：
 
@@ -255,7 +255,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm build
 - 风险：JSON parse 前仍可能收到超大 frame、没有累计字节限流、长脚本应走文件功能。
 - 后续：raw message size guard、累计字节限流、文件传输。
 
-- [ ] **Step 3: Commit record**
+- [x] **Step 3: Commit record**
 
 ```bash
 git add docs/superpowers/records/feature-log.md

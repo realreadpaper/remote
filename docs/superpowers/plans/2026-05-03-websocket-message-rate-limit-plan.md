@@ -26,7 +26,7 @@ docs/superpowers/records/feature-log.md
 - Modify: `apps/server/tests/config.test.ts`
 - Modify: `apps/server/src/config.ts`
 
-- [ ] **Step 1: Write failing config tests**
+- [x] **Step 1: Write failing config tests**
 
 更新默认配置断言，加入：
 
@@ -66,7 +66,7 @@ expect(() => loadServerConfig({ REMOTE_WS_MESSAGE_RATE_LIMIT_MAX: "abc" })).toTh
 );
 ```
 
-- [ ] **Step 2: Run red**
+- [x] **Step 2: Run red**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test -- apps/server/tests/config.test.ts
@@ -74,7 +74,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test -- apps
 
 Expected: fail because `ServerConfig` does not expose WebSocket rate limit fields.
 
-- [ ] **Step 3: Implement config**
+- [x] **Step 3: Implement config**
 
 在 `ServerConfig` 增加：
 
@@ -100,7 +100,7 @@ wsMessageRateLimitMaxRequests: parseIntegerEnv(
 )
 ```
 
-- [ ] **Step 4: Run green config tests**
+- [x] **Step 4: Run green config tests**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test -- apps/server/tests/config.test.ts
@@ -114,7 +114,7 @@ Expected: config tests pass.
 - Modify: `apps/server/tests/ws.test.ts`
 - Modify: `apps/server/src/ws.ts`
 
-- [ ] **Step 1: Write failing route test**
+- [x] **Step 1: Write failing route test**
 
 更新 `tokenServerConfig` 加入：
 
@@ -212,7 +212,7 @@ it("keeps mobile websocket message rate limit buckets separate by forwarded IP",
 });
 ```
 
-- [ ] **Step 2: Run red**
+- [x] **Step 2: Run red**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test -- apps/server/tests/ws.test.ts
@@ -220,7 +220,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test -- apps
 
 Expected: first route test fails because second `terminal.input` is routed to Agent instead of returning `session.error`.
 
-- [ ] **Step 3: Implement route limiter**
+- [x] **Step 3: Implement route limiter**
 
 在 `registerWsRoutes()` 内创建：
 
@@ -255,7 +255,7 @@ if (!isAllowedWebSocketMessageRate(wsMessageRateLimiter, mobileRateLimitKey)) {
 
 现有 catch 会调用 `sendSessionError(socket, messageText(error), sessionId)`，因此会带上原始 `sessionId`。
 
-- [ ] **Step 4: Run green server tests**
+- [x] **Step 4: Run green server tests**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test
@@ -263,7 +263,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test
 
 Expected: server tests pass.
 
-- [ ] **Step 5: Commit implementation**
+- [x] **Step 5: Commit implementation**
 
 ```bash
 git add apps/server/src/config.ts apps/server/src/ws.ts apps/server/tests/config.test.ts apps/server/tests/ws.test.ts
@@ -275,7 +275,7 @@ git commit -m "feat: rate limit mobile websocket messages"
 **Files:**
 - Modify: `docs/superpowers/records/feature-log.md`
 
-- [ ] **Step 1: Full verification**
+- [x] **Step 1: Full verification**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm test
@@ -283,7 +283,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm build
 ```
 
-- [ ] **Step 2: Record delivery**
+- [x] **Step 2: Record delivery**
 
 在 `docs/superpowers/records/feature-log.md` 追加：
 
@@ -296,7 +296,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm build
 - 风险：单进程内存、IP/NAT 共享、未限制字节数、未限制 Agent output。
 - 后续：input 字节数限制、Agent output 背压、共享 store。
 
-- [ ] **Step 3: Commit record**
+- [x] **Step 3: Commit record**
 
 ```bash
 git add docs/superpowers/records/feature-log.md

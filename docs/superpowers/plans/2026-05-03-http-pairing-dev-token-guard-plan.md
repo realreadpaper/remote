@@ -26,7 +26,7 @@ docs/superpowers/records/feature-log.md
 **Files:**
 - Modify: `apps/server/tests/ws.test.ts`
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 覆盖：
 
@@ -35,7 +35,7 @@ docs/superpowers/records/feature-log.md
 - `POST /session-tokens/revoke` require token 时无 token 返回 401。
 - 正确 token 可访问 HTTP pairing/revoke。
 
-- [ ] **Step 2: Run red**
+- [x] **Step 2: Run red**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test
@@ -48,11 +48,11 @@ Expected: fail because HTTP routes are still anonymous.
 **Files:**
 - Modify: `apps/server/src/ws.ts`
 
-- [ ] **Step 1: Add HTTP auth helper**
+- [x] **Step 1: Add HTTP auth helper**
 
 新增 `isAuthorizedHttpRequest()`。
 
-- [ ] **Step 2: Guard routes**
+- [x] **Step 2: Guard routes**
 
 保护：
 
@@ -61,7 +61,7 @@ Expected: fail because HTTP routes are still anonymous.
 - `POST /pairing/requests`
 - `POST /session-tokens/revoke`
 
-- [ ] **Step 3: Run green server tests**
+- [x] **Step 3: Run green server tests**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test
@@ -72,7 +72,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test
 **Files:**
 - Modify: `apps/mobile/tests/pairingClient.test.ts`
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 覆盖：
 
@@ -80,7 +80,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test
 - `getPairingRequest()` with `devToken` sends Authorization.
 - `revokeSessionToken()` with `devToken` sends Authorization.
 
-- [ ] **Step 2: Run red**
+- [x] **Step 2: Run red**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile test
@@ -94,22 +94,22 @@ Expected: fail because PairingClient does not support devToken.
 - Modify: `apps/mobile/src/protocol/pairingClient.ts`
 - Modify: `apps/mobile/src/components/TerminalScreen.tsx`
 
-- [ ] **Step 1: Add option and headers**
+- [x] **Step 1: Add option and headers**
 
 `PairingClientOptions` 增加 `devToken?: string | null`，并统一构造 headers。
 
-- [ ] **Step 2: TerminalScreen passes devToken**
+- [x] **Step 2: TerminalScreen passes devToken**
 
 所有 `new PairingClient()` 都传入 `runtimeConfig.devToken`。
 
-- [ ] **Step 3: Verify mobile**
+- [x] **Step 3: Verify mobile**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile test
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile typecheck
 ```
 
-- [ ] **Step 4: Commit implementation**
+- [x] **Step 4: Commit implementation**
 
 ```bash
 git add apps/server/src/ws.ts apps/server/tests/ws.test.ts apps/mobile/src/protocol/pairingClient.ts apps/mobile/src/components/TerminalScreen.tsx apps/mobile/tests/pairingClient.test.ts
@@ -121,7 +121,7 @@ git commit -m "feat: guard http pairing with dev token"
 **Files:**
 - Modify: `docs/superpowers/records/feature-log.md`
 
-- [ ] **Step 1: Full verification**
+- [x] **Step 1: Full verification**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm test
@@ -129,7 +129,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm build
 ```
 
-- [ ] **Step 2: Commit record**
+- [x] **Step 2: Commit record**
 
 ```bash
 git add docs/superpowers/records/feature-log.md

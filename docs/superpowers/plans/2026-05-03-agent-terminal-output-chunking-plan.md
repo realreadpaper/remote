@@ -26,7 +26,7 @@ docs/superpowers/records/feature-log.md
 - Modify: `apps/agent/tests/config.test.ts`
 - Modify: `apps/agent/src/config.ts`
 
-- [ ] **Step 1: Write failing config tests**
+- [x] **Step 1: Write failing config tests**
 
 在 explicit env 测试中设置：
 
@@ -58,7 +58,7 @@ it("rejects invalid terminal output chunk bytes", () => {
 });
 ```
 
-- [ ] **Step 2: Run red**
+- [x] **Step 2: Run red**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent test -- apps/agent/tests/config.test.ts
@@ -66,7 +66,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent test -- apps/
 
 Expected: fail because `AgentConfig` does not expose `terminalOutputChunkBytes`.
 
-- [ ] **Step 3: Implement config**
+- [x] **Step 3: Implement config**
 
 在 `AgentConfig` 增加：
 
@@ -102,7 +102,7 @@ function parsePositiveIntegerEnv(rawValue: string | undefined, defaultValue: num
 }
 ```
 
-- [ ] **Step 4: Run green config tests**
+- [x] **Step 4: Run green config tests**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent test -- apps/agent/tests/config.test.ts
@@ -116,7 +116,7 @@ Expected: config tests pass.
 - Modify: `apps/agent/tests/agentClient.test.ts`
 - Modify: `apps/agent/src/agentClient.ts`
 
-- [ ] **Step 1: Write failing AgentClient tests**
+- [x] **Step 1: Write failing AgentClient tests**
 
 确认 `createHarness()` 的默认 config 增加：
 
@@ -182,7 +182,7 @@ it("splits terminal output by UTF-8 bytes without breaking characters", () => {
 });
 ```
 
-- [ ] **Step 2: Run red**
+- [x] **Step 2: Run red**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent test -- apps/agent/tests/agentClient.test.ts
@@ -190,7 +190,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent test -- apps/
 
 Expected: fail because AgentClient sends one terminal.output per PTY output.
 
-- [ ] **Step 3: Implement chunking**
+- [x] **Step 3: Implement chunking**
 
 在 `apps/agent/src/agentClient.ts` 新增 helper：
 
@@ -233,7 +233,7 @@ for (const chunk of splitUtf8ByBytes(data, this.config.terminalOutputChunkBytes)
 }
 ```
 
-- [ ] **Step 4: Run green agent tests**
+- [x] **Step 4: Run green agent tests**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent test
@@ -241,7 +241,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent test
 
 Expected: agent tests pass.
 
-- [ ] **Step 5: Commit implementation**
+- [x] **Step 5: Commit implementation**
 
 ```bash
 git add apps/agent/src/config.ts apps/agent/src/agentClient.ts apps/agent/tests/config.test.ts apps/agent/tests/agentClient.test.ts
@@ -253,7 +253,7 @@ git commit -m "feat: chunk agent terminal output"
 **Files:**
 - Modify: `docs/superpowers/records/feature-log.md`
 
-- [ ] **Step 1: Full verification**
+- [x] **Step 1: Full verification**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm test
@@ -261,7 +261,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm build
 ```
 
-- [ ] **Step 2: Record delivery**
+- [x] **Step 2: Record delivery**
 
 在 `docs/superpowers/records/feature-log.md` 追加：
 
@@ -274,7 +274,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm build
 - 风险：没有背压、用户可配置过大、单字符超过 chunk 时仍单独发送。
 - 后续：Agent output 背压、Server Agent output 速率限制、文件/日志专用通道。
 
-- [ ] **Step 3: Commit record**
+- [x] **Step 3: Commit record**
 
 ```bash
 git add docs/superpowers/records/feature-log.md
