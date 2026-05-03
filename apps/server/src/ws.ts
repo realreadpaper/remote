@@ -32,8 +32,25 @@ function messageText(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-function parseJson(data: RawData): unknown {
+function parseJson(data: RawData, maxBytes: number): unknown {
+  const byteLength = rawDataByteLength(data);
+  if (byteLength > maxBytes) {
+    throw new Error(`WebSocket message exceeds ${maxBytes} bytes`);
+  }
+
   return JSON.parse(data.toString());
+}
+
+function rawDataByteLength(data: RawData): number {
+  if (typeof data === "string") {
+    return Buffer.byteLength(data, "utf8");
+  }
+
+  if (Array.isArray(data)) {
+    return data.reduce((total, chunk) => total + chunk.byteLength, 0);
+  }
+
+  return data.byteLength;
 }
 
 function messageType(payload: unknown): string | undefined {
@@ -322,7 +339,7 @@ export function registerWsRoutes(app: FastifyInstance, config: ServerConfig): vo
 
     socket.on("message", (data) => {
       try {
-        const payload = parseJson(data);
+        const payload = parseJson(data, config.wsRawMessageMaxBytes);
 
         if (!attachedDeviceId) {
           if (messageType(payload) !== "device.register") {
@@ -434,7 +451,7 @@ export function registerWsRoutes(app: FastifyInstance, config: ServerConfig): vo
       let sessionId: string | undefined;
 
       try {
-        const message = parseClientMessage(parseJson(data));
+        const message = parseClientMessage(parseJson(data, config.wsRawMessageMaxBytes));
         sessionId = "sessionId" in message ? message.sessionId : undefined;
 
         if (message.type === "session.open") {

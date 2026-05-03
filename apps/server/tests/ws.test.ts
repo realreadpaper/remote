@@ -109,7 +109,8 @@ const tokenServerConfig: ServerConfig = {
   rateLimitMaxRequests: 120,
   wsMessageRateLimitWindowMs: 10_000,
   wsMessageRateLimitMaxRequests: 200,
-  terminalInputMaxBytes: 16_384
+  terminalInputMaxBytes: 16_384,
+  wsRawMessageMaxBytes: 65_536
 };
 
 async function registerAgent(app: FastifyInstance, deviceId = "mac-1"): Promise<WebSocket> {
@@ -976,6 +977,48 @@ describe("server websocket API", () => {
 
     agent.terminate();
     mobile.terminate();
+  });
+
+  it("rejects oversized raw mobile websocket messages before parsing JSON", async () => {
+    await app.close();
+    app = await createServer(
+      { logger: false },
+      { ...tokenServerConfig, requireDevToken: false, devToken: null, wsRawMessageMaxBytes: 8 }
+    );
+    await app.ready();
+
+    const mobile = await app.injectWS("/ws/mobile");
+    const errorMessage = nextJson(mobile);
+    mobile.send("not-json-but-too-large");
+
+    expect(await errorMessage).toEqual({
+      type: "session.error",
+      code: "SESSION_ERROR",
+      message: "WebSocket message exceeds 8 bytes"
+    });
+
+    mobile.terminate();
+  });
+
+  it("rejects oversized raw agent websocket messages before parsing JSON", async () => {
+    await app.close();
+    app = await createServer(
+      { logger: false },
+      { ...tokenServerConfig, requireDevToken: false, devToken: null, wsRawMessageMaxBytes: 8 }
+    );
+    await app.ready();
+
+    const agent = await app.injectWS("/ws/agent");
+    const errorMessage = nextJson(agent);
+    agent.send("not-json-but-too-large");
+
+    expect(await errorMessage).toEqual({
+      type: "session.error",
+      code: "SESSION_ERROR",
+      message: "WebSocket message exceeds 8 bytes"
+    });
+
+    agent.terminate();
   });
 
   it("checks terminal input size by UTF-8 bytes", async () => {
