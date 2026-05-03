@@ -217,12 +217,12 @@ docs/runbooks/macos-agent-package.md
 - Create: `apps/agent-desktop/src/App.tsx`
 - Create: `docs/runbooks/macos-agent-package.md`
 
-- [ ] 选择 Electron 或 Tauri。当前推荐 Electron，原因是 Node Agent 和 `node-pty` 集成路径最短。
-- [ ] 主窗口展示设备名称、在线状态、配对二维码、终端能力开关。
-- [ ] 菜单栏展示连接状态和退出入口。
-- [ ] Agent core 保持在 `apps/agent`，desktop 壳只负责 UI、生命周期和配置。
-- [ ] 写入本地打包步骤。
-- [ ] 提交：`git commit -m "feat: add macos agent desktop shell"`。
+- [x] 选择 Electron 或 Tauri。当前推荐 Electron，原因是 Node Agent 和 `node-pty` 集成路径最短。
+- [x] 主窗口展示设备名称、在线状态、配对二维码、终端能力开关。
+- [x] 菜单栏展示连接状态和退出入口。
+- [x] Agent core 保持在 `apps/agent`，desktop 壳只负责 UI、生命周期和配置。
+- [x] 写入本地打包步骤。
+- [x] 提交：`git commit -m "feat: add macos agent desktop shell"`。
 
 ### Task 11: macOS 签名和公证
 

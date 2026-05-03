@@ -1297,3 +1297,79 @@
 - Task 13 实现 iOS 前后台自动重连和手动重连按钮。
 - macOS Agent 桌面壳接入运行态 session 状态展示和退出控制。
 - 云端化后补充多实例 relay 的 session affinity 与 cleanup 验收。
+
+## 2026-05-03 macOS Agent Desktop Shell
+
+**状态：** completed
+
+**提交：**
+- `acb5165` `docs: design macos agent desktop shell`
+- `6bffba0` `docs: plan macos agent desktop shell`
+- `248818c` `feat: add macos agent desktop shell`
+
+**实现内容：**
+- 新增 `apps/agent-desktop` Electron workspace。
+- 选择 Electron 作为 macOS Agent 桌面壳，原因是现有 Agent core 是 Node/TypeScript + `node-pty`。
+- `apps/agent` 增加 `AgentClient.close()`，desktop 壳可以关闭 WebSocket 和所有本地 PTY session。
+- `apps/agent` 增加 subpath exports：`@remote/agent/agentClient`、`@remote/agent/config`、`@remote/agent/pairing`。
+- `@remote/protocol` 增加 package exports，供新 workspace 通过包边界导入类型和协议。
+- Desktop main process 负责 Electron window、tray/menu、Agent lifecycle 和 pairing callback。
+- Desktop preload 暴露受控 IPC API，不向 renderer 暴露 Node 全局能力。
+- Renderer 展示设备名称、连接状态、Server URL、Device ID、Shell、终端能力开关、配对二维码和配对码。
+- 收到 pairing request 后，renderer 可 Approve 或 Reject，runtime resolve AgentClient 的审批 Promise。
+- 菜单栏提供 Show Window、Terminal On/Off、Quit。
+- 新增 `docs/runbooks/macos-agent-package.md`，记录本地开发运行、`pack:dir` 目录打包、环境变量和已知风险。
+- README 增加 macOS desktop Agent runbook 和本地启动命令。
+
+**涉及文件：**
+- `docs/superpowers/specs/2026-05-03-macos-agent-desktop-shell-design.md`
+- `docs/superpowers/plans/2026-05-03-macos-agent-desktop-shell-plan.md`
+- `docs/superpowers/plans/2026-05-02-ios-mac-installable-mvp-plan.md`
+- `apps/agent/package.json`
+- `apps/agent/src/agentClient.ts`
+- `apps/agent/tests/agentClient.test.ts`
+- `packages/protocol/package.json`
+- `apps/agent-desktop/package.json`
+- `apps/agent-desktop/tsconfig.json`
+- `apps/agent-desktop/tsconfig.test.json`
+- `apps/agent-desktop/src/agentDesktopRuntime.ts`
+- `apps/agent-desktop/src/desktopState.ts`
+- `apps/agent-desktop/src/main.ts`
+- `apps/agent-desktop/src/preload.ts`
+- `apps/agent-desktop/src/renderer/index.html`
+- `apps/agent-desktop/src/renderer/app.js`
+- `apps/agent-desktop/src/renderer/styles.css`
+- `apps/agent-desktop/tests/agentDesktopRuntime.test.ts`
+- `apps/agent-desktop/tests/desktopState.test.ts`
+- `docs/runbooks/macos-agent-package.md`
+- `README.md`
+- `pnpm-lock.yaml`
+
+**TDD 记录：**
+- Agent 红灯：`PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent test` 失败，`AgentClient.close()` 不存在。
+- Agent 绿灯：实现 `close()`、socket close guard 和 session cleanup 后，Agent 测试通过，45 tests passed。
+- Desktop scaffold checkpoint：`PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent-desktop build` 失败，`tsconfig` 没有 TS 输入，符合 scaffold 阶段预期。
+- Desktop state 红灯：`PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent-desktop test` 失败，`desktopState.ts` 不存在。
+- Desktop state 绿灯：实现 `DesktopState` 和纯 update helpers 后，desktop 测试通过，6 tests passed。
+- Desktop runtime 红灯：`PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent-desktop test` 失败，`agentDesktopRuntime.ts` 不存在。
+- Desktop runtime 绿灯：实现 Agent lifecycle、pairing QR、approve/reject Promise 后，desktop 测试通过，13 tests passed。
+
+**验证：**
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent-desktop test`: pass，13 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent-desktop typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent-desktop build`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm test`: pass，237 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm build`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent-desktop pack:dir`: pass，生成 `dist/mac-arm64/Terminal First Agent.app`，notarization 被跳过。
+
+**已知风险：**
+- 当前 Electron app 仍是开发目录包；签名、公证、hardened runtime、entitlements 和正式 `.dmg` 属于 Task 11。
+- electron-builder 在本机发现可用签名 identity 时会尝试签名；正式发布必须固定证书和 notarization 配置。
+- `node-pty` 是原生模块，正式打包和跨架构发布需要 Electron ABI rebuild 验证。
+- 当前没有开机启动、自动更新、日志查看器和持久化 UI 状态。
+
+**后续：**
+- Task 11 增加 macOS 签名、公证和正式打包 runbook。
+- Task 12 补 iOS icon/splash/version/build number。
+- Task 13 接入 iOS 前后台自动重连和手动恢复按钮。

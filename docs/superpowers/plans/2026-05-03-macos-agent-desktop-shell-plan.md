@@ -40,7 +40,7 @@ README.md
 - Modify: `apps/agent/tests/agentClient.test.ts`
 - Modify: `apps/agent/package.json`
 
-- [ ] **Step 1: Write failing close tests**
+- [x] **Step 1: Write failing close tests**
 
 In `apps/agent/tests/agentClient.test.ts`, extend `FakeSocket` with `closeCalls` and `close()`:
 
@@ -83,7 +83,7 @@ it("allows close to be called more than once", () => {
 });
 ```
 
-- [ ] **Step 2: Run red Agent tests**
+- [x] **Step 2: Run red Agent tests**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent test
@@ -91,7 +91,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent test
 
 Expected: fail because `AgentClient.close()` does not exist.
 
-- [ ] **Step 3: Implement AgentClient close**
+- [x] **Step 3: Implement AgentClient close**
 
 In `AgentSocket`, add optional close:
 
@@ -130,7 +130,7 @@ socket.on("close", () => {
 });
 ```
 
-- [ ] **Step 4: Export Agent subpaths**
+- [x] **Step 4: Export Agent subpaths**
 
 In `apps/agent/package.json`, add:
 
@@ -151,7 +151,7 @@ In `apps/agent/package.json`, add:
 }
 ```
 
-- [ ] **Step 5: Run green Agent tests**
+- [x] **Step 5: Run green Agent tests**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent test
@@ -166,7 +166,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent test
 - Create: `apps/agent-desktop/src/renderer/app.js`
 - Create: `apps/agent-desktop/src/renderer/styles.css`
 
-- [ ] **Step 1: Add workspace package**
+- [x] **Step 1: Add workspace package**
 
 Create `apps/agent-desktop/package.json`:
 
@@ -235,7 +235,7 @@ Create `apps/agent-desktop/tsconfig.test.json`:
 }
 ```
 
-- [ ] **Step 2: Install dependencies**
+- [x] **Step 2: Install dependencies**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm install
@@ -243,7 +243,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm install
 
 Expected: lockfile updates with Electron, electron-builder and qrcode packages.
 
-- [ ] **Step 3: Add placeholder renderer files**
+- [x] **Step 3: Add placeholder renderer files**
 
 Create minimal renderer files:
 
@@ -277,7 +277,7 @@ body {
 }
 ```
 
-- [ ] **Step 4: Run package build red/green checkpoint**
+- [x] **Step 4: Run package build red/green checkpoint**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent-desktop build
@@ -291,7 +291,7 @@ Expected after scaffold: fail until `main.ts` and `preload.ts` exist in later ta
 - Create: `apps/agent-desktop/src/desktopState.ts`
 - Create: `apps/agent-desktop/tests/desktopState.test.ts`
 
-- [ ] **Step 1: Write failing state tests**
+- [x] **Step 1: Write failing state tests**
 
 Create tests for:
 
@@ -302,7 +302,7 @@ Create tests for:
 - `withPairingDecision()` clears pending request.
 - `withTerminalEnabled()` updates terminalEnabled.
 
-- [ ] **Step 2: Run red desktop tests**
+- [x] **Step 2: Run red desktop tests**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent-desktop test
@@ -310,11 +310,11 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent-desktop test
 
 Expected: fail because `desktopState.ts` does not exist.
 
-- [ ] **Step 3: Implement desktop state functions**
+- [x] **Step 3: Implement desktop state functions**
 
 Create `DesktopState`, `PendingPairingRequest`, and pure update helpers in `apps/agent-desktop/src/desktopState.ts`.
 
-- [ ] **Step 4: Run green desktop state tests**
+- [x] **Step 4: Run green desktop state tests**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent-desktop test
@@ -326,7 +326,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent-desktop test
 - Create: `apps/agent-desktop/src/agentDesktopRuntime.ts`
 - Create: `apps/agent-desktop/tests/agentDesktopRuntime.test.ts`
 
-- [ ] **Step 1: Write failing runtime tests**
+- [x] **Step 1: Write failing runtime tests**
 
 Use a fake AgentClient with `connect()` and `close()` spies. Cover:
 
@@ -338,7 +338,7 @@ Use a fake AgentClient with `connect()` and `close()` spies. Cover:
 - `approvePairing()` resolves pending pairing decision as approved.
 - `rejectPairing()` resolves pending pairing decision as rejected.
 
-- [ ] **Step 2: Run red runtime tests**
+- [x] **Step 2: Run red runtime tests**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent-desktop test
@@ -346,7 +346,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent-desktop test
 
 Expected: fail because runtime module does not exist.
 
-- [ ] **Step 3: Implement runtime**
+- [x] **Step 3: Implement runtime**
 
 Implement a small `AgentDesktopRuntime` class with injectable:
 
@@ -360,7 +360,7 @@ interface AgentDesktopRuntimeDependencies {
 
 The default factory uses `new AgentClient(config, dependencies)`.
 
-- [ ] **Step 4: Run green runtime tests**
+- [x] **Step 4: Run green runtime tests**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent-desktop test
@@ -375,7 +375,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent-desktop test
 - Modify: `apps/agent-desktop/src/renderer/app.js`
 - Modify: `apps/agent-desktop/src/renderer/styles.css`
 
-- [ ] **Step 1: Implement preload bridge**
+- [x] **Step 1: Implement preload bridge**
 
 Expose:
 
@@ -395,11 +395,11 @@ contextBridge.exposeInMainWorld("agentDesktop", {
 });
 ```
 
-- [ ] **Step 2: Implement Electron main**
+- [x] **Step 2: Implement Electron main**
 
 Create BrowserWindow with `contextIsolation: true`, load `dist/renderer/index.html`, create tray/menu, instantiate `AgentDesktopRuntime`, wire IPC handlers, and start runtime on app ready.
 
-- [ ] **Step 3: Implement renderer UI**
+- [x] **Step 3: Implement renderer UI**
 
 Renderer must show:
 
@@ -409,7 +409,7 @@ Renderer must show:
 - Device ID, Server URL, shell.
 - Pending request with Approve/Reject buttons.
 
-- [ ] **Step 4: Run desktop tests, typecheck and build**
+- [x] **Step 4: Run desktop tests, typecheck and build**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent-desktop test
@@ -426,7 +426,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent-desktop build
 - Modify: `docs/superpowers/plans/2026-05-03-macos-agent-desktop-shell-plan.md`
 - Modify: `docs/superpowers/records/feature-log.md`
 
-- [ ] **Step 1: Write runbook**
+- [x] **Step 1: Write runbook**
 
 Runbook must include:
 
@@ -436,11 +436,11 @@ Runbook must include:
 - known native module risk for `node-pty` and Electron rebuild
 - Task 11 note: signing/notarization not covered here
 
-- [ ] **Step 2: Update README**
+- [x] **Step 2: Update README**
 
 Add macOS desktop agent runbook link and local command.
 
-- [ ] **Step 3: Full verification**
+- [x] **Step 3: Full verification**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm test
@@ -448,7 +448,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm build
 ```
 
-- [ ] **Step 4: Commit implementation**
+- [x] **Step 4: Commit implementation**
 
 ```bash
 git add apps/agent apps/agent-desktop docs/runbooks/macos-agent-package.md README.md docs/superpowers/plans/2026-05-02-ios-mac-installable-mvp-plan.md docs/superpowers/plans/2026-05-03-macos-agent-desktop-shell-plan.md docs/superpowers/records/feature-log.md package.json pnpm-lock.yaml pnpm-workspace.yaml
