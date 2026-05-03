@@ -97,13 +97,13 @@ docs/runbooks/macos-agent-package.md
 - Modify: `packages/protocol/src/index.ts`
 - Test: `packages/protocol/tests/messages.test.ts`
 
-- [ ] 增加 `pairing.created`、`pairing.requested`、`pairing.approved`、`pairing.rejected`。
-- [ ] 增加 `auth.sessionToken`。
-- [ ] 增加 `device.status`。
-- [ ] 增加 `terminal.snapshot`。
-- [ ] 增加 schema 测试：合法消息通过，缺少 `deviceId`、`pairingCode`、`sessionId` 时失败。
-- [ ] 运行：`pnpm --filter @remote/protocol test`。
-- [ ] 提交：`git commit -m "feat: add pairing and auth protocol messages"`。
+- [x] 增加 `pairing.created`、`pairing.requested`、`pairing.approved`、`pairing.rejected`。
+- [x] 增加 `auth.sessionToken`。
+- [x] 增加 `device.status`。
+- [x] 增加 `terminal.snapshot`。
+- [x] 增加 schema 测试：合法消息通过，缺少 `deviceId`、`pairingCode`、`sessionId` 时失败。
+- [x] 运行：`pnpm --filter @remote/protocol test`。
+- [x] 提交：`git commit -m "feat: add pairing and auth protocol messages"`。
 
 ### Task 4: Agent 持久设备身份
 
@@ -113,13 +113,13 @@ docs/runbooks/macos-agent-package.md
 - Modify: `apps/agent/src/agentClient.ts`
 - Test: `apps/agent/tests/identity.test.ts`
 
-- [ ] 实现 `loadOrCreateDeviceIdentity()`，优先读取本地身份文件，缺失时生成 UUID 和密钥。
-- [ ] 开发期身份文件保存到 `~/.remote-terminal-agent/identity.json`。
-- [ ] 生产期切换到 macOS Keychain 的接口预留在同一模块。
-- [ ] Agent 注册时使用持久 `deviceId`，不再依赖固定 `REMOTE_DEVICE_ID`。
-- [ ] 测试：首次调用生成身份，第二次调用返回同一身份，损坏文件会拒绝启动并给出明确错误。
-- [ ] 运行：`pnpm --filter @remote/agent test`。
-- [ ] 提交：`git commit -m "feat: persist agent device identity"`。
+- [x] 实现 `loadOrCreateDeviceIdentity()`，优先读取本地身份文件，缺失时生成 UUID 和密钥。
+- [x] 开发期身份文件保存到 `~/.remote-terminal-agent/identity.json`。
+- [x] 生产期切换到 macOS Keychain 的接口预留在同一模块。
+- [x] Agent 注册时使用持久 `deviceId`，不再依赖固定 `REMOTE_DEVICE_ID`。
+- [x] 测试：首次调用生成身份，第二次调用返回同一身份，损坏文件会拒绝启动并给出明确错误。
+- [x] 运行：`pnpm --filter @remote/agent test`。
+- [x] 提交：`git commit -m "feat: persist agent device identity"`。
 
 ### Task 5: Server 配对状态机
 
@@ -129,13 +129,13 @@ docs/runbooks/macos-agent-package.md
 - Modify: `apps/server/src/ws.ts`
 - Test: `apps/server/tests/pairing/pairingService.test.ts`
 
-- [ ] 实现一次性配对码创建、哈希保存、过期校验和使用标记。
-- [ ] Agent 连接后可以请求创建配对码。
-- [ ] Mobile 提交配对请求后，server 推送给对应 Agent。
-- [ ] Agent approve 后，server 创建绑定关系。
-- [ ] 测试：过期码失败、重复使用失败、Agent 拒绝失败、Agent approve 成功。
-- [ ] 运行：`pnpm --filter @remote/server test`。
-- [ ] 提交：`git commit -m "feat: add device pairing state machine"`。
+- [x] 实现一次性配对码创建、哈希保存、过期校验和使用标记。
+- [x] Agent 连接后可以请求创建配对码。
+- [x] Mobile 提交配对请求后，server 推送给对应 Agent。
+- [x] Agent approve 后，server 创建绑定关系。
+- [x] 测试：过期码失败、重复使用失败、Agent 拒绝失败、Agent approve 成功。
+- [x] 运行：`pnpm --filter @remote/server test`。
+- [x] 提交：`git commit -m "feat: add device pairing state machine"`。
 
 ### Task 6: Mobile 扫码绑定界面
 
@@ -145,12 +145,12 @@ docs/runbooks/macos-agent-package.md
 - Modify: `apps/mobile/App.tsx`
 - Test: `apps/mobile/tests/sessionClient.test.ts`
 
-- [ ] 增加扫码或手动输入配对码入口。
-- [ ] 绑定成功后把 mobile client id 和登录 token 存到安全存储。
-- [ ] 绑定失败展示明确原因：过期、已使用、Agent 拒绝、网络失败。
-- [ ] 测试：绑定成功写入本地状态，绑定失败不污染已有设备列表。
-- [ ] 运行：`pnpm --filter @remote/mobile test`。
-- [ ] 提交：`git commit -m "feat: add mobile device pairing flow"`。
+- [x] 增加扫码或手动输入配对码入口。
+- [x] 绑定成功后把 mobile client id 和登录 token 存到安全存储。
+- [x] 绑定失败展示明确原因：过期、已使用、Agent 拒绝、网络失败。
+- [x] 测试：绑定成功写入本地状态，绑定失败不污染已有设备列表。
+- [x] 运行：`pnpm --filter @remote/mobile test`。
+- [x] 提交：`git commit -m "feat: add mobile device pairing flow"`。
 
 ### Task 7: 会话短期 token
 
@@ -163,13 +163,13 @@ docs/runbooks/macos-agent-package.md
 - Test: `apps/server/tests/sessionHub.test.ts`
 - Test: `apps/mobile/tests/sessionClient.test.ts`
 
-- [ ] Server 打开会话前校验绑定关系。
-- [ ] Server 为每次连接生成短期 `sessionToken`。
-- [ ] Mobile 打开会话时携带 token。
-- [ ] Agent 只接收 server 已验证的会话打开请求。
-- [ ] 测试：未绑定设备连接失败，过期 token 失败，正确 token 成功。
-- [ ] 运行：`pnpm test`。
-- [ ] 提交：`git commit -m "feat: require authorized session tokens"`。
+- [x] Server 打开会话前校验绑定关系。
+- [x] Server 为每次连接生成短期 `sessionToken`。
+- [x] Mobile 打开会话时携带 token。
+- [x] Agent 只接收 server 已验证的会话打开请求。
+- [x] 测试：未绑定设备连接失败，过期 token 失败，正确 token 成功。
+- [x] 运行：`pnpm test`。
+- [x] 提交：`git commit -m "feat: require authorized session tokens"`。
 
 ## Phase 3: 终端体验补强
 
@@ -182,12 +182,12 @@ docs/runbooks/macos-agent-package.md
 - Test: `apps/agent/tests/terminalSession.test.ts`
 - Test: `apps/mobile/tests/terminalStore.test.ts`
 
-- [ ] 增加 `Tab`、`Esc`、方向键、`Ctrl+C` 按钮。
-- [ ] `Ctrl+C` 发送 `\x03`，`Tab` 发送 `\t`，方向键发送 ANSI sequence。
+- [x] 增加 `Tab`、`Esc`、方向键、`Ctrl+C` 按钮。
+- [x] `Ctrl+C` 发送 `\x03`，`Tab` 发送 `\t`，方向键发送 ANSI sequence。
 - [ ] 增加 `terminal.signal`，用于后续明确表达 `SIGINT`、`EOF`。
-- [ ] 测试：点击快捷键后 session client 发送正确 payload。
-- [ ] 运行：`pnpm test`。
-- [ ] 提交：`git commit -m "feat: add mobile terminal shortcut keys"`。
+- [x] 测试：点击快捷键后 session client 发送正确 payload。
+- [x] 运行：`pnpm test`。
+- [x] 提交：`git commit -m "feat: add mobile terminal shortcut keys"`。
 
 ### Task 9: 断线保留和 snapshot
 
