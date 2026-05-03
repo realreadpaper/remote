@@ -946,3 +946,51 @@
 - 增加 Agent output 背压和发送队列上限。
 - 增加 Server 对 Agent output 的消息数/字节速率限制。
 - 文件和日志输出后续走专用传输通道。
+
+## 2026-05-03 Server Agent Output Rate Limit
+
+**状态：** completed
+
+**提交：**
+- `6c6a2d2` `docs: design server agent output rate limit`
+- `ee0b97d` `docs: plan server agent output rate limit`
+- `86bd284` `feat: rate limit agent terminal output`
+
+**实现内容：**
+- Server 配置新增 `REMOTE_AGENT_OUTPUT_RATE_LIMIT_WINDOW_MS` 和 `REMOTE_AGENT_OUTPUT_RATE_LIMIT_MAX`。
+- 默认 Agent output 限流为 10 秒窗口、每设备 1000 条 `terminal.output`。
+- `/ws/agent` 在 `terminal.output` 路由给 Mobile 前按 `deviceId` 检查 `MemoryRateLimiter`。
+- 超限 output 不转发给 Mobile，Server 向 Agent 返回 `session.error`，message 为 `Rate limit exceeded`，并带原始 `sessionId`。
+- `terminal.exit` 不计入 output 限流，超限后仍可转发给 Mobile。
+- Agent routable 错误现在会尽量带上 `sessionId`，便于 Agent 侧定位具体 session。
+
+**涉及文件：**
+- `docs/superpowers/specs/2026-05-03-server-agent-output-rate-limit-design.md`
+- `docs/superpowers/plans/2026-05-03-server-agent-output-rate-limit-plan.md`
+- `apps/server/src/config.ts`
+- `apps/server/src/ws.ts`
+- `apps/server/tests/config.test.ts`
+- `apps/server/tests/ws.test.ts`
+
+**TDD 记录：**
+- Config 红灯：`PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test -- apps/server/tests/config.test.ts` 失败，`ServerConfig` 缺少 Agent output 限流字段，非法配置未抛错。
+- Config 绿灯：实现 `agentOutputRateLimitWindowMs`、`agentOutputRateLimitMaxMessages` 和环境变量解析后，config 测试通过。
+- Route 红灯：`PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test -- apps/server/tests/ws.test.ts` 失败，第二条 `terminal.output` 没有返回限流错误。
+- Route 中间调整：Agent routable 错误增加 `sessionId` 后，旧 stale-agent 测试期望同步更新。
+- Route 绿灯：接入设备级 `MemoryRateLimiter` 后，Server 测试通过，92 tests passed。
+
+**验证：**
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test`: pass，92 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm test`: pass，189 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm build`: pass。
+
+**已知风险：**
+- 当前是丢弃式限流，不是背压；超限输出会丢失。
+- 内存限流只在单 Server 进程内生效，多实例云中转需要共享 store。
+- 当前只按消息数限制，没有按字节数统计 Agent output。
+
+**后续：**
+- 增加 Agent output 背压队列和发送队列上限。
+- 增加 Agent output 字节速率限制。
+- 多实例云中转迁移到 Redis/Postgres limiter store。
