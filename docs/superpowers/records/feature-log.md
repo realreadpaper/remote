@@ -1466,3 +1466,42 @@
 **后续：**
 - Task 13 实现 iOS 前后台和重连。
 - 真正 TestFlight 构建前确认 Apple Developer 中 bundle identifier 和 build number 未冲突。
+
+## 2026-05-03 iOS Background Reconnection
+
+**状态：** completed
+
+**提交：**
+- `5692444` `docs: design ios background reconnection`
+- `b3048b8` `docs: plan ios background reconnection`
+- `2a169ac` `feat: handle mobile background reconnection`
+
+**实现内容：**
+- `SessionClient` 增加 `isSocketOpen()` 和 `hasRetainedSession()`。
+- `SessionClient` 测试覆盖 socket open state、socket close 后保留 session id、explicit close 后清除 session id。
+- `TerminalScreen` 监听 React Native `AppState`。
+- App 进入 background/inactive 后不关闭 client，不清除 session id。
+- App 后台时阻止命令、快捷键和 signal 主动发送。
+- App 回到 active 后，如果 client 持有 retained session 且 socket 未打开，则调用同一个 client `connect()`。
+- socket 异常断开后不再调用 `client.close()`，保留同一个 `SessionClient`。
+- socket 异常断开后自动重连一次。
+- 自动重连失败后展示 `Reconnect` 按钮。
+- 手动 Reconnect 优先复用 retained session，触发 `resumeSessionId`。
+- 重连成功后沿用 `SessionClient` 已有逻辑发送 `terminal.snapshot.request`。
+
+**验证：**
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile test`: pass，52 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile build`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm test`: pass，239 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm build`: pass。
+
+**已知风险：**
+- iOS 后台 WebSocket 是否立即断开由系统决定，App 不能保证后台持续在线。
+- 自动重连只做一次，弱网下需要用户点击 Reconnect。
+- UI 层仍没有 React Native 组件测试；当前以 `SessionClient` 单元测试和 TypeScript build 覆盖核心恢复机制。
+
+**后续：**
+- 云端化后验证 iPhone 蜂窝网络下 background/foreground 恢复。
+- 引入 RN 组件测试后补充 AppState UI 自动化覆盖。

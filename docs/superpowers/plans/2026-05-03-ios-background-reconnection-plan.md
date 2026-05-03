@@ -27,7 +27,7 @@ docs/superpowers/records/feature-log.md
 - Modify: `apps/mobile/tests/sessionClient.test.ts`
 - Modify: `apps/mobile/src/protocol/sessionClient.ts`
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 Add tests:
 
@@ -52,7 +52,7 @@ it("reports retained session after socket close and clears it after explicit clo
 });
 ```
 
-- [ ] **Step 2: Run red mobile tests**
+- [x] **Step 2: Run red mobile tests**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile test
@@ -60,7 +60,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile test
 
 Expected: fail because methods do not exist.
 
-- [ ] **Step 3: Implement state API**
+- [x] **Step 3: Implement state API**
 
 In `SessionClient`:
 
@@ -75,7 +75,7 @@ hasRetainedSession(): boolean {
 }
 ```
 
-- [ ] **Step 4: Run green mobile tests**
+- [x] **Step 4: Run green mobile tests**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile test
@@ -86,11 +86,11 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile test
 **Files:**
 - Modify: `apps/mobile/src/components/TerminalScreen.tsx`
 
-- [ ] **Step 1: Import AppState**
+- [x] **Step 1: Import AppState**
 
 Add `AppState` to React Native imports.
 
-- [ ] **Step 2: Add reconnect state**
+- [x] **Step 2: Add reconnect state**
 
 Add:
 
@@ -100,7 +100,7 @@ const [manualReconnectVisible, setManualReconnectVisible] = useState(false);
 const autoReconnectAttemptedRef = useRef(false);
 ```
 
-- [ ] **Step 3: Preserve client on unexpected disconnect**
+- [x] **Step 3: Preserve client on unexpected disconnect**
 
 Change `onDisconnect` so it does not call `closeCurrentClient()`. Instead:
 
@@ -110,7 +110,7 @@ Change `onDisconnect` so it does not call `closeCurrentClient()`. Instead:
 - if app active and auto reconnect not attempted, call `client.connect()`.
 - else show manual reconnect.
 
-- [ ] **Step 4: Add AppState listener**
+- [x] **Step 4: Add AppState listener**
 
 On foreground active:
 
@@ -122,15 +122,15 @@ On background/inactive:
 - set appActive false.
 - do not close client.
 
-- [ ] **Step 5: Block input while backgrounded**
+- [x] **Step 5: Block input while backgrounded**
 
 In `handleSend`, `sendRawInput`, and `sendSignal`, if `!appActive`, append local paused message and return.
 
-- [ ] **Step 6: Add Reconnect button**
+- [x] **Step 6: Add Reconnect button**
 
 Render a compact `Reconnect` button when `manualReconnectVisible` is true. Button calls retained client `connect()` or falls back to `handleConnect()`.
 
-- [ ] **Step 7: Run mobile typecheck/build**
+- [x] **Step 7: Run mobile typecheck/build**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile typecheck
@@ -144,7 +144,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile build
 - Modify: `docs/superpowers/plans/2026-05-03-ios-background-reconnection-plan.md`
 - Modify: `docs/superpowers/records/feature-log.md`
 
-- [ ] **Step 1: Full verification**
+- [x] **Step 1: Full verification**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile test
@@ -155,18 +155,18 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm build
 ```
 
-- [ ] **Step 2: Commit implementation**
+- [x] **Step 2: Commit implementation**
 
 ```bash
 git add apps/mobile/src/protocol/sessionClient.ts apps/mobile/tests/sessionClient.test.ts apps/mobile/src/components/TerminalScreen.tsx
 git commit -m "feat: handle mobile background reconnection"
 ```
 
-- [ ] **Step 3: Mark plan and log delivery**
+- [x] **Step 3: Mark plan and log delivery**
 
 Mark this plan and Task 13 complete. Append feature log with design, plan, implementation commits and verification.
 
-- [ ] **Step 4: Commit records**
+- [x] **Step 4: Commit records**
 
 ```bash
 git add docs/superpowers/plans/2026-05-02-ios-mac-installable-mvp-plan.md docs/superpowers/plans/2026-05-03-ios-background-reconnection-plan.md docs/superpowers/records/feature-log.md

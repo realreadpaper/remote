@@ -260,13 +260,13 @@ docs/runbooks/macos-agent-package.md
 - Modify: `apps/mobile/App.tsx`
 - Test: `apps/mobile/tests/sessionClient.test.ts`
 
-- [ ] App 进入后台时暂停主动输入，保持 session id。
-- [ ] App 回前台时检查 socket 状态。
-- [ ] socket 断开时自动重连一次，失败后展示手动重连按钮。
-- [ ] 重连成功后请求 `terminal.snapshot`。
-- [ ] 测试：后台断开后回前台触发恢复流程。
-- [ ] 运行：`pnpm --filter @remote/mobile test`。
-- [ ] 提交：`git commit -m "feat: handle mobile background reconnection"`。
+- [x] App 进入后台时暂停主动输入，保持 session id。
+- [x] App 回前台时检查 socket 状态。
+- [x] socket 断开时自动重连一次，失败后展示手动重连按钮。
+- [x] 重连成功后请求 `terminal.snapshot`。
+- [x] 测试：后台断开后回前台触发恢复流程。
+- [x] 运行：`pnpm --filter @remote/mobile test`。
+- [x] 提交：`git commit -m "feat: handle mobile background reconnection"`。
 
 ## Phase 6: 云端测试环境
 
