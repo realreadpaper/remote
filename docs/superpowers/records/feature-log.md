@@ -2033,3 +2033,36 @@
 
 **已知风险：**
 - 本轮截图验证了首页默认入口；由于模拟器当前没有真实配对设备，已保存设备列表和点击进入终端仍需要真机或完整配对 smoke 再验收。
+
+## 2026-05-03 iOS Home Populated List Polish
+
+**状态：** completed
+
+**实现内容：**
+- 首页有连接时不再只是普通行，改为连接卡片：设备名、状态、配对/过期摘要、`Terminal` 能力和 `Open` 入口。
+- 新增 `homeConnectionList` 纯逻辑模块，将首页列表的 `Ready` / `Expired` 状态、摘要文案和开发预览连接从 UI 中拆出。
+- 新增 `EXPO_PUBLIC_REMOTE_DEMO_CONNECTIONS=1` 显式开发预览开关；release 模式 `EXPO_PUBLIC_REMOTE_RELEASE=1` 下不会启用预览连接。
+- 模拟器可以看到有数据的连接列表态，避免只验证空状态。
+
+**涉及文件：**
+- `apps/mobile/App.tsx`
+- `apps/mobile/src/components/HomeScreen.tsx`
+- `apps/mobile/src/state/homeConnectionList.ts`
+- `apps/mobile/tests/homeConnectionList.test.ts`
+- `docs/superpowers/records/feature-log.md`
+
+**TDD 记录：**
+- 红灯：`homeConnectionList.test.ts` 失败，原因是 `homeConnectionList` 模块不存在。
+- 绿灯：实现列表 item 构建、过期状态判断、开发预览开关和预览连接后，移动端测试通过。
+
+**验证：**
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile test -- homeConnectionList.test.ts`: pass，68 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile test`: pass，68 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm test`: pass，274 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm build`: pass。
+- `EXPO_PUBLIC_REMOTE_DEMO_CONNECTIONS=1 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile exec expo run:ios --device "iPhone 15"`: build succeeded，开发构建已安装并打开。
+- iOS 模拟器截图：`/tmp/remote-terminal-home-list-populated.png`，确认首页显示 2 个连接卡片、Ready 状态和 Open 入口。
+
+**已知风险：**
+- 预览连接只用于 UI 验证，不能代表真实 Agent 在线状态；真实连接列表仍需要配对后由 SecureStore token 填充。

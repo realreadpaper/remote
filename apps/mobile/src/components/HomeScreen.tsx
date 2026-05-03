@@ -1,4 +1,5 @@
 import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
+import { buildConnectionListItems } from "../state/homeConnectionList";
 import type { PairingTokenRecord } from "../state/pairingTokenStore";
 import { mobileShellTheme } from "./mobileShellTheme";
 
@@ -10,6 +11,8 @@ export interface HomeScreenProps {
 }
 
 export function HomeScreen({ devices, loading, onNewConnection, onSelectDevice }: HomeScreenProps) {
+  const connectionItems = buildConnectionListItems(devices);
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
@@ -26,39 +29,40 @@ export function HomeScreen({ devices, loading, onNewConnection, onSelectDevice }
         {devices.length === 0 ? (
           <View style={styles.emptyPanel}>
             <Text style={styles.emptyTitle}>No connections</Text>
-            <Text style={styles.emptyText}>Pair a Mac once, then it will appear here for one-tap terminal access.</Text>
+            <Text style={styles.emptyText}>Pair a Mac once. Saved connections appear here for one-tap terminal access.</Text>
             <Pressable accessibilityRole="button" onPress={onNewConnection} style={({ pressed }) => [styles.emptyButton, pressed && styles.primaryButtonPressed]}>
               <Text style={styles.primaryButtonText}>New Connection</Text>
             </Pressable>
           </View>
         ) : (
-          devices.map((device) => (
+          connectionItems.map((item) => (
             <Pressable
               accessibilityRole="button"
-              key={device.deviceId}
-              onPress={() => onSelectDevice(device)}
-              style={({ pressed }) => [styles.deviceRow, pressed && styles.deviceRowPressed]}
+              key={item.record.deviceId}
+              onPress={() => onSelectDevice(item.record)}
+              style={({ pressed }) => [styles.connectionCard, pressed && styles.connectionCardPressed]}
             >
-              <View style={styles.deviceMeta}>
-                <Text numberOfLines={1} style={styles.deviceName}>{device.deviceId}</Text>
-                <Text numberOfLines={1} style={styles.deviceDetail}>Expires {formatShortDate(device.expiresAt)}</Text>
+              <View style={styles.connectionTopRow}>
+                <View style={styles.deviceMeta}>
+                  <Text numberOfLines={1} style={styles.deviceName}>{item.title}</Text>
+                  <Text numberOfLines={1} style={styles.deviceDetail}>{item.subtitle}</Text>
+                </View>
+                <View style={[styles.statusPill, item.statusTone === "expired" && styles.statusPillExpired]}>
+                  <Text style={[styles.statusPillText, item.statusTone === "expired" && styles.statusPillTextExpired]}>
+                    {item.statusLabel}
+                  </Text>
+                </View>
               </View>
-              <Text style={styles.connectText}>Connect</Text>
+              <View style={styles.connectionBottomRow}>
+                <Text style={styles.connectionHint}>Terminal</Text>
+                <Text style={styles.connectText}>Open</Text>
+              </View>
             </Pressable>
           ))
         )}
       </ScrollView>
     </SafeAreaView>
   );
-}
-
-function formatShortDate(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
 const colors = mobileShellTheme.colors;
@@ -142,21 +146,24 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center"
   },
-  deviceRow: {
-    minHeight: 76,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+  connectionCard: {
+    minHeight: 112,
+    padding: 14,
     borderRadius: layout.panelRadius,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.panelBorder,
     backgroundColor: colors.panel,
-    flexDirection: "row",
-    alignItems: "center",
     justifyContent: "space-between",
     gap: 12
   },
-  deviceRowPressed: {
+  connectionCardPressed: {
     backgroundColor: colors.panelMuted
+  },
+  connectionTopRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 12
   },
   deviceMeta: {
     flex: 1,
@@ -171,6 +178,38 @@ const styles = StyleSheet.create({
     marginTop: 5,
     color: colors.textMuted,
     fontSize: 13
+  },
+  statusPill: {
+    minHeight: 28,
+    paddingHorizontal: 10,
+    borderRadius: layout.panelRadius,
+    backgroundColor: "#eef8f0",
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  statusPillExpired: {
+    backgroundColor: colors.dangerSurface
+  },
+  statusPillText: {
+    color: colors.online,
+    fontSize: 12,
+    fontWeight: "700"
+  },
+  statusPillTextExpired: {
+    color: colors.danger
+  },
+  connectionBottomRow: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.panelBorder,
+    paddingTop: 11,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between"
+  },
+  connectionHint: {
+    color: colors.textMuted,
+    fontSize: 13,
+    fontWeight: "600"
   },
   connectText: {
     color: colors.accent,

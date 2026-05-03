@@ -3,6 +3,10 @@ import { HomeScreen } from "./src/components/HomeScreen";
 import { NewConnectionScreen } from "./src/components/NewConnectionScreen";
 import { TerminalScreen } from "./src/components/TerminalScreen";
 import {
+  buildDevelopmentPreviewConnections,
+  shouldUseDevelopmentPreviewConnections
+} from "./src/state/homeConnectionList";
+import {
   createSecureStorePairingTokenStorage,
   loadPairingTokens,
   removePairingToken,
@@ -24,7 +28,8 @@ export default function App() {
   const refreshDevices = async () => {
     setLoading(true);
     try {
-      setDevices(await loadPairingTokens(pairingTokenStorage));
+      const stored = await loadPairingTokens(pairingTokenStorage);
+      setDevices(stored.length === 0 && shouldUseDevelopmentPreviewConnections() ? buildDevelopmentPreviewConnections() : stored);
     } finally {
       setLoading(false);
     }
