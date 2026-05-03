@@ -7,6 +7,7 @@
   "scripts": {
     "build": "pnpm --filter @remote/agent build && tsc -p tsconfig.json && mkdir -p dist/renderer && cp -R src/renderer/. dist/renderer/",
     "dev": "pnpm build && electron dist/main.js",
+    "dist:mac": "pnpm build && electron-builder --mac",
     "pack:dir": "pnpm build && electron-builder --dir --mac",
     "test": "vitest run --root ../.. apps/agent-desktop/tests",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json --noEmit"
@@ -30,7 +31,17 @@
     ],
     "mac": {
       "category": "public.app-category.developer-tools",
-      "target": "dir"
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "notarize": {
+        "teamId": "${APPLE_TEAM_ID}"
+      }
     }
   }
 }
