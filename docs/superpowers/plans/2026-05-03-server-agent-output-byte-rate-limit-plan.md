@@ -28,7 +28,7 @@ docs/superpowers/records/feature-log.md
 - Modify: `apps/server/tests/rateLimit.test.ts`
 - Modify: `apps/server/src/rateLimit.ts`
 
-- [ ] **Step 1: Write failing weighted limiter tests**
+- [x] **Step 1: Write failing weighted limiter tests**
 
 在 `apps/server/tests/rateLimit.test.ts` 导入 `MemoryWeightedRateLimiter`，新增：
 
@@ -75,7 +75,7 @@ describe("MemoryWeightedRateLimiter", () => {
 });
 ```
 
-- [ ] **Step 2: Run red**
+- [x] **Step 2: Run red**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test -- apps/server/tests/rateLimit.test.ts
@@ -83,7 +83,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test -- apps
 
 Expected: fail because `MemoryWeightedRateLimiter` does not exist.
 
-- [ ] **Step 3: Implement weighted limiter**
+- [x] **Step 3: Implement weighted limiter**
 
 在 `apps/server/src/rateLimit.ts` 新增：
 
@@ -124,7 +124,7 @@ export class MemoryWeightedRateLimiter {
 }
 ```
 
-- [ ] **Step 4: Run green limiter tests**
+- [x] **Step 4: Run green limiter tests**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test -- apps/server/tests/rateLimit.test.ts
@@ -138,7 +138,7 @@ Expected: rate limiter tests pass.
 - Modify: `apps/server/tests/config.test.ts`
 - Modify: `apps/server/src/config.ts`
 
-- [ ] **Step 1: Write failing config tests**
+- [x] **Step 1: Write failing config tests**
 
 更新默认配置断言，加入：
 
@@ -178,7 +178,7 @@ expect(() => loadServerConfig({ REMOTE_AGENT_OUTPUT_BYTE_RATE_LIMIT_MAX: "abc" }
 );
 ```
 
-- [ ] **Step 2: Run red**
+- [x] **Step 2: Run red**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test -- apps/server/tests/config.test.ts
@@ -186,7 +186,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test -- apps
 
 Expected: fail because `ServerConfig` does not expose byte rate fields.
 
-- [ ] **Step 3: Implement config**
+- [x] **Step 3: Implement config**
 
 在 `ServerConfig` 增加：
 
@@ -212,7 +212,7 @@ agentOutputByteRateLimitMaxBytes: parseIntegerEnv(
 )
 ```
 
-- [ ] **Step 4: Run green config tests**
+- [x] **Step 4: Run green config tests**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test -- apps/server/tests/config.test.ts
@@ -226,7 +226,7 @@ Expected: config tests pass.
 - Modify: `apps/server/tests/ws.test.ts`
 - Modify: `apps/server/src/ws.ts`
 
-- [ ] **Step 1: Write failing route tests**
+- [x] **Step 1: Write failing route tests**
 
 更新 `tokenServerConfig` 加入：
 
@@ -309,7 +309,7 @@ it("counts agent terminal output byte rate by UTF-8 bytes", async () => {
 });
 ```
 
-- [ ] **Step 2: Run red**
+- [x] **Step 2: Run red**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test -- apps/server/tests/ws.test.ts
@@ -317,7 +317,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test -- apps
 
 Expected: fail because output byte rate is not enforced.
 
-- [ ] **Step 3: Implement route byte limiter**
+- [x] **Step 3: Implement route byte limiter**
 
 在 `apps/server/src/ws.ts` 导入：
 
@@ -354,7 +354,7 @@ if (message.type === "terminal.output" && !isAllowedAgentOutputByteRate(agentOut
 }
 ```
 
-- [ ] **Step 4: Run green server tests**
+- [x] **Step 4: Run green server tests**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test
@@ -362,7 +362,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test
 
 Expected: server tests pass.
 
-- [ ] **Step 5: Commit implementation**
+- [x] **Step 5: Commit implementation**
 
 ```bash
 git add apps/server/src/config.ts apps/server/src/rateLimit.ts apps/server/src/ws.ts apps/server/tests/config.test.ts apps/server/tests/rateLimit.test.ts apps/server/tests/ws.test.ts
@@ -374,7 +374,7 @@ git commit -m "feat: rate limit agent terminal output bytes"
 **Files:**
 - Modify: `docs/superpowers/records/feature-log.md`
 
-- [ ] **Step 1: Full verification**
+- [x] **Step 1: Full verification**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm test
@@ -382,7 +382,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm build
 ```
 
-- [ ] **Step 2: Record delivery**
+- [x] **Step 2: Record delivery**
 
 在 `docs/superpowers/records/feature-log.md` 追加：
 
@@ -395,7 +395,7 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm build
 - 风险：丢弃式限流、单进程内存、parse 后统计。
 - 后续：背压队列、共享 limiter store、Mobile input 累计字节限流。
 
-- [ ] **Step 3: Commit record**
+- [x] **Step 3: Commit record**
 
 ```bash
 git add docs/superpowers/records/feature-log.md

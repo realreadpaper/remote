@@ -994,3 +994,54 @@
 - 增加 Agent output 背压队列和发送队列上限。
 - 增加 Agent output 字节速率限制。
 - 多实例云中转迁移到 Redis/Postgres limiter store。
+
+## 2026-05-03 Server Agent Output Byte Rate Limit
+
+**状态：** completed
+
+**提交：**
+- `00860e9` `docs: design server agent output byte rate limit`
+- `790466e` `docs: plan server agent output byte rate limit`
+- `bfa650d` `feat: rate limit agent terminal output bytes`
+
+**实现内容：**
+- Server 配置新增 `REMOTE_AGENT_OUTPUT_BYTE_RATE_LIMIT_WINDOW_MS` 和 `REMOTE_AGENT_OUTPUT_BYTE_RATE_LIMIT_MAX`。
+- 默认 Agent output 字节限流为 10 秒窗口、每设备 1 MiB。
+- `rateLimit.ts` 新增 `MemoryWeightedRateLimiter`，支持按 weight 累计窗口用量。
+- `/ws/agent` 对 `terminal.output.data` 使用 UTF-8 字节数作为 weight 进行限流。
+- 超限 output 不转发给 Mobile，Server 向 Agent 返回 `session.error`，message 为 `Rate limit exceeded`，带原始 `sessionId`。
+- `terminal.exit` 不计入字节限流。
+
+**涉及文件：**
+- `docs/superpowers/specs/2026-05-03-server-agent-output-byte-rate-limit-design.md`
+- `docs/superpowers/plans/2026-05-03-server-agent-output-byte-rate-limit-plan.md`
+- `apps/server/src/config.ts`
+- `apps/server/src/rateLimit.ts`
+- `apps/server/src/ws.ts`
+- `apps/server/tests/config.test.ts`
+- `apps/server/tests/rateLimit.test.ts`
+- `apps/server/tests/ws.test.ts`
+
+**TDD 记录：**
+- Weighted limiter 红灯：`PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test -- apps/server/tests/rateLimit.test.ts` 失败，`MemoryWeightedRateLimiter` 不存在。
+- Weighted limiter 绿灯：实现按权重累计、拒绝不消耗容量、窗口重置和 key 隔离后，limiter 测试通过。
+- Config 红灯：`PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test -- apps/server/tests/config.test.ts` 失败，`ServerConfig` 缺少 Agent output byte rate 字段，非法配置未抛错。
+- Config 绿灯：实现 `agentOutputByteRateLimitWindowMs`、`agentOutputByteRateLimitMaxBytes` 和环境变量解析后，config 测试通过。
+- Route 红灯：`PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test -- apps/server/tests/ws.test.ts` 失败，Agent output 字节超限时没有返回限流错误。
+- Route 绿灯：接入 `MemoryWeightedRateLimiter` 后，Server 测试通过，98 tests passed。
+
+**验证：**
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test`: pass，98 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm test`: pass，193 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm build`: pass。
+
+**已知风险：**
+- 当前仍是丢弃式限流，不是背压；超限输出会丢失。
+- 内存限流只在单 Server 进程内生效，多实例云中转需要共享 store。
+- 字节统计发生在 JSON parse 后；raw frame 大小仍由 raw message guard 保护。
+
+**后续：**
+- 增加 Agent output 背压队列。
+- 将 limiter store 抽象为 Redis/Postgres 可替换实现。
+- 增加 Mobile input 累计字节限流。
