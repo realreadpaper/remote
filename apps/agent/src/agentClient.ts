@@ -153,7 +153,7 @@ export class AgentClient {
         type: "device.register",
         deviceId: this.config.deviceId,
         deviceName: this.config.deviceName,
-        capabilities: ["terminal"]
+        capabilities: this.config.capabilities
       });
     });
 

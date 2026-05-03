@@ -1692,3 +1692,30 @@
 **后续：**
 - 准备真机、TestFlight 或 Expo 物理机环境后，按 `docs/runbooks/mvp-acceptance.md` 执行验收。
 - 为 disabled terminal capability 增加明确 Agent 启动开关，避免该项长期只能人工构造。
+
+## 2026-05-03 Agent Terminal Capability Toggle
+
+**状态：** completed
+
+**提交：**
+- `e79d673` `docs: design agent terminal capability toggle`
+- `b26680c` `docs: plan agent terminal capability toggle`
+
+**实现内容：**
+- Agent config 增加 `REMOTE_ENABLE_TERMINAL=0` 开关。
+- Agent 注册时根据 config 发送 `capabilities`，默认仍是 `["terminal"]`。
+- `REMOTE_ENABLE_TERMINAL=0` 时注册 `capabilities: []`。
+- Server 在 `session.open` 前检查设备是否支持 `terminal`。
+- 设备不支持 terminal 时返回 `session.error`：`Device <id> does not support terminal sessions.`。
+- `docs/runbooks/mvp-acceptance.md` 的 disabled terminal capability 项改为真实启动命令。
+
+**TDD 证据：**
+- Agent 红灯：`PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent test` 失败，缺少 `AgentConfig.capabilities`、`REMOTE_ENABLE_TERMINAL` 校验和注册 capabilities。
+- Server 红灯：`PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test` 失败，无 terminal capability 设备仍返回 `session.opened`。
+- Agent 绿灯：`PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/agent test`: pass，47 tests passed。
+- Server 绿灯：`PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/server test`: pass，120 tests passed。
+
+**验证：**
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm test`: pass，252 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm build`: pass。

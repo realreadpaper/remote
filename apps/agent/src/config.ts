@@ -1,11 +1,14 @@
 import os from "node:os";
 import { loadOrCreateDeviceIdentity, type DeviceIdentity } from "./identity.js";
 
+export type AgentCapability = "terminal" | "file" | "desktop";
+
 export interface AgentConfig {
   serverUrl: string;
   deviceId: string;
   deviceName: string;
   devToken: string | null;
+  capabilities: AgentCapability[];
   shell: string;
   terminalOutputChunkBytes: number;
 }
@@ -22,6 +25,7 @@ export function loadAgentConfig(options: LoadAgentConfigOptions = {}): AgentConf
     deviceId: normalizeOptional(process.env.REMOTE_DEVICE_ID) ?? loadIdentity().deviceId,
     deviceName: process.env.REMOTE_DEVICE_NAME ?? os.hostname(),
     devToken: normalizeOptional(process.env.REMOTE_DEV_TOKEN),
+    capabilities: terminalEnabled(process.env.REMOTE_ENABLE_TERMINAL) ? ["terminal"] : [],
     shell: process.env.SHELL ?? "/bin/zsh",
     terminalOutputChunkBytes: parsePositiveIntegerEnv(
       process.env.REMOTE_TERMINAL_OUTPUT_CHUNK_BYTES,
@@ -48,4 +52,16 @@ function parsePositiveIntegerEnv(rawValue: string | undefined, defaultValue: num
   }
 
   return value;
+}
+
+function terminalEnabled(rawValue: string | undefined): boolean {
+  const normalized = normalizeOptional(rawValue);
+  if (!normalized || normalized === "1") {
+    return true;
+  }
+  if (normalized === "0") {
+    return false;
+  }
+
+  throw new Error("REMOTE_ENABLE_TERMINAL must be 1 or 0");
 }

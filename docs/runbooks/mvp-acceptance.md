@@ -372,7 +372,12 @@ Purpose: verify Mobile receives a clear failure when the Agent cannot provide te
 
 Steps:
 
-1. Start an Agent variant or config that registers without `terminal` capability.
+1. Start the Agent with terminal capability disabled:
+
+   ```bash
+   REMOTE_ENABLE_TERMINAL=0 REMOTE_DEVICE_ID=home-mac pnpm dev:agent
+   ```
+
 2. Confirm `/devices` shows the device without `terminal`.
 3. Attempt to open a terminal session from mobile.
 
@@ -394,8 +399,6 @@ Input routed to Agent: yes | no
 Evidence:
 Notes:
 ```
-
-If no current CLI flag exists to disable terminal capability, mark this item `blocked` and create an implementation follow-up.
 
 ## 9. No Ads On Terminal Session Page
 

@@ -524,6 +524,11 @@ export function registerWsRoutes(app: FastifyInstance, config: ServerConfig): vo
             throw new Error(tokenResult.reason);
           }
 
+          const device = registry.get(message.deviceId);
+          if (!device?.capabilities.includes("terminal")) {
+            throw new Error(`Device ${message.deviceId} does not support terminal sessions.`);
+          }
+
           const session = hub.openSession(message.deviceId, mobileSend, { resumeSessionId: message.resumeSessionId });
           sendJson(socket, {
             type: "session.opened",

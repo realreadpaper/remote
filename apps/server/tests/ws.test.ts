@@ -119,7 +119,7 @@ const tokenServerConfig: ServerConfig = {
   mobileInputByteRateLimitMaxBytes: 262_144
 };
 
-async function registerAgent(app: FastifyInstance, deviceId = "mac-1"): Promise<WebSocket> {
+async function registerAgent(app: FastifyInstance, deviceId = "mac-1", capabilities = ["terminal"]): Promise<WebSocket> {
   const agent = await app.injectWS("/ws/agent");
 
   agent.send(
@@ -127,7 +127,7 @@ async function registerAgent(app: FastifyInstance, deviceId = "mac-1"): Promise<
       type: "device.register",
       deviceId,
       deviceName: "MacBook Pro",
-      capabilities: ["terminal"]
+      capabilities
     })
   );
   await nextJson(agent);
@@ -777,6 +777,25 @@ describe("server websocket API", () => {
       type: "session.error",
       code: "SESSION_ERROR",
       message: "Invalid session token"
+    });
+    await noJson(agent);
+
+    agent.terminate();
+    mobile.terminate();
+  });
+
+  it("returns session.error when device does not support terminal sessions", async () => {
+    const agent = await registerAgent(app, "mac-1", []);
+    const { sessionToken } = await approvePairingRequest(app, agent);
+    const mobile = await app.injectWS("/ws/mobile");
+    const errorMessage = nextJson(mobile);
+
+    mobile.send(JSON.stringify({ type: "session.open", deviceId: "mac-1", sessionToken }));
+
+    expect(await errorMessage).toEqual({
+      type: "session.error",
+      code: "SESSION_ERROR",
+      message: "Device mac-1 does not support terminal sessions."
     });
     await noJson(agent);
 

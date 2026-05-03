@@ -104,6 +104,7 @@ const config: AgentConfig = {
   deviceId: "device-1",
   deviceName: "Mac",
   devToken: null,
+  capabilities: ["terminal"],
   shell: "/bin/zsh",
   terminalOutputChunkBytes: 16_384
 };
@@ -168,6 +169,20 @@ describe("AgentClient", () => {
       deviceId: "device-1",
       deviceName: "Mac",
       capabilities: ["terminal"]
+    });
+  });
+
+  it("sends configured capabilities when registering", () => {
+    const { socket } = createHarness({ capabilities: [] });
+
+    socket.emit("open");
+
+    const message = parseClientMessage(JSON.parse(socket.sent[0] ?? ""));
+    expect(message).toEqual({
+      type: "device.register",
+      deviceId: "device-1",
+      deviceName: "Mac",
+      capabilities: []
     });
   });
 

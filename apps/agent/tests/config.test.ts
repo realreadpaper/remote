@@ -19,6 +19,7 @@ describe("loadAgentConfig", () => {
     process.env.REMOTE_DEVICE_NAME = "Build Mac";
     process.env.REMOTE_DEV_TOKEN = "secret";
     process.env.REMOTE_TERMINAL_OUTPUT_CHUNK_BYTES = "4096";
+    process.env.REMOTE_ENABLE_TERMINAL = "0";
     process.env.SHELL = "/bin/bash";
 
     expect(loadAgentConfig()).toEqual({
@@ -26,6 +27,7 @@ describe("loadAgentConfig", () => {
       deviceId: "mac-123",
       deviceName: "Build Mac",
       devToken: "secret",
+      capabilities: [],
       terminalOutputChunkBytes: 4_096,
       shell: "/bin/bash"
     });
@@ -37,6 +39,7 @@ describe("loadAgentConfig", () => {
     delete process.env.REMOTE_DEVICE_NAME;
     delete process.env.REMOTE_DEV_TOKEN;
     delete process.env.REMOTE_TERMINAL_OUTPUT_CHUNK_BYTES;
+    delete process.env.REMOTE_ENABLE_TERMINAL;
     delete process.env.SHELL;
 
     expect(
@@ -54,9 +57,16 @@ describe("loadAgentConfig", () => {
       deviceId: "persistent-device-id",
       deviceName: os.hostname(),
       devToken: null,
+      capabilities: ["terminal"],
       terminalOutputChunkBytes: 16_384,
       shell: "/bin/zsh"
     });
+  });
+
+  it("rejects invalid terminal capability toggle values", () => {
+    process.env.REMOTE_ENABLE_TERMINAL = "false";
+
+    expect(() => loadAgentConfig()).toThrow("REMOTE_ENABLE_TERMINAL must be 1 or 0");
   });
 
   it("rejects invalid terminal output chunk bytes", () => {
