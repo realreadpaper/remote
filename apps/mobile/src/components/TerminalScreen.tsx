@@ -480,7 +480,7 @@ export function TerminalScreen() {
       >
         <View style={styles.header}>
           <View style={styles.titleGroup}>
-            <Text style={styles.title}>Remote Terminal</Text>
+            <Text style={styles.title}>Terminal</Text>
             <View style={styles.statusRow}>
               <View
                 style={[
@@ -542,16 +542,14 @@ export function TerminalScreen() {
         ) : null}
 
         <View style={styles.pairingPanel}>
-          <View style={styles.pairingMeta}>
-            <Text style={styles.pairingTitle}>{pairingPanelMode === "paired" ? "Mac Ready" : "Pair Mac"}</Text>
-            <Text numberOfLines={1} style={styles.pairingApiText}>
-              {pairingPanelMode === "paired"
-                ? `${pairedDeviceId} · ${runtimeConfig.deviceId}`
-                : `${runtimeConfig.mobileClientId} · ${runtimeConfig.displayApiBaseUrl}`}
-            </Text>
-          </View>
           {pairingPanelMode === "setup" ? (
             <>
+              <View style={styles.pairingMeta}>
+                <Text style={styles.pairingTitle}>Pair Mac</Text>
+                <Text numberOfLines={1} style={styles.pairingApiText}>
+                  {runtimeConfig.mobileClientId} · {runtimeConfig.displayApiBaseUrl}
+                </Text>
+              </View>
               <View style={styles.pairingControls}>
                 <TextInput
                   autoCapitalize="none"
@@ -559,7 +557,7 @@ export function TerminalScreen() {
                   keyboardType="number-pad"
                   onChangeText={setPairingCode}
                   placeholder="配对码"
-                  placeholderTextColor="#6f756f"
+                  placeholderTextColor={colors.textMuted}
                   style={styles.pairingInput}
                   value={pairingCode}
                 />
@@ -583,10 +581,13 @@ export function TerminalScreen() {
               ) : null}
             </>
           ) : (
-            <View style={styles.pairedDeviceRow}>
-              <Text numberOfLines={1} style={styles.pairedDeviceText}>
-                Paired {pairedDeviceId}，可以直接输入命令
-              </Text>
+            <View style={styles.pairedCompactRow}>
+              <View style={styles.pairedDeviceMeta}>
+                <Text style={styles.pairingTitle}>Mac</Text>
+                <Text numberOfLines={1} style={styles.pairedDeviceText}>
+                  {pairedDeviceId} · Ready
+                </Text>
+              </View>
               <Pressable
                 accessibilityRole="button"
                 onPress={handleForgetPairing}
@@ -606,7 +607,7 @@ export function TerminalScreen() {
           style={styles.outputPanel}
         >
           {snapshot.output.length === 0 ? (
-            <Text style={styles.emptyText}>Pair, connect, then type a command.</Text>
+            <Text style={styles.emptyText}>No output yet.</Text>
           ) : (
             <Text selectable style={styles.outputText}>
               {snapshot.output}
@@ -641,7 +642,7 @@ export function TerminalScreen() {
             onChangeText={handleInputChange}
             onSubmitEditing={handleSend}
             placeholder="输入命令，例如 pwd"
-            placeholderTextColor="#6f756f"
+            placeholderTextColor={colors.textMuted}
             returnKeyType="send"
             style={styles.input}
             value={snapshot.input}
@@ -651,7 +652,7 @@ export function TerminalScreen() {
             onPress={handleSend}
             style={({ pressed }) => [styles.sendButton, pressed && styles.sendButtonPressed]}
           >
-            <Text style={styles.sendButtonText}>发送</Text>
+            <Text style={styles.sendButtonText}>Run</Text>
           </Pressable>
         </View>
       </KeyboardAvoidingView>
@@ -660,6 +661,7 @@ export function TerminalScreen() {
 }
 
 const colors = mobileShellTheme.colors;
+const layout = mobileShellTheme.layout;
 const terminalFont = Platform.select(mobileShellTheme.fonts.terminal);
 
 const styles = StyleSheet.create({
@@ -672,17 +674,17 @@ const styles = StyleSheet.create({
     backgroundColor: colors.appBackground
   },
   header: {
-    minHeight: 76,
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 10,
-    borderBottomWidth: 1,
+    minHeight: layout.headerMinHeight,
+    paddingHorizontal: layout.horizontalPadding,
+    paddingTop: 10,
+    paddingBottom: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.panelBorder,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     gap: 12,
-    backgroundColor: colors.panel
+    backgroundColor: colors.appBackground
   },
   titleGroup: {
     flex: 1,
@@ -690,14 +692,15 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.textPrimary,
-    fontSize: 22,
-    fontWeight: "800"
+    fontSize: 24,
+    fontWeight: "700",
+    letterSpacing: 0
   },
   statusRow: {
-    marginTop: 6,
+    marginTop: 5,
     flexDirection: "row",
     alignItems: "center",
-    gap: 7
+    gap: 6
   },
   statusDot: {
     width: 8,
@@ -716,21 +719,21 @@ const styles = StyleSheet.create({
   statusText: {
     color: colors.textSecondary,
     fontSize: 12,
-    fontWeight: "700",
+    fontWeight: "600",
     fontFamily: terminalFont
   },
   configText: {
-    marginTop: 4,
+    marginTop: 3,
     color: colors.textMuted,
     fontSize: 11,
-    lineHeight: 15,
+    lineHeight: 14,
     fontFamily: terminalFont
   },
   connectButton: {
-    minWidth: 96,
-    minHeight: 40,
+    minWidth: 88,
+    minHeight: 38,
     paddingHorizontal: 14,
-    borderRadius: 6,
+    borderRadius: layout.panelRadius,
     borderWidth: 1,
     borderColor: colors.accent,
     backgroundColor: colors.accent,
@@ -742,7 +745,7 @@ const styles = StyleSheet.create({
   },
   connectButtonConnected: {
     borderColor: colors.online,
-    backgroundColor: colors.panel
+    backgroundColor: colors.appBackground
   },
   connectButtonConnecting: {
     borderColor: colors.connecting,
@@ -751,7 +754,8 @@ const styles = StyleSheet.create({
   connectButtonText: {
     color: colors.accentText,
     fontSize: 14,
-    fontWeight: "700"
+    fontWeight: "700",
+    letterSpacing: 0
   },
   connectButtonTextConnected: {
     color: colors.online
@@ -761,19 +765,22 @@ const styles = StyleSheet.create({
   },
   outputPanel: {
     flex: 1,
-    marginHorizontal: 12,
-    marginTop: 10,
-    borderRadius: 8,
+    marginHorizontal: layout.horizontalPadding,
+    marginTop: layout.sectionGap,
+    borderRadius: layout.terminalRadius,
     borderWidth: 1,
     borderColor: colors.terminalBorder,
     backgroundColor: colors.terminalBackground
   },
   errorBanner: {
     minHeight: 36,
-    paddingHorizontal: 14,
+    marginHorizontal: layout.horizontalPadding,
+    marginTop: layout.sectionGap,
+    paddingHorizontal: 12,
     paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: "#efd5bb",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: layout.panelRadius,
+    borderColor: "#f0d8b8",
     backgroundColor: colors.warningSurface,
     flexDirection: "row",
     alignItems: "center",
@@ -789,8 +796,8 @@ const styles = StyleSheet.create({
   },
   reconnectButton: {
     minHeight: 30,
-    minWidth: 88,
-    borderRadius: 6,
+    minWidth: 84,
+    borderRadius: layout.panelRadius,
     borderWidth: 1,
     borderColor: colors.warning,
     backgroundColor: colors.panel,
@@ -807,15 +814,15 @@ const styles = StyleSheet.create({
     fontWeight: "800"
   },
   pairingPanel: {
-    marginHorizontal: 12,
-    marginTop: 10,
+    marginHorizontal: layout.horizontalPadding,
+    marginTop: layout.sectionGap,
     paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderRadius: 8,
+    paddingVertical: 8,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: layout.panelRadius,
     borderColor: colors.panelBorder,
     backgroundColor: colors.panel,
-    gap: 8
+    gap: 7
   },
   pairingMeta: {
     gap: 2
@@ -823,7 +830,7 @@ const styles = StyleSheet.create({
   pairingTitle: {
     color: colors.textPrimary,
     fontSize: 13,
-    fontWeight: "800"
+    fontWeight: "700"
   },
   pairingApiText: {
     color: colors.textMuted,
@@ -838,7 +845,7 @@ const styles = StyleSheet.create({
   pairingInput: {
     flex: 1,
     minHeight: 38,
-    borderRadius: 6,
+    borderRadius: layout.panelRadius,
     borderWidth: 1,
     borderColor: colors.commandBorder,
     backgroundColor: colors.commandBackground,
@@ -849,8 +856,8 @@ const styles = StyleSheet.create({
   },
   pairingButton: {
     minHeight: 38,
-    minWidth: 68,
-    borderRadius: 6,
+    minWidth: 64,
+    borderRadius: layout.panelRadius,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.textPrimary,
@@ -865,32 +872,37 @@ const styles = StyleSheet.create({
   pairingButtonText: {
     color: colors.panel,
     fontSize: 13,
-    fontWeight: "800"
+    fontWeight: "700"
   },
   pairingStatusText: {
     color: colors.textSecondary,
     fontSize: 12,
     fontFamily: terminalFont
   },
-  pairedDeviceRow: {
-    minHeight: 32,
+  pairedCompactRow: {
+    minHeight: 36,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     gap: 8
+  },
+  pairedDeviceMeta: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2
   },
   pairedDeviceText: {
     flex: 1,
     minWidth: 0,
     color: colors.online,
     fontSize: 12,
-    fontWeight: "800",
+    fontWeight: "700",
     fontFamily: terminalFont
   },
   forgetButton: {
-    minHeight: 30,
-    minWidth: 64,
-    borderRadius: 6,
+    minHeight: 28,
+    minWidth: 62,
+    borderRadius: layout.panelRadius,
     borderWidth: 1,
     borderColor: "#e3b9ad",
     backgroundColor: colors.dangerSurface,
@@ -924,28 +936,27 @@ const styles = StyleSheet.create({
     fontFamily: terminalFont
   },
   shortcutRail: {
-    maxHeight: 50,
-    marginHorizontal: 12,
-    marginTop: 8,
-    borderBottomWidth: 1,
-    borderWidth: 1,
+    maxHeight: 44,
+    marginHorizontal: layout.horizontalPadding,
+    marginTop: layout.sectionGap,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.panelBorder,
-    borderRadius: 8,
-    backgroundColor: colors.panel
+    borderRadius: layout.panelRadius,
+    backgroundColor: colors.appBackground
   },
   shortcutContent: {
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    gap: 8
+    paddingHorizontal: 8,
+    paddingVertical: 7,
+    gap: 7
   },
   shortcutButton: {
-    minWidth: 54,
-    height: 32,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-    borderWidth: 1,
+    minWidth: 50,
+    height: layout.shortcutHeight,
+    paddingHorizontal: 10,
+    borderRadius: layout.panelRadius,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.panelBorder,
-    backgroundColor: colors.appBackground,
+    backgroundColor: colors.panel,
     alignItems: "center",
     justifyContent: "center"
   },
@@ -959,10 +970,10 @@ const styles = StyleSheet.create({
     fontFamily: terminalFont
   },
   inputRow: {
-    minHeight: 68,
-    paddingHorizontal: 12,
+    minHeight: 64,
+    paddingHorizontal: layout.horizontalPadding,
     paddingVertical: 10,
-    borderTopWidth: 1,
+    borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.panelBorder,
     backgroundColor: colors.panel,
     flexDirection: "row",
@@ -972,11 +983,11 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     minWidth: 0,
-    minHeight: 42,
+    minHeight: layout.inputMinHeight,
     paddingHorizontal: 12,
     paddingVertical: 9,
-    borderRadius: 6,
-    borderWidth: 1,
+    borderRadius: layout.panelRadius,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.commandBorder,
     backgroundColor: colors.commandBackground,
     color: colors.textPrimary,
@@ -984,9 +995,9 @@ const styles = StyleSheet.create({
     fontFamily: terminalFont
   },
   sendButton: {
-    width: 64,
-    minHeight: 42,
-    borderRadius: 6,
+    width: 58,
+    minHeight: layout.inputMinHeight,
+    borderRadius: layout.panelRadius,
     backgroundColor: colors.accent,
     alignItems: "center",
     justifyContent: "center"
@@ -996,7 +1007,8 @@ const styles = StyleSheet.create({
   },
   sendButtonText: {
     color: colors.accentText,
-    fontSize: 15,
-    fontWeight: "800"
+    fontSize: 14,
+    fontWeight: "700",
+    letterSpacing: 0
   }
 });

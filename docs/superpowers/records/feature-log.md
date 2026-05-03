@@ -1955,3 +1955,41 @@
 - `PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck`: pass。
 - `PATH="/tmp/codex-corepack-shims:$PATH" pnpm build`: pass。
 - `rg -n 'api\\.example\\.com|wss://api\\.example\\.com|https://api\\.example\\.com' docs/runbooks README.md apps/mobile/eas.json render.yaml` 确认操作手册中 `api.example.com` 只保留为 release guard 拒绝示例或可选自定义域名示例。
+
+## 2026-05-03 iOS Client Minimal UI Polish
+
+**状态：** completed
+
+**实现内容：**
+- 新增 iOS 客户端极简 UI 设计记录和执行计划。
+- Mobile 主题从偏米色工具风格调整为浅色中性背景、白色面板、深石墨终端区和 Apple 蓝主动作。
+- 新增布局 token：header、panel radius、terminal radius、input height、shortcut height 和水平边距。
+- `TerminalScreen` 标题从 `Remote Terminal` 收敛为 `Terminal`。
+- 已配对面板压缩为单行 `Mac / <device> · Ready / Forget`，减少对终端区域的占用。
+- 终端输出区保留为唯一大面积深色区域，避免真机整屏黑。
+- 快捷键 rail 和底部输入区使用更轻的边框、更稳定的高度和更清晰的 `Run` 主动作。
+
+**涉及文件：**
+- `apps/mobile/src/components/mobileShellTheme.ts`
+- `apps/mobile/src/components/TerminalScreen.tsx`
+- `apps/mobile/tests/mobileShellTheme.test.ts`
+- `docs/superpowers/specs/2026-05-03-ios-client-minimal-ui-design.md`
+- `docs/superpowers/plans/2026-05-03-ios-client-minimal-ui-plan.md`
+
+**TDD 记录：**
+- 红灯：`mobileShellTheme.test.ts` 失败，原因是主题仍为旧背景 `#f4f0e7`，且没有 `layout` token。
+- 绿灯：加入极简 iOS 主题和布局 token 后，Mobile 主题测试通过。
+
+**验证：**
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile test -- mobileShellTheme.test.ts`: pass，61 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile test`: pass，61 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm test`: pass，267 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm build`: pass。
+- `git diff --check`: pass，无输出。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile exec expo run:ios --device "iPhone 15"`: build succeeded，开发构建已安装并打开。
+- iOS 模拟器截图：`/tmp/remote-terminal-minimal-ui-final.png`，确认新 UI 为浅色背景、蓝色主按钮、紧凑配对区、终端区域为唯一大面积深色面。
+
+**已知风险：**
+- 本次是模拟器视觉验证；真机视觉仍需要用户在物理 iPhone 上确认。
