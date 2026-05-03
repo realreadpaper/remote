@@ -18,14 +18,14 @@ import { PairingService } from "./pairing/pairingService.js";
 import { MemoryRateLimiter, MemoryWeightedRateLimiter } from "./rateLimit.js";
 import { join } from "node:path";
 
-type MobileRoutableMessage = Extract<ClientMessage, { type: "terminal.input" | "terminal.resize" }>;
+type MobileRoutableMessage = Extract<ClientMessage, { type: "terminal.input" | "terminal.resize" | "terminal.signal" }>;
 type AgentRoutableMessage = Extract<ServerMessage, { type: "terminal.output" | "terminal.exit" }>;
 type AgentPairingMessage = Extract<ClientMessage, { type: "pairing.create" | "pairing.approved" | "pairing.rejected" }>;
 type AgentSendCallback = (
   message:
     | Extract<ServerMessage, { type: "session.opened" }>
     | Extract<ServerMessage, { type: "pairing.created" | "pairing.requested" }>
-    | Extract<ClientMessage, { type: "terminal.input" | "terminal.resize" | "terminal.close" }>
+    | Extract<ClientMessage, { type: "terminal.input" | "terminal.resize" | "terminal.signal" | "terminal.close" }>
 ) => void;
 
 function messageText(error: unknown): string {
@@ -197,7 +197,7 @@ function clientKey(request: FastifyRequest): string {
 }
 
 function isMobileRoutableMessage(message: ClientMessage): message is MobileRoutableMessage {
-  return message.type === "terminal.input" || message.type === "terminal.resize";
+  return message.type === "terminal.input" || message.type === "terminal.resize" || message.type === "terminal.signal";
 }
 
 function assertTerminalInputSize(message: MobileRoutableMessage, maxBytes: number): void {

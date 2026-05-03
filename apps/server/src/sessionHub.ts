@@ -4,7 +4,7 @@ import type { ClientMessage, ServerMessage } from "@remote/protocol";
 type AgentSend = (
   message:
     | Extract<ServerMessage, { type: "session.opened" }>
-    | Extract<ClientMessage, { type: "terminal.input" | "terminal.resize" | "terminal.close" }>
+    | Extract<ClientMessage, { type: "terminal.input" | "terminal.resize" | "terminal.signal" | "terminal.close" }>
 ) => void;
 type MobileSend = (message: Extract<ServerMessage, { type: "terminal.output" | "terminal.exit" }>) => void;
 
@@ -66,7 +66,7 @@ export class SessionHub {
 
   routeFromMobile(
     mobileSend: MobileSend,
-    message: Extract<ClientMessage, { type: "terminal.input" | "terminal.resize" }>
+    message: Extract<ClientMessage, { type: "terminal.input" | "terminal.resize" | "terminal.signal" }>
   ): void {
     const session = this.sessions.get(message.sessionId);
     if (!session) {

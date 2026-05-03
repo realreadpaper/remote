@@ -118,6 +118,29 @@ export class SessionClient {
     }
   }
 
+  sendTerminalSignal(signal: "SIGINT" | "EOF"): void {
+    if (!this.sessionId) {
+      throw new Error("Cannot send terminal signal: terminal session is not open.");
+    }
+
+    const socket = this.socket;
+    if (!socket) {
+      throw new Error("Cannot send terminal signal: WebSocket is not connected.");
+    }
+
+    if (socket.readyState !== this.openReadyState(socket)) {
+      throw new Error("Cannot send terminal signal: WebSocket is not open.");
+    }
+
+    try {
+      socket.send(encodeMessage({ type: "terminal.signal", sessionId: this.sessionId, signal }));
+    } catch (error) {
+      throw new Error(
+        `Cannot send terminal signal: ${error instanceof Error ? error.message : "WebSocket send failed."}`
+      );
+    }
+  }
+
   private createSocket(): WebSocketLike {
     if (this.options.createSocket) {
       return this.options.createSocket(this.options.url);

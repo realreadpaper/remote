@@ -320,6 +320,31 @@ export function TerminalScreen() {
     }
   };
 
+  const sendSignal = (signal: "SIGINT" | "EOF") => {
+    if (!snapshot.connected) {
+      appendLocalLine("Connect before sending terminal shortcuts.");
+      return;
+    }
+
+    try {
+      if (!clientRef.current) {
+        terminalState.setConnected(false);
+        setConnecting(false);
+        terminalState.setConnectionError("No active session client.");
+        appendLocalLine("No active session client.");
+        return;
+      }
+
+      clientRef.current.sendTerminalSignal(signal);
+    } catch (error) {
+      terminalState.setConnected(false);
+      setConnecting(false);
+      const reason = error instanceof Error ? error.message : "Shortcut was not sent.";
+      terminalState.setConnectionError(reason);
+      appendLocalLine(reason);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
@@ -456,7 +481,7 @@ export function TerminalScreen() {
               accessibilityLabel={`Send ${shortcut.label}`}
               accessibilityRole="button"
               key={shortcut.label}
-              onPress={() => sendRawInput(shortcut.payload)}
+              onPress={() => (shortcut.type === "signal" ? sendSignal(shortcut.signal) : sendRawInput(shortcut.payload))}
               style={({ pressed }) => [styles.shortcutButton, pressed && styles.shortcutButtonPressed]}
             >
               <Text style={styles.shortcutText}>{shortcut.label}</Text>

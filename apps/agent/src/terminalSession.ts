@@ -20,6 +20,10 @@ export class TerminalSession {
     this.pty.resize(cols, rows);
   }
 
+  sendSignal(signal: "SIGINT" | "EOF"): void {
+    this.pty.write(signal === "SIGINT" ? "\x03" : "\x04");
+  }
+
   onOutput(callback: (data: string) => void): void {
     this.pty.onData(callback);
   }

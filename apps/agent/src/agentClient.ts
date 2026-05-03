@@ -184,6 +184,9 @@ export class AgentClient {
         case "terminal.resize":
           this.handleTerminalResize(parseClientMessage(payload));
           return;
+        case "terminal.signal":
+          this.handleTerminalSignal(parseClientMessage(payload));
+          return;
         case "terminal.close":
           this.handleTerminalClose(parseClientMessage(payload));
           return;
@@ -314,6 +317,14 @@ export class AgentClient {
     }
 
     this.sessions.get(message.sessionId)?.resize(message.cols, message.rows);
+  }
+
+  private handleTerminalSignal(message: ClientMessage): void {
+    if (message.type !== "terminal.signal") {
+      return;
+    }
+
+    this.sessions.get(message.sessionId)?.sendSignal(message.signal);
   }
 
   private handleTerminalClose(message: ClientMessage): void {

@@ -39,9 +39,10 @@ class FakeSocket implements AgentSocket {
   }
 }
 
-class FakeTerminalSession implements Pick<TerminalSession, "write" | "resize" | "onOutput" | "onExit" | "close"> {
+class FakeTerminalSession implements Pick<TerminalSession, "write" | "resize" | "sendSignal" | "onOutput" | "onExit" | "close"> {
   readonly writes: string[] = [];
   readonly resizes: Array<{ cols: number; rows: number }> = [];
+  readonly signals: Array<"SIGINT" | "EOF"> = [];
   readonly close = vi.fn();
   private outputCallback?: (data: string) => void;
   private exitCallback?: (exitCode: number | null) => void;
@@ -54,6 +55,10 @@ class FakeTerminalSession implements Pick<TerminalSession, "write" | "resize" | 
 
   resize(cols: number, rows: number): void {
     this.resizes.push({ cols, rows });
+  }
+
+  sendSignal(signal: "SIGINT" | "EOF"): void {
+    this.signals.push(signal);
   }
 
   onOutput(callback: (data: string) => void): void {
@@ -278,6 +283,21 @@ describe("AgentClient", () => {
     );
 
     expect(terminals.get("session-1")?.resizes).toEqual([{ cols: 120, rows: 40 }]);
+  });
+
+  it("routes terminal.signal to the matching session", () => {
+    const { socket, terminals } = createHarness();
+
+    socket.emit(
+      "message",
+      encodeMessage({ type: "session.opened", sessionId: "session-1", deviceId: "device-1" })
+    );
+    socket.emit(
+      "message",
+      encodeMessage({ type: "terminal.signal", sessionId: "session-1", signal: "SIGINT" })
+    );
+
+    expect(terminals.get("session-1")?.signals).toEqual(["SIGINT"]);
   });
 
   it("closes and removes a session when receiving terminal.close", () => {

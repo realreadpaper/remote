@@ -111,6 +111,24 @@ describe("protocol messages", () => {
     });
   });
 
+  it("parses terminal signal messages", () => {
+    expect(parseClientMessage({ type: "terminal.signal", sessionId: "session-1", signal: "SIGINT" })).toEqual({
+      type: "terminal.signal",
+      sessionId: "session-1",
+      signal: "SIGINT"
+    });
+    expect(parseClientMessage({ type: "terminal.signal", sessionId: "session-1", signal: "EOF" })).toEqual({
+      type: "terminal.signal",
+      sessionId: "session-1",
+      signal: "EOF"
+    });
+  });
+
+  it("rejects invalid terminal signal messages", () => {
+    expect(() => parseClientMessage({ type: "terminal.signal", sessionId: "session-1" })).toThrow();
+    expect(() => parseClientMessage({ type: "terminal.signal", sessionId: "session-1", signal: "SIGKILL" })).toThrow();
+  });
+
   it("rejects extra fields on terminal close", () => {
     expect(() =>
       parseClientMessage({

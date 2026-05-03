@@ -82,6 +82,26 @@ describe("SessionHub", () => {
     });
   });
 
+  it("routes terminal signal to the agent", () => {
+    const hub = new SessionHub();
+    const agentSend = vi.fn();
+    const mobileSend = vi.fn();
+
+    hub.attachAgent("mac-1", agentSend);
+    const session = hub.openSession("mac-1", mobileSend);
+    hub.routeFromMobile(mobileSend, {
+      type: "terminal.signal",
+      sessionId: session.sessionId,
+      signal: "SIGINT"
+    });
+
+    expect(agentSend).toHaveBeenCalledWith({
+      type: "terminal.signal",
+      sessionId: session.sessionId,
+      signal: "SIGINT"
+    });
+  });
+
   it("routes terminal output to the mobile client", () => {
     const hub = new SessionHub();
     const agentSend = vi.fn();

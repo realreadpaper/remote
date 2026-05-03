@@ -116,12 +116,34 @@ describe("SessionClient", () => {
     );
   });
 
+  it("sends terminal.signal after the session opens", () => {
+    const { client, socket } = createClient();
+
+    client.connect();
+    socket.receive(
+      JSON.stringify({ type: "session.opened", sessionId: "session-3", deviceId: "device-1" })
+    );
+    client.sendTerminalSignal("SIGINT");
+
+    expect(socket.sent.at(-1)).toBe(
+      encodeMessage({ type: "terminal.signal", sessionId: "session-3", signal: "SIGINT" })
+    );
+  });
+
   it("throws when sending terminal input before the session opens", () => {
     const { client } = createClient();
 
     client.connect();
 
     expect(() => client.sendTerminalInput("pwd\n")).toThrow("terminal session is not open");
+  });
+
+  it("throws when sending terminal signal before the session opens", () => {
+    const { client } = createClient();
+
+    client.connect();
+
+    expect(() => client.sendTerminalSignal("SIGINT")).toThrow("terminal session is not open");
   });
 
   it("closes the socket and reports a protocol error when a server message is invalid", () => {

@@ -43,6 +43,11 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
     rows: z.number().int().positive()
   }),
   message({
+    type: z.literal("terminal.signal"),
+    sessionId: z.string().min(1),
+    signal: z.enum(["SIGINT", "EOF"])
+  }),
+  message({
     type: z.literal("terminal.close"),
     sessionId: z.string().min(1)
   }),

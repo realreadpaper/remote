@@ -1,14 +1,17 @@
 export interface TerminalShortcut {
   label: string;
-  payload: string;
 }
 
-export const terminalShortcutPayloads: readonly TerminalShortcut[] = [
-  { label: "Tab", payload: "\t" },
-  { label: "Esc", payload: "\x1b" },
-  { label: "Ctrl+C", payload: "\x03" },
-  { label: "↑", payload: "\x1b[A" },
-  { label: "↓", payload: "\x1b[B" },
-  { label: "←", payload: "\x1b[D" },
-  { label: "→", payload: "\x1b[C" }
+export type TerminalShortcutAction =
+  | (TerminalShortcut & { type: "input"; payload: string })
+  | (TerminalShortcut & { type: "signal"; signal: "SIGINT" | "EOF" });
+
+export const terminalShortcutPayloads: readonly TerminalShortcutAction[] = [
+  { label: "Tab", type: "input", payload: "\t" },
+  { label: "Esc", type: "input", payload: "\x1b" },
+  { label: "Ctrl+C", type: "signal", signal: "SIGINT" },
+  { label: "↑", type: "input", payload: "\x1b[A" },
+  { label: "↓", type: "input", payload: "\x1b[B" },
+  { label: "←", type: "input", payload: "\x1b[D" },
+  { label: "→", type: "input", payload: "\x1b[C" }
 ];

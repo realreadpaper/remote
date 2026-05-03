@@ -1166,6 +1166,74 @@ describe("server websocket API", () => {
     mobile.terminate();
   });
 
+  it("routes mobile terminal signal to the agent socket", async () => {
+    const agent = await registerAgent(app);
+    const { sessionToken } = await approvePairingRequest(app, agent);
+
+    const mobile = await app.injectWS("/ws/mobile");
+    const agentOpened = nextJson(agent);
+    const mobileOpened = nextJson(mobile);
+    mobile.send(JSON.stringify({ type: "session.open", deviceId: "mac-1", sessionToken }));
+
+    await agentOpened;
+    const opened = (await mobileOpened) as { sessionId: string };
+    const routedSignal = nextJson(agent);
+
+    mobile.send(
+      JSON.stringify({
+        type: "terminal.signal",
+        sessionId: opened.sessionId,
+        signal: "SIGINT"
+      })
+    );
+
+    expect(await routedSignal).toEqual({
+      type: "terminal.signal",
+      sessionId: opened.sessionId,
+      signal: "SIGINT"
+    });
+
+    agent.terminate();
+    mobile.terminate();
+  });
+
+  it("routes terminal signal after mobile input byte rate limit is exceeded", async () => {
+    await app.close();
+    app = await createServer(
+      { logger: false },
+      { ...tokenServerConfig, requireDevToken: false, devToken: null, mobileInputByteRateLimitMaxBytes: 4 }
+    );
+    await app.ready();
+
+    const agent = await registerAgent(app);
+    const { sessionToken } = await approvePairingRequest(app, agent);
+    const mobile = await app.injectWS("/ws/mobile", { headers: { "x-forwarded-for": "203.0.113.33" } });
+    const agentOpened = nextJson(agent);
+    const mobileOpened = nextJson(mobile);
+    mobile.send(JSON.stringify({ type: "session.open", deviceId: "mac-1", sessionToken }));
+
+    await agentOpened;
+    const opened = (await mobileOpened) as { sessionId: string };
+    const firstInput = nextJson(agent);
+    mobile.send(JSON.stringify({ type: "terminal.input", sessionId: opened.sessionId, data: "abcd" }));
+    await firstInput;
+
+    const rateLimitError = nextJson(mobile);
+    mobile.send(JSON.stringify({ type: "terminal.input", sessionId: opened.sessionId, data: "e" }));
+    await rateLimitError;
+
+    const signalMessage = nextJson(agent);
+    mobile.send(JSON.stringify({ type: "terminal.signal", sessionId: opened.sessionId, signal: "SIGINT" }));
+    expect(await signalMessage).toEqual({
+      type: "terminal.signal",
+      sessionId: opened.sessionId,
+      signal: "SIGINT"
+    });
+
+    agent.terminate();
+    mobile.terminate();
+  });
+
   it("routes agent terminal output to the mobile socket", async () => {
     const agent = await registerAgent(app);
     const { sessionToken } = await approvePairingRequest(app, agent);

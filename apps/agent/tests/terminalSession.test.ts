@@ -28,6 +28,24 @@ describe("TerminalSession", () => {
     expect(adapter.resize).toHaveBeenCalledWith(100, 30);
   });
 
+  it("maps SIGINT to the PTY interrupt byte", () => {
+    const adapter = createAdapter();
+
+    const session = new TerminalSession("session-1", adapter);
+    session.sendSignal("SIGINT");
+
+    expect(adapter.write).toHaveBeenCalledWith("\x03");
+  });
+
+  it("maps EOF to the PTY EOF byte", () => {
+    const adapter = createAdapter();
+
+    const session = new TerminalSession("session-1", adapter);
+    session.sendSignal("EOF");
+
+    expect(adapter.write).toHaveBeenCalledWith("\x04");
+  });
+
   it("delegates output callbacks to the pty adapter", () => {
     const adapter = createAdapter();
     const callback = vi.fn((data: string) => data);
