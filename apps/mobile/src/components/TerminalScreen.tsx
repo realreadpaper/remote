@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  AppState,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -33,8 +34,12 @@ export function TerminalScreen() {
   const [pairingSubmitting, setPairingSubmitting] = useState(false);
   const [sessionToken, setSessionToken] = useState<string | null>(null);
   const [pairedDeviceId, setPairedDeviceId] = useState<string | null>(null);
+  const [appActive, setAppActive] = useState(true);
+  const [manualReconnectVisible, setManualReconnectVisible] = useState(false);
   const clientRef = useRef<SessionClient | undefined>(undefined);
   const autoConnectAttemptedRef = useRef(false);
+  const autoReconnectAttemptedRef = useRef(false);
+  const appActiveRef = useRef(true);
   const scrollRef = useRef<ScrollView | null>(null);
 
   const refreshSnapshot = () => {
@@ -49,6 +54,44 @@ export function TerminalScreen() {
   const closeCurrentClient = () => {
     clientRef.current?.close();
     clientRef.current = undefined;
+    setManualReconnectVisible(false);
+    autoReconnectAttemptedRef.current = false;
+  };
+
+  const reconnectRetainedClient = (client: SessionClient, reason: string) => {
+    if (clientRef.current !== client) {
+      return;
+    }
+
+    if (!client.hasRetainedSession()) {
+      setManualReconnectVisible(false);
+      return;
+    }
+
+    setConnecting(true);
+    setManualReconnectVisible(false);
+    terminalState.setConnectionError(reason);
+    try {
+      client.connect();
+    } catch (error) {
+      setConnecting(false);
+      setManualReconnectVisible(true);
+      const message = error instanceof Error ? error.message : "Reconnect failed.";
+      terminalState.setConnectionError(message);
+      terminalState.appendOutput(`[local] ${message}\n`);
+    }
+    refreshSnapshot();
+  };
+
+  const handleManualReconnect = () => {
+    const client = clientRef.current;
+    if (client?.hasRetainedSession()) {
+      autoReconnectAttemptedRef.current = true;
+      reconnectRetainedClient(client, "Reconnecting.");
+      return;
+    }
+
+    handleConnect();
   };
 
   const handlePairingSubmit = async () => {
@@ -99,6 +142,27 @@ export function TerminalScreen() {
       closeCurrentClient();
     };
   }, []);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      const active = nextState === "active";
+      appActiveRef.current = active;
+      setAppActive(active);
+
+      if (!active) {
+        return;
+      }
+
+      const client = clientRef.current;
+      if (client && client.hasRetainedSession() && !client.isSocketOpen() && !snapshot.connected && !connecting) {
+        reconnectRetainedClient(client, "App resumed. Reconnecting.");
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [connecting, snapshot.connected]);
 
   useEffect(() => {
     let active = true;
@@ -186,6 +250,8 @@ export function TerminalScreen() {
           if (message.type === "session.opened") {
             terminalState.setConnected(true);
             setConnecting(false);
+            setManualReconnectVisible(false);
+            autoReconnectAttemptedRef.current = false;
             if (runtimeConfig.smokeCommand && !smokeCommandSent) {
               smokeCommandSent = true;
               const command = runtimeConfig.smokeCommand.endsWith("\n")
@@ -204,7 +270,11 @@ export function TerminalScreen() {
             terminalState.setConnectionError(message.message);
             terminalState.setConnected(false);
             setConnecting(false);
-            closeCurrentClient();
+            if (client.hasRetainedSession()) {
+              setManualReconnectVisible(true);
+            } else {
+              closeCurrentClient();
+            }
           }
 
           if (message.type === "terminal.exit") {
@@ -227,7 +297,18 @@ export function TerminalScreen() {
           setConnecting(false);
           terminalState.setConnectionError(reason);
           terminalState.appendOutput(`[local] ${reason}\n`);
-          closeCurrentClient();
+          if (
+            appActiveRef.current &&
+            client.hasRetainedSession() &&
+            !autoReconnectAttemptedRef.current
+          ) {
+            autoReconnectAttemptedRef.current = true;
+            terminalState.appendOutput("[local] Reconnecting once.\n");
+            reconnectRetainedClient(client, "Connection dropped. Reconnecting.");
+            return;
+          }
+
+          setManualReconnectVisible(client.hasRetainedSession());
           refreshSnapshot();
         },
         onConnectionIssue(issue) {
@@ -267,6 +348,11 @@ export function TerminalScreen() {
   };
 
   const handleSend = () => {
+    if (!appActive) {
+      appendLocalLine("App is paused in the background.");
+      return;
+    }
+
     if (!snapshot.connected) {
       appendLocalLine("Connect before sending a command.");
       return;
@@ -296,6 +382,11 @@ export function TerminalScreen() {
   };
 
   const sendRawInput = (payload: string) => {
+    if (!appActive) {
+      appendLocalLine("App is paused in the background.");
+      return;
+    }
+
     if (!snapshot.connected) {
       appendLocalLine("Connect before sending terminal shortcuts.");
       return;
@@ -321,6 +412,11 @@ export function TerminalScreen() {
   };
 
   const sendSignal = (signal: "SIGINT" | "EOF") => {
+    if (!appActive) {
+      appendLocalLine("App is paused in the background.");
+      return;
+    }
+
     if (!snapshot.connected) {
       appendLocalLine("Connect before sending terminal shortcuts.");
       return;
@@ -398,6 +494,15 @@ export function TerminalScreen() {
             <Text numberOfLines={2} style={styles.errorText}>
               {snapshot.connectionError}
             </Text>
+            {manualReconnectVisible ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={handleManualReconnect}
+                style={({ pressed }) => [styles.reconnectButton, pressed && styles.reconnectButtonPressed]}
+              >
+                <Text style={styles.reconnectButtonText}>Reconnect</Text>
+              </Pressable>
+            ) : null}
           </View>
         ) : null}
 
@@ -618,13 +723,37 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: "#4f3929",
-    backgroundColor: "#211710"
+    backgroundColor: "#211710",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10
   },
   errorText: {
+    flex: 1,
+    minWidth: 0,
     color: "#f1bf85",
     fontSize: 12,
     lineHeight: 18,
     fontFamily: Platform.select({ ios: "Menlo", android: "monospace", default: "monospace" })
+  },
+  reconnectButton: {
+    minHeight: 30,
+    minWidth: 88,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#8a6645",
+    backgroundColor: "#2b2118",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 10
+  },
+  reconnectButtonPressed: {
+    backgroundColor: "#3a2a1d"
+  },
+  reconnectButtonText: {
+    color: "#f1bf85",
+    fontSize: 12,
+    fontWeight: "800"
   },
   pairingPanel: {
     paddingHorizontal: 16,

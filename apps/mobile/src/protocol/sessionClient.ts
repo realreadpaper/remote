@@ -88,6 +88,15 @@ export class SessionClient {
     this.closeCurrentSocket();
   }
 
+  isSocketOpen(): boolean {
+    const socket = this.socket;
+    return Boolean(socket && socket.readyState === this.openReadyState(socket));
+  }
+
+  hasRetainedSession(): boolean {
+    return Boolean(this.sessionId);
+  }
+
   sendTerminalInput(data: string): void {
     if (!this.sessionId) {
       throw new Error("Cannot send terminal input: terminal session is not open.");

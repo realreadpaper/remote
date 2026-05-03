@@ -149,6 +149,32 @@ describe("SessionClient", () => {
     expect(() => client.sendTerminalSignal("SIGINT")).toThrow("terminal session is not open");
   });
 
+  it("reports socket open state", () => {
+    const { client, socket } = createClient();
+
+    client.connect();
+    expect(client.isSocketOpen()).toBe(true);
+
+    socket.close();
+    expect(client.isSocketOpen()).toBe(false);
+  });
+
+  it("reports retained session after socket close and clears it after explicit close", () => {
+    const { client, socket } = createClient();
+
+    client.connect();
+    socket.receive(
+      JSON.stringify({ type: "session.opened", sessionId: "session-1", deviceId: "device-1" })
+    );
+    expect(client.hasRetainedSession()).toBe(true);
+
+    socket.close();
+    expect(client.hasRetainedSession()).toBe(true);
+
+    client.close();
+    expect(client.hasRetainedSession()).toBe(false);
+  });
+
   it("closes the socket and reports a protocol error when a server message is invalid", () => {
     const { client, socket, onMessage, onDisconnect, onConnectionIssue } = createClient();
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
