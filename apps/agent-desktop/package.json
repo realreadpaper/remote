@@ -1,0 +1,36 @@
+{
+  "name": "@remote/agent-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "pnpm --filter @remote/agent build && tsc -p tsconfig.json && mkdir -p dist/renderer && cp -R src/renderer/. dist/renderer/",
+    "dev": "pnpm build && electron dist/main.js",
+    "pack:dir": "pnpm build && electron-builder --dir --mac",
+    "test": "vitest run --root ../.. apps/agent-desktop/tests",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json --noEmit"
+  },
+  "dependencies": {
+    "@remote/agent": "workspace:*",
+    "@remote/protocol": "workspace:*",
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "@types/qrcode": "^1.5.5",
+    "electron": "^30.5.1",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.terminalfirst.agent",
+    "productName": "Terminal First Agent",
+    "files": [
+      "dist/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "target": "dir"
+    }
+  }
+}

@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Terminal First Agent</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main id="app" class="shell">
+      <section class="topbar">
+        <div>
+          <p class="eyebrow">Terminal First Agent</p>
+          <h1 id="deviceName">Mac Agent</h1>
+        </div>
+        <label class="switch">
+          <input id="terminalToggle" type="checkbox" />
+          <span>Terminal</span>
+        </label>
+      </section>
+
+      <section class="statusBand">
+        <div class="statusLine">
+          <span id="statusDot" class="statusDot"></span>
+          <strong id="connectionStatus">stopped</strong>
+        </div>
+        <p id="statusMessage">Agent is stopped.</p>
+      </section>
+
+      <section class="contentGrid">
+        <section class="pairingPanel">
+          <div class="sectionHeader">
+            <h2>Pairing</h2>
+            <span id="pairingExpiry" class="muted">No active code</span>
+          </div>
+          <div class="qrFrame">
+            <img id="pairingQr" alt="Pairing QR code" />
+            <div id="qrEmpty" class="qrEmpty">Waiting for pairing code</div>
+          </div>
+          <div id="pairingCode" class="pairingCode">------</div>
+        </section>
+
+        <section class="detailsPanel">
+          <h2>Device</h2>
+          <dl>
+            <dt>Device ID</dt>
+            <dd id="deviceId">-</dd>
+            <dt>Server</dt>
+            <dd id="serverUrl">-</dd>
+            <dt>Shell</dt>
+            <dd id="shell">-</dd>
+          </dl>
+        </section>
+      </section>
+
+      <section id="requestPanel" class="requestPanel hidden">
+        <div>
+          <p class="eyebrow">Pairing request</p>
+          <h2 id="requestTitle">iPhone wants to pair</h2>
+          <p id="requestMeta" class="muted"></p>
+        </div>
+        <div class="actions">
+          <button id="rejectPairing" class="secondary">Reject</button>
+          <button id="approvePairing">Approve</button>
+        </div>
+      </section>
+    </main>
+    <script src="./app.js"></script>
+  </body>
+</html>

@@ -12,6 +12,7 @@ type SocketEvent = "open" | "message" | "close" | "error";
 
 class FakeSocket implements AgentSocket {
   readonly sent: string[] = [];
+  closeCalls = 0;
   sendError?: Error;
   private readonly handlers = new Map<SocketEvent, Array<(...args: never[]) => void>>();
 
@@ -27,6 +28,11 @@ class FakeSocket implements AgentSocket {
     const callbacks = this.handlers.get(event) ?? [];
     callbacks.push(callback);
     this.handlers.set(event, callbacks);
+  }
+
+  close(): void {
+    this.closeCalls += 1;
+    this.emit("close");
   }
 
   emit(event: "open" | "close"): void;
@@ -532,5 +538,34 @@ describe("AgentClient", () => {
 
     expect(errorSpy).toHaveBeenCalledTimes(2);
     errorSpy.mockRestore();
+  });
+
+  it("closes the socket when the client is closed", () => {
+    const { client, socket } = createHarness();
+
+    client.close();
+
+    expect(socket.closeCalls).toBe(1);
+  });
+
+  it("closes active terminal sessions when the client is closed", () => {
+    const { client, socket, terminals } = createHarness();
+
+    socket.emit(
+      "message",
+      encodeMessage({ type: "session.opened", sessionId: "session-1", deviceId: "device-1" })
+    );
+    client.close();
+
+    expect(terminals.get("session-1")?.close).toHaveBeenCalledOnce();
+  });
+
+  it("allows close to be called more than once", () => {
+    const { client, socket } = createHarness();
+
+    client.close();
+    client.close();
+
+    expect(socket.closeCalls).toBe(1);
   });
 });

@@ -16,6 +16,7 @@
 - [Cloud relay dev deploy runbook](docs/runbooks/cloud-relay-dev-deploy.md)
 - [External network smoke test runbook](docs/runbooks/external-network-smoke-test.md)
 - [TestFlight build runbook](docs/runbooks/testflight-build.md)
+- [macOS Agent desktop runbook](docs/runbooks/macos-agent-package.md)
 
 ## Local MVP Foundation
 
@@ -41,6 +42,12 @@ Start the macOS Agent:
 
 ```bash
 REMOTE_DEVICE_ID=mac-dev pnpm dev:agent
+```
+
+Or start the Electron desktop Agent shell:
+
+```bash
+REMOTE_DEVICE_ID=mac-dev pnpm --filter @remote/agent-desktop dev
 ```
 
 Start the mobile app:

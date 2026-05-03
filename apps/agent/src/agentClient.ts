@@ -20,13 +20,14 @@ import { TerminalSession, type PtyAdapter } from "./terminalSession.js";
 export interface AgentSocket {
   readonly readyState?: number;
   send(data: string): void;
+  close?(): void;
   on(event: "open", callback: () => void): void;
   on(event: "message", callback: (data: unknown) => void): void;
   on(event: "close", callback: () => void): void;
   on(event: "error", callback: (error: Error) => void): void;
 }
 
-interface AgentClientDependencies {
+export interface AgentClientDependencies {
   createSocket?: (url: string) => AgentSocket;
   createTerminal?: (sessionId: string, config: AgentConfig) => TerminalSession;
   displayPairingCode?: PairingCodeDisplay;
@@ -161,13 +162,35 @@ export class AgentClient {
     });
 
     socket.on("close", () => {
+      if (this.socket === socket) {
+        this.socket = undefined;
+      }
       this.closeSessions();
     });
 
     socket.on("error", (error) => {
       console.error("Agent socket error", error);
+      if (this.socket === socket) {
+        this.socket = undefined;
+      }
       this.closeSessions();
     });
+  }
+
+  close(): void {
+    const socket = this.socket;
+    this.socket = undefined;
+    this.closeSessions();
+
+    if (!socket?.close) {
+      return;
+    }
+
+    try {
+      socket.close();
+    } catch (error) {
+      console.error("Agent socket close failed", error);
+    }
   }
 
   private handleMessage(data: unknown): void {
