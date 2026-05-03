@@ -1267,6 +1267,47 @@ describe("server websocket API", () => {
     mobile.terminate();
   });
 
+  it("routes agent terminal snapshots to the mobile socket", async () => {
+    const agent = await registerAgent(app);
+    const { sessionToken } = await approvePairingRequest(app, agent);
+
+    const mobile = await app.injectWS("/ws/mobile");
+    const agentOpened = nextJson(agent);
+    const mobileOpened = nextJson(mobile);
+    mobile.send(JSON.stringify({ type: "session.open", deviceId: "mac-1", sessionToken }));
+
+    await agentOpened;
+    const opened = (await mobileOpened) as { sessionId: string };
+    const routedSnapshot = nextJson(mobile);
+
+    agent.send(
+      JSON.stringify({
+        type: "terminal.snapshot",
+        sessionId: opened.sessionId,
+        deviceId: "mac-1",
+        output: ["ok\n"],
+        alive: true,
+        exitCode: null,
+        cols: 100,
+        rows: 30
+      })
+    );
+
+    expect(await routedSnapshot).toEqual({
+      type: "terminal.snapshot",
+      sessionId: opened.sessionId,
+      deviceId: "mac-1",
+      output: ["ok\n"],
+      alive: true,
+      exitCode: null,
+      cols: 100,
+      rows: 30
+    });
+
+    agent.terminate();
+    mobile.terminate();
+  });
+
   it("rate limits agent terminal output before routing to mobile", async () => {
     await app.close();
     app = await createServer(
@@ -1568,7 +1609,7 @@ describe("server websocket API", () => {
     mobile.terminate();
   });
 
-  it("cleans mobile sessions on disconnect before later agent output", async () => {
+  it("keeps a mobile session recoverable after disconnect and routes snapshot request after resume", async () => {
     const agent = await registerAgent(app);
     const { sessionToken } = await approvePairingRequest(app, agent);
     const agentOpened = nextJson(agent);
@@ -1578,26 +1619,49 @@ describe("server websocket API", () => {
     mobile.close();
     await new Promise((resolve) => mobile.once("close", resolve));
 
-    const agentError = nextJson(agent);
     agent.send(
       JSON.stringify({
         type: "terminal.output",
         sessionId,
         stream: "stdout",
-        data: "late\n"
+        data: "detached\n"
       })
     );
+    await noJson(agent);
 
-    const error = await agentError;
-    expect(error).toMatchObject({
-      type: "session.error",
-      code: "SESSION_ERROR"
+    const restoredMobile = await app.injectWS("/ws/mobile");
+    const restoredOpened = nextJson(restoredMobile);
+    restoredMobile.send(JSON.stringify({ type: "session.open", deviceId: "mac-1", sessionToken, resumeSessionId: sessionId }));
+    expect(await restoredOpened).toEqual({
+      type: "session.opened",
+      sessionId,
+      deviceId: "mac-1"
     });
-    expect([`Unknown session ${sessionId} for device mac-1`, "WebSocket is not open"]).toContain(
-      (error as { message: string }).message
+
+    const snapshotRequest = nextJson(agent);
+    restoredMobile.send(JSON.stringify({ type: "terminal.snapshot.request", sessionId }));
+    expect(await snapshotRequest).toEqual({
+      type: "terminal.snapshot.request",
+      sessionId
+    });
+
+    const restoredOutput = nextJson(restoredMobile);
+    agent.send(
+      JSON.stringify({
+        type: "terminal.output",
+        sessionId,
+        stream: "stdout",
+        data: "after restore\n"
+      })
     );
-    await noJson(mobile);
+    expect(await restoredOutput).toEqual({
+      type: "terminal.output",
+      sessionId,
+      stream: "stdout",
+      data: "after restore\n"
+    });
 
     agent.terminate();
+    restoredMobile.terminate();
   });
 });

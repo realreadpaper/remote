@@ -33,7 +33,7 @@ interface AgentClientDependencies {
   approvePairingRequest?: PairingApprovalPrompt;
 }
 
-type AgentOutboundMessage = Extract<ServerMessage, { type: "terminal.output" | "terminal.exit" }>;
+type AgentOutboundMessage = Extract<ServerMessage, { type: "terminal.output" | "terminal.exit" | "terminal.snapshot" }>;
 
 function createDefaultSocket(url: string): AgentSocket {
   return new WebSocket(url) as AgentSocket;
@@ -187,6 +187,9 @@ export class AgentClient {
         case "terminal.signal":
           this.handleTerminalSignal(parseClientMessage(payload));
           return;
+        case "terminal.snapshot.request":
+          this.handleTerminalSnapshotRequest(parseClientMessage(payload));
+          return;
         case "terminal.close":
           this.handleTerminalClose(parseClientMessage(payload));
           return;
@@ -325,6 +328,19 @@ export class AgentClient {
     }
 
     this.sessions.get(message.sessionId)?.sendSignal(message.signal);
+  }
+
+  private handleTerminalSnapshotRequest(message: ClientMessage): void {
+    if (message.type !== "terminal.snapshot.request") {
+      return;
+    }
+
+    const session = this.sessions.get(message.sessionId);
+    if (!session) {
+      return;
+    }
+
+    this.sendMessage(session.snapshot(this.config.deviceId));
   }
 
   private handleTerminalClose(message: ClientMessage): void {

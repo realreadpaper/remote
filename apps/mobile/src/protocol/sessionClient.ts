@@ -45,7 +45,6 @@ export class SessionClient {
 
   connect(): void {
     this.closeCurrentSocket();
-    this.sessionId = null;
     const socket = this.createSocket();
     this.socket = socket;
 
@@ -55,13 +54,7 @@ export class SessionClient {
       }
 
       try {
-        socket.send(
-          encodeMessage(
-            this.options.sessionToken
-              ? { type: "session.open", deviceId: this.options.deviceId, sessionToken: this.options.sessionToken }
-              : { type: "session.open", deviceId: this.options.deviceId }
-          )
-        );
+        socket.send(encodeMessage(this.buildSessionOpenMessage()));
       } catch (error) {
         console.error("Failed to open remote terminal session.", error);
         this.handleDisconnect(socket, this.reasonFromError(error, "Failed to open remote terminal session."));
@@ -164,6 +157,7 @@ export class SessionClient {
 
       if (message.type === "session.opened") {
         this.sessionId = message.sessionId;
+        this.sendSnapshotRequest(socket, message.sessionId);
       }
 
       if (message.type === "session.error") {
@@ -191,7 +185,6 @@ export class SessionClient {
       return;
     }
 
-    this.sessionId = null;
     this.detachSocket(socket);
     this.socket = null;
     this.options.onDisconnect?.(reason);
@@ -241,6 +234,24 @@ export class SessionClient {
 
   private isCurrentSocket(socket: WebSocketLike): boolean {
     return this.socket === socket;
+  }
+
+  private buildSessionOpenMessage() {
+    return {
+      type: "session.open" as const,
+      deviceId: this.options.deviceId,
+      ...(this.options.sessionToken ? { sessionToken: this.options.sessionToken } : {}),
+      ...(this.sessionId ? { resumeSessionId: this.sessionId } : {})
+    };
+  }
+
+  private sendSnapshotRequest(socket: WebSocketLike, sessionId: string): void {
+    try {
+      socket.send(encodeMessage({ type: "terminal.snapshot.request", sessionId }));
+    } catch (error) {
+      console.error("Failed to request terminal snapshot.", error);
+      this.handleDisconnect(socket, this.reasonFromError(error, "Failed to request terminal snapshot."));
+    }
   }
 
   private reasonFromError(error: unknown, fallback: string): string {

@@ -18,14 +18,20 @@ import { PairingService } from "./pairing/pairingService.js";
 import { MemoryRateLimiter, MemoryWeightedRateLimiter } from "./rateLimit.js";
 import { join } from "node:path";
 
-type MobileRoutableMessage = Extract<ClientMessage, { type: "terminal.input" | "terminal.resize" | "terminal.signal" }>;
-type AgentRoutableMessage = Extract<ServerMessage, { type: "terminal.output" | "terminal.exit" }>;
+type MobileRoutableMessage = Extract<
+  ClientMessage,
+  { type: "terminal.input" | "terminal.resize" | "terminal.signal" | "terminal.snapshot.request" }
+>;
+type AgentRoutableMessage = Extract<ServerMessage, { type: "terminal.output" | "terminal.exit" | "terminal.snapshot" }>;
 type AgentPairingMessage = Extract<ClientMessage, { type: "pairing.create" | "pairing.approved" | "pairing.rejected" }>;
 type AgentSendCallback = (
   message:
     | Extract<ServerMessage, { type: "session.opened" }>
     | Extract<ServerMessage, { type: "pairing.created" | "pairing.requested" }>
-    | Extract<ClientMessage, { type: "terminal.input" | "terminal.resize" | "terminal.signal" | "terminal.close" }>
+    | Extract<
+        ClientMessage,
+        { type: "terminal.input" | "terminal.resize" | "terminal.signal" | "terminal.snapshot.request" | "terminal.close" }
+      >
 ) => void;
 
 function messageText(error: unknown): string {
@@ -197,7 +203,12 @@ function clientKey(request: FastifyRequest): string {
 }
 
 function isMobileRoutableMessage(message: ClientMessage): message is MobileRoutableMessage {
-  return message.type === "terminal.input" || message.type === "terminal.resize" || message.type === "terminal.signal";
+  return (
+    message.type === "terminal.input" ||
+    message.type === "terminal.resize" ||
+    message.type === "terminal.signal" ||
+    message.type === "terminal.snapshot.request"
+  );
 }
 
 function assertTerminalInputSize(message: MobileRoutableMessage, maxBytes: number): void {
@@ -211,7 +222,7 @@ function assertTerminalInputSize(message: MobileRoutableMessage, maxBytes: numbe
 }
 
 function isAgentRoutableMessage(message: ServerMessage): message is AgentRoutableMessage {
-  return message.type === "terminal.output" || message.type === "terminal.exit";
+  return message.type === "terminal.output" || message.type === "terminal.exit" || message.type === "terminal.snapshot";
 }
 
 function isAgentPairingMessage(message: ClientMessage): message is AgentPairingMessage {
@@ -487,7 +498,7 @@ export function registerWsRoutes(app: FastifyInstance, config: ServerConfig): vo
       return;
     }
 
-    const mobileSend = (message: Extract<ServerMessage, { type: "terminal.output" | "terminal.exit" }>): void => {
+    const mobileSend = (message: Extract<ServerMessage, { type: "terminal.output" | "terminal.exit" | "terminal.snapshot" }>): void => {
       sendJson(socket, message);
     };
     const mobileRateLimitKey = `ws.mobile.messages:${clientKey(request)}`;
@@ -513,7 +524,7 @@ export function registerWsRoutes(app: FastifyInstance, config: ServerConfig): vo
             throw new Error(tokenResult.reason);
           }
 
-          const session = hub.openSession(message.deviceId, mobileSend);
+          const session = hub.openSession(message.deviceId, mobileSend, { resumeSessionId: message.resumeSessionId });
           sendJson(socket, {
             type: "session.opened",
             sessionId: session.sessionId,

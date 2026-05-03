@@ -124,6 +124,36 @@ describe("SessionHub", () => {
     });
   });
 
+  it("routes terminal snapshots to the mobile client", () => {
+    const hub = new SessionHub();
+    const agentSend = vi.fn();
+    const mobileSend = vi.fn();
+
+    hub.attachAgent("mac-1", agentSend);
+    const session = hub.openSession("mac-1", mobileSend);
+    hub.routeFromAgent("mac-1", agentSend, {
+      type: "terminal.snapshot",
+      sessionId: session.sessionId,
+      deviceId: "mac-1",
+      output: ["ready\n"],
+      alive: true,
+      exitCode: null,
+      cols: 100,
+      rows: 30
+    });
+
+    expect(mobileSend).toHaveBeenCalledWith({
+      type: "terminal.snapshot",
+      sessionId: session.sessionId,
+      deviceId: "mac-1",
+      output: ["ready\n"],
+      alive: true,
+      exitCode: null,
+      cols: 100,
+      rows: 30
+    });
+  });
+
   it("throws when routing mobile input for an unknown session", () => {
     const hub = new SessionHub();
     const mobileSend = vi.fn();
@@ -276,59 +306,125 @@ describe("SessionHub", () => {
 
     hub.closeMobile(mobileSend);
 
-    expect(agentSend).toHaveBeenCalledWith({
-      type: "terminal.close",
-      sessionId: session.sessionId
-    });
-  });
-
-  it("removes mobile-owned sessions after closing them", () => {
-    const hub = new SessionHub();
-    const agentSend = vi.fn();
-    const mobileSend = vi.fn();
-
-    hub.attachAgent("mac-1", agentSend);
-    const session = hub.openSession("mac-1", mobileSend);
-
-    hub.closeMobile(mobileSend);
-
-    expect(() =>
-      hub.routeFromMobile(mobileSend, {
-        type: "terminal.input",
-        sessionId: session.sessionId,
-        data: "late\n"
-      })
-    ).toThrow(`Unknown session ${session.sessionId}`);
+    expect(agentSend).not.toHaveBeenCalled();
     expect(() =>
       hub.routeFromAgent("mac-1", agentSend, {
         type: "terminal.output",
         sessionId: session.sessionId,
         stream: "stdout",
-        data: "late\n"
+        data: "detached\n"
       })
-    ).toThrow(`Unknown session ${session.sessionId} for device mac-1`);
-    expect(mobileSend).not.toHaveBeenCalled();
+    ).not.toThrow();
   });
 
-  it("removes mobile-owned sessions when terminal.close send fails", () => {
+  it("keeps mobile-owned sessions recoverable after closing the mobile socket", () => {
     const hub = new SessionHub();
     const agentSend = vi.fn();
     const mobileSend = vi.fn();
+    const restoredMobileSend = vi.fn();
 
     hub.attachAgent("mac-1", agentSend);
     const session = hub.openSession("mac-1", mobileSend);
-    agentSend.mockImplementation(() => {
-      throw new Error("send failed");
-    });
+    agentSend.mockClear();
 
-    expect(hub.closeMobile(mobileSend)).toBe(1);
-    expect(() =>
-      hub.routeFromMobile(mobileSend, {
-        type: "terminal.input",
-        sessionId: session.sessionId,
-        data: "late\n"
-      })
-    ).toThrow(`Unknown session ${session.sessionId}`);
+    hub.closeMobile(mobileSend);
+
+    const restored = hub.openSession("mac-1", restoredMobileSend, { resumeSessionId: session.sessionId });
+    expect(restored).toEqual(session);
+    expect(agentSend).not.toHaveBeenCalled();
+
+    hub.routeFromAgent("mac-1", agentSend, {
+      type: "terminal.output",
+      sessionId: session.sessionId,
+      stream: "stdout",
+      data: "after restore\n"
+    });
+    expect(restoredMobileSend).toHaveBeenCalledWith({
+      type: "terminal.output",
+      sessionId: session.sessionId,
+      stream: "stdout",
+      data: "after restore\n"
+    });
+  });
+
+  it("closes a detached session after the retention timeout", () => {
+    vi.useFakeTimers();
+    try {
+      const hub = new SessionHub({ detachedSessionRetentionMs: 1_000 });
+      const agentSend = vi.fn();
+      const mobileSend = vi.fn();
+
+      hub.attachAgent("mac-1", agentSend);
+      const session = hub.openSession("mac-1", mobileSend);
+      agentSend.mockClear();
+
+      hub.closeMobile(mobileSend);
+      vi.advanceTimersByTime(999);
+
+      expect(agentSend).not.toHaveBeenCalled();
+
+      vi.advanceTimersByTime(1);
+
+      expect(agentSend).toHaveBeenCalledWith({
+        type: "terminal.close",
+        sessionId: session.sessionId
+      });
+      expect(() =>
+        hub.routeFromMobile(mobileSend, {
+          type: "terminal.input",
+          sessionId: session.sessionId,
+          data: "pwd\n"
+        })
+      ).toThrow(`Unknown session ${session.sessionId}`);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("cancels detached session retention timeout after resume", () => {
+    vi.useFakeTimers();
+    try {
+      const hub = new SessionHub({ detachedSessionRetentionMs: 1_000 });
+      const agentSend = vi.fn();
+      const mobileSend = vi.fn();
+      const restoredMobileSend = vi.fn();
+
+      hub.attachAgent("mac-1", agentSend);
+      const session = hub.openSession("mac-1", mobileSend);
+      hub.closeMobile(mobileSend);
+      hub.openSession("mac-1", restoredMobileSend, { resumeSessionId: session.sessionId });
+      agentSend.mockClear();
+
+      vi.advanceTimersByTime(1_000);
+
+      expect(agentSend).not.toHaveBeenCalled();
+      hub.routeFromMobile(restoredMobileSend, {
+        type: "terminal.snapshot.request",
+        sessionId: session.sessionId
+      });
+      expect(agentSend).toHaveBeenCalledWith({
+        type: "terminal.snapshot.request",
+        sessionId: session.sessionId
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("throws when resuming a session for another device", () => {
+    const hub = new SessionHub();
+    const agentSend = vi.fn();
+    const mobileSend = vi.fn();
+    const restoredMobileSend = vi.fn();
+
+    hub.attachAgent("mac-1", agentSend);
+    hub.attachAgent("mac-2", vi.fn());
+    const session = hub.openSession("mac-1", mobileSend);
+    hub.closeMobile(mobileSend);
+
+    expect(() => hub.openSession("mac-2", restoredMobileSend, { resumeSessionId: session.sessionId })).toThrow(
+      `Session ${session.sessionId} is not for device mac-2`
+    );
   });
 
   it("ignores missing agents while closing mobile-owned sessions", () => {
@@ -342,13 +438,31 @@ describe("SessionHub", () => {
 
     expect(hub.closeMobile(mobileSend)).toBe(1);
     expect(() =>
-      hub.routeFromAgent("mac-1", agentSend, {
-        type: "terminal.output",
-        sessionId: session.sessionId,
-        stream: "stdout",
-        data: "late\n"
-      })
-    ).toThrow(`Unknown session ${session.sessionId} for device mac-1`);
+      hub.openSession("mac-1", mobileSend, { resumeSessionId: session.sessionId })
+    ).toThrow("Device mac-1 is not online");
     expect(mobileSend).not.toHaveBeenCalled();
+  });
+
+  it("routes terminal snapshot requests from a restored mobile to the agent", () => {
+    const hub = new SessionHub();
+    const agentSend = vi.fn();
+    const mobileSend = vi.fn();
+    const restoredMobileSend = vi.fn();
+
+    hub.attachAgent("mac-1", agentSend);
+    const session = hub.openSession("mac-1", mobileSend);
+    hub.closeMobile(mobileSend);
+    hub.openSession("mac-1", restoredMobileSend, { resumeSessionId: session.sessionId });
+    agentSend.mockClear();
+
+    hub.routeFromMobile(restoredMobileSend, {
+      type: "terminal.snapshot.request",
+      sessionId: session.sessionId
+    });
+
+    expect(agentSend).toHaveBeenCalledWith({
+      type: "terminal.snapshot.request",
+      sessionId: session.sessionId
+    });
   });
 });

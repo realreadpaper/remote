@@ -59,6 +59,22 @@ describe("protocol messages", () => {
     });
   });
 
+  it("parses session.open with an optional resume session id", () => {
+    const message = parseClientMessage({
+      type: "session.open",
+      deviceId: "device-1",
+      sessionToken: "session-token-1",
+      resumeSessionId: "session-1"
+    });
+
+    expect(message).toEqual({
+      type: "session.open",
+      deviceId: "device-1",
+      sessionToken: "session-token-1",
+      resumeSessionId: "session-1"
+    });
+  });
+
   it("parses agent pairing create request", () => {
     const message = parseClientMessage({
       type: "pairing.create",

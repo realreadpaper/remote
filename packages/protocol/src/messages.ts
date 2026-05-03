@@ -14,7 +14,8 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
   message({
     type: z.literal("session.open"),
     deviceId: z.string().min(1),
-    sessionToken: z.string().min(1).optional()
+    sessionToken: z.string().min(1).optional(),
+    resumeSessionId: z.string().min(1).optional()
   }),
   message({
     type: z.literal("pairing.create"),

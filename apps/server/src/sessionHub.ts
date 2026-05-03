@@ -4,9 +4,14 @@ import type { ClientMessage, ServerMessage } from "@remote/protocol";
 type AgentSend = (
   message:
     | Extract<ServerMessage, { type: "session.opened" }>
-    | Extract<ClientMessage, { type: "terminal.input" | "terminal.resize" | "terminal.signal" | "terminal.close" }>
+    | Extract<
+        ClientMessage,
+        { type: "terminal.input" | "terminal.resize" | "terminal.signal" | "terminal.snapshot.request" | "terminal.close" }
+      >
 ) => void;
-type MobileSend = (message: Extract<ServerMessage, { type: "terminal.output" | "terminal.exit" }>) => void;
+type MobileTerminalMessage = Extract<ServerMessage, { type: "terminal.output" | "terminal.exit" | "terminal.snapshot" }>;
+type MobileSend = (message: MobileTerminalMessage) => void;
+type RetentionTimer = ReturnType<typeof setTimeout>;
 
 export interface RemoteSession {
   sessionId: string;
@@ -14,12 +19,26 @@ export interface RemoteSession {
 }
 
 interface SessionRecord extends RemoteSession {
-  mobileSend: MobileSend;
+  mobileSend: MobileSend | null;
+  detachedRetentionTimer?: RetentionTimer;
+}
+
+interface OpenSessionOptions {
+  resumeSessionId?: string;
+}
+
+interface SessionHubOptions {
+  detachedSessionRetentionMs?: number;
 }
 
 export class SessionHub {
+  private readonly detachedSessionRetentionMs: number;
   private readonly agents = new Map<string, AgentSend>();
   private readonly sessions = new Map<string, SessionRecord>();
+
+  constructor(options: SessionHubOptions = {}) {
+    this.detachedSessionRetentionMs = options.detachedSessionRetentionMs ?? 5 * 60 * 1_000;
+  }
 
   attachAgent(deviceId: string, send: AgentSend): void {
     this.agents.set(deviceId, send);
@@ -34,7 +53,11 @@ export class SessionHub {
     return true;
   }
 
-  openSession(deviceId: string, mobileSend: MobileSend): RemoteSession {
+  openSession(deviceId: string, mobileSend: MobileSend, options: OpenSessionOptions = {}): RemoteSession {
+    if (options.resumeSessionId) {
+      return this.resumeSession(deviceId, mobileSend, options.resumeSessionId);
+    }
+
     const agentSend = this.agents.get(deviceId);
     if (!agentSend) {
       throw new Error(`Device ${deviceId} is not online`);
@@ -66,7 +89,7 @@ export class SessionHub {
 
   routeFromMobile(
     mobileSend: MobileSend,
-    message: Extract<ClientMessage, { type: "terminal.input" | "terminal.resize" | "terminal.signal" }>
+    message: Extract<ClientMessage, { type: "terminal.input" | "terminal.resize" | "terminal.signal" | "terminal.snapshot.request" }>
   ): void {
     const session = this.sessions.get(message.sessionId);
     if (!session) {
@@ -84,11 +107,7 @@ export class SessionHub {
     agentSend(message);
   }
 
-  routeFromAgent(
-    deviceId: string,
-    agentSend: AgentSend,
-    message: Extract<ServerMessage, { type: "terminal.output" | "terminal.exit" }>
-  ): void {
+  routeFromAgent(deviceId: string, agentSend: AgentSend, message: MobileTerminalMessage): void {
     const session = this.sessions.get(message.sessionId);
     if (!session || session.deviceId !== deviceId) {
       throw new Error(`Unknown session ${message.sessionId} for device ${deviceId}`);
@@ -97,9 +116,15 @@ export class SessionHub {
       throw new Error(`Agent sender is not attached for device ${deviceId}`);
     }
 
-    session.mobileSend(message);
+    if (session.mobileSend) {
+      try {
+        session.mobileSend(message);
+      } catch {
+        session.mobileSend = null;
+      }
+    }
     if (message.type === "terminal.exit") {
-      this.sessions.delete(message.sessionId);
+      this.deleteSession(message.sessionId);
     }
   }
 
@@ -111,7 +136,48 @@ export class SessionHub {
         continue;
       }
 
-      const agentSend = this.agents.get(session.deviceId);
+      session.mobileSend = null;
+      this.scheduleDetachedSessionClose(sessionId);
+      closedSessions++;
+    }
+
+    return closedSessions;
+  }
+
+  private resumeSession(deviceId: string, mobileSend: MobileSend, sessionId: string): RemoteSession {
+    const session = this.sessions.get(sessionId);
+    if (!session) {
+      throw new Error(`Unknown session ${sessionId}`);
+    }
+    if (session.deviceId !== deviceId) {
+      throw new Error(`Session ${sessionId} is not for device ${deviceId}`);
+    }
+    if (!this.agents.get(deviceId)) {
+      throw new Error(`Device ${deviceId} is not online`);
+    }
+
+    session.mobileSend = mobileSend;
+    this.clearDetachedSessionTimer(session);
+    return {
+      sessionId: session.sessionId,
+      deviceId: session.deviceId
+    };
+  }
+
+  private scheduleDetachedSessionClose(sessionId: string): void {
+    const session = this.sessions.get(sessionId);
+    if (!session) {
+      return;
+    }
+
+    this.clearDetachedSessionTimer(session);
+    session.detachedRetentionTimer = setTimeout(() => {
+      const current = this.sessions.get(sessionId);
+      if (!current || current.mobileSend) {
+        return;
+      }
+
+      const agentSend = this.agents.get(current.deviceId);
       if (agentSend) {
         try {
           agentSend({
@@ -119,14 +185,28 @@ export class SessionHub {
             sessionId
           });
         } catch {
-          // Cleanup should not depend on the current agent socket accepting the close message.
+          // The session is already detached from Mobile; timeout cleanup should continue even if Agent send fails.
         }
       }
 
-      this.sessions.delete(sessionId);
-      closedSessions++;
+      this.deleteSession(sessionId);
+    }, this.detachedSessionRetentionMs);
+  }
+
+  private deleteSession(sessionId: string): void {
+    const session = this.sessions.get(sessionId);
+    if (session) {
+      this.clearDetachedSessionTimer(session);
+    }
+    this.sessions.delete(sessionId);
+  }
+
+  private clearDetachedSessionTimer(session: SessionRecord): void {
+    if (!session.detachedRetentionTimer) {
+      return;
     }
 
-    return closedSessions;
+    clearTimeout(session.detachedRetentionTimer);
+    session.detachedRetentionTimer = undefined;
   }
 }
