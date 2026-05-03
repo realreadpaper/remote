@@ -1092,3 +1092,39 @@
 - 将 limiter store 抽象为 Redis/Postgres 可替换实现。
 - 增加正式账号/设备维度限流。
 - 设计脚本上传和文件传输，减少大输入走 terminal input。
+
+## 2026-05-03 Cloud Relay Deploy And Smoke Runbooks
+
+**状态：** completed
+
+**提交：**
+- `5a50590` `docs: add cloud relay deploy and smoke runbooks`
+
+**实现内容：**
+- 新增 `docs/runbooks/cloud-relay-dev-deploy.md`，说明 VPS、DNS、TLS、Caddy/Nginx、systemd/pm2、`/health`、WebSocket 和数据目录配置。
+- 新增 `docs/runbooks/external-network-smoke-test.md`，说明家里 macOS Agent 连接云中转、iPhone 关闭 Wi-Fi 使用蜂窝网络、配对、执行 `printf "__CELL__%s\n" "$PWD"` 的验收流程。
+- README 增加两份 runbook 入口。
+- `docs/superpowers/plans/2026-05-02-external-network-cloud-relay-plan.md` 已同步状态：Phase 1 安全边界和 Phase 2 runbook 完成，真实 VPS/蜂窝网验收仍保持未勾选。
+- 文档继续强调默认产品路径是云中转，DDNS、端口映射、IPv6 和反向隧道只作为高级自托管选项。
+
+**涉及文件：**
+- `README.md`
+- `docs/runbooks/cloud-relay-dev-deploy.md`
+- `docs/runbooks/external-network-smoke-test.md`
+- `docs/superpowers/plans/2026-05-02-external-network-cloud-relay-plan.md`
+
+**验证：**
+- `git diff --check`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm test`: pass，198 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm build`: pass。
+
+**已知风险：**
+- 当前没有真实 VPS 域名、TLS 证书和 iPhone 蜂窝网络环境，因此外网开发验收没有实际执行。
+- 当前 JSON store 仍只适合单进程开发 relay，不适合多实例云部署。
+- dev token 仍是开发态边界，正式产品需要账号、设备归属和审计。
+
+**后续：**
+- 准备真实域名和 VPS 后按 runbook 执行外网蜂窝验收。
+- 决定云端持久化方案，优先 SQLite/Postgres，避免多实例 JSON 写入风险。
+- 推进 iOS TestFlight 和 macOS Agent 可安装版本。
