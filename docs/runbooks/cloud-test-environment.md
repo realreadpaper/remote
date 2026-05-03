@@ -30,6 +30,53 @@ Free-tier constraints:
 - Key Value free instances are not persistent across restart.
 - Do not scale the Web Service horizontally until WebSocket session routing is implemented.
 
+## Render Blueprint Deploy
+
+The repository includes `render.yaml` and `Dockerfile` for the default cloud relay.
+
+1. Push the repository to GitHub.
+2. In Render, create a new Blueprint and select this repository.
+3. Confirm Render detects the root `render.yaml`.
+4. Apply the Blueprint.
+5. Wait for these resources:
+   - `remote-terminal-server`
+   - `remote-terminal-postgres`
+   - `remote-terminal-redis`
+6. Open `remote-terminal-server` in the Render Dashboard.
+7. Copy the generated `REMOTE_DEV_TOKEN` from the service environment variables.
+8. Use the Web Service host as `REMOTE_RELAY_HOST`, without `https://`.
+
+The Blueprint keeps `remote-terminal-server` at one instance because pairing, session tokens, and terminal sessions are not yet fully distributed across Postgres and Redis.
+
+## Local Docker Verification
+
+If Docker is available locally, verify the image before deploying:
+
+```bash
+docker build -t remote-terminal-server:render .
+docker run --rm \
+  -p 8787:8787 \
+  -e PORT=8787 \
+  -e HOST=0.0.0.0 \
+  -e REMOTE_REQUIRE_DEV_TOKEN=1 \
+  -e REMOTE_DEV_TOKEN=local-render-smoke \
+  remote-terminal-server:render
+```
+
+In another terminal:
+
+```bash
+curl "http://127.0.0.1:8787/health"
+```
+
+Expected:
+
+```json
+{"ok":true}
+```
+
+If Docker is not available locally, do not mark image build verification complete. Let Render perform the first image build and record the Render build log result in the smoke template.
+
 ## Required Resources
 
 - Render account.
@@ -50,7 +97,7 @@ openssl rand -base64 32
 
 ## Render Web Service
 
-Create a Render Web Service from the repository.
+Manual Web Service creation is the fallback path when Blueprint deploy is unavailable. Prefer the Blueprint path above.
 
 Build command:
 
@@ -75,6 +122,8 @@ REMOTE_DATA_DIR=/var/data/terminal-first-remote
 ```
 
 Render provides `PORT`; do not hard-code it unless the platform explicitly asks for a port value.
+
+The Blueprint uses Docker runtime instead of the manual build/start commands, but the same runtime environment variables apply.
 
 ## PostgreSQL And Key Value
 
@@ -218,6 +267,9 @@ Date:
 Relay host:
 Render service URL:
 Custom domain:
+Blueprint apply result:
+Docker build verification:
+Render build log:
 Postgres resource:
 Key Value resource:
 Agent network:

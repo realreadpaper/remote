@@ -1,0 +1,34 @@
+services:
+  - type: web
+    name: remote-terminal-server
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    numInstances: 1
+    envVars:
+      - key: HOST
+        value: 0.0.0.0
+      - key: REMOTE_REQUIRE_DEV_TOKEN
+        value: "1"
+      - key: REMOTE_DEV_TOKEN
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: remote-terminal-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: remote-terminal-redis
+          type: keyvalue
+          property: connectionString
+  - type: keyvalue
+    name: remote-terminal-redis
+    plan: free
+    ipAllowList: []
+
+databases:
+  - name: remote-terminal-postgres
+    plan: free
+    ipAllowList: []
