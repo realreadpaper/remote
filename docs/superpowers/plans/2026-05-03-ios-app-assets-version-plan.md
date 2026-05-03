@@ -30,7 +30,7 @@ docs/superpowers/records/feature-log.md
 - Create: `apps/mobile/assets/splash-icon.png`
 - Create: `apps/mobile/assets/adaptive-icon.png`
 
-- [ ] **Step 1: Generate PNG assets**
+- [x] **Step 1: Generate PNG assets**
 
 Use a local Node script to generate three 1024 x 1024 PNG files with a terminal-window mark:
 
@@ -128,7 +128,7 @@ writePng("apps/mobile/assets/adaptive-icon.png", assetDraw);
 EOF
 ```
 
-- [ ] **Step 2: Verify files exist**
+- [x] **Step 2: Verify files exist**
 
 ```bash
 file apps/mobile/assets/icon.png apps/mobile/assets/splash-icon.png apps/mobile/assets/adaptive-icon.png
@@ -141,7 +141,7 @@ Expected: each file reports `PNG image data, 1024 x 1024`.
 **Files:**
 - Modify: `apps/mobile/app.json`
 
-- [ ] **Step 1: Update app.json**
+- [x] **Step 1: Update app.json**
 
 Set:
 
@@ -177,7 +177,7 @@ Set:
 ]
 ```
 
-- [ ] **Step 2: Verify Expo public config**
+- [x] **Step 2: Verify Expo public config**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile exec expo config --type public
@@ -193,7 +193,7 @@ Expected: output includes `icon`, `splash`, `version`, `ios.buildNumber`, and `e
 - Modify: `docs/superpowers/plans/2026-05-03-ios-app-assets-version-plan.md`
 - Modify: `docs/superpowers/records/feature-log.md`
 
-- [ ] **Step 1: Update TestFlight runbook**
+- [x] **Step 1: Update TestFlight runbook**
 
 Add rules:
 
@@ -202,7 +202,7 @@ Add rules:
 - icon/splash files live in `apps/mobile/assets`.
 - after asset changes, reinstall app because launch screens can be cached.
 
-- [ ] **Step 2: Run verification**
+- [x] **Step 2: Run verification**
 
 ```bash
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile test
@@ -214,18 +214,18 @@ PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck
 PATH="/tmp/codex-corepack-shims:$PATH" pnpm build
 ```
 
-- [ ] **Step 3: Commit implementation**
+- [x] **Step 3: Commit implementation**
 
 ```bash
 git add apps/mobile/app.json apps/mobile/assets docs/runbooks/testflight-build.md
 git commit -m "chore: add ios app assets and version config"
 ```
 
-- [ ] **Step 4: Mark plan and log delivery**
+- [x] **Step 4: Mark plan and log delivery**
 
 Mark this plan and Task 12 remaining item complete. Append feature log with commits and verification.
 
-- [ ] **Step 5: Commit records**
+- [x] **Step 5: Commit records**
 
 ```bash
 git add docs/superpowers/plans/2026-05-02-ios-mac-installable-mvp-plan.md docs/superpowers/plans/2026-05-03-ios-app-assets-version-plan.md docs/superpowers/records/feature-log.md

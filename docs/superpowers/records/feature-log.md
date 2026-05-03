@@ -1423,3 +1423,46 @@
 - Task 12 补 iOS app icon、splash、version 和 build number。
 - 准备 Apple Developer 账号后执行真实 `dist:mac`、`spctl` 和 `stapler` 验收。
 - 发布工程阶段补 CI keychain、证书导入和 notarization 自动化。
+
+## 2026-05-03 iOS App Assets and Version Config
+
+**状态：** completed
+
+**提交：**
+- `939a052` `docs: design ios app assets version`
+- `a480c39` `docs: plan ios app assets version`
+- `f5198dd` `chore: add ios app assets and version config`
+
+**实现内容：**
+- 新增免费本地生成的 1024 x 1024 PNG 资产：
+  - `apps/mobile/assets/icon.png`
+  - `apps/mobile/assets/splash-icon.png`
+  - `apps/mobile/assets/adaptive-icon.png`
+- `apps/mobile/app.json` 增加 `icon`。
+- `apps/mobile/app.json` 增加 legacy `splash` 配置。
+- `apps/mobile/app.json` 增加 Android adaptive icon 预留。
+- `apps/mobile/app.json` 接入 `expo-splash-screen` config plugin。
+- `apps/mobile/package.json` 增加 `expo-splash-screen` 依赖。
+- `expo.version` 保持 `0.1.0`。
+- `expo.ios.buildNumber` 从 `"1"` 提升到 `"2"`。
+- `docs/runbooks/testflight-build.md` 补充 version/build number 更新规则、资产路径和 launch screen 缓存注意事项。
+- 主计划 Task 12 剩余项已同步勾选。
+
+**验证：**
+- `file apps/mobile/assets/icon.png apps/mobile/assets/splash-icon.png apps/mobile/assets/adaptive-icon.png`: pass，均为 `PNG image data, 1024 x 1024`。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile test`: pass，50 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile build`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm --filter @remote/mobile exec expo config --type public`: pass，输出包含 `icon`、`splash`、`ios.buildNumber: "2"` 和 `expo-splash-screen`。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm test`: pass，237 tests passed。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm typecheck`: pass。
+- `PATH="/tmp/codex-corepack-shims:$PATH" pnpm build`: pass。
+
+**已知风险：**
+- 当前资产是 MVP 临时品牌，不是最终 App Store 视觉。
+- iOS launch screen 可能被系统缓存，换图后需要卸载旧包再验证。
+- Expo Go 不能完整代表 TestFlight standalone launch screen 行为。
+
+**后续：**
+- Task 13 实现 iOS 前后台和重连。
+- 真正 TestFlight 构建前确认 Apple Developer 中 bundle identifier 和 build number 未冲突。
