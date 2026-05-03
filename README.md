@@ -13,6 +13,8 @@
 - [Server minimal external security plan](docs/superpowers/plans/2026-05-02-server-minimal-external-security-plan.md)
 - [Feature delivery tracking](docs/superpowers/records/feature-delivery-tracking.md)
 - [Feature log](docs/superpowers/records/feature-log.md)
+- [Cloud relay dev deploy runbook](docs/runbooks/cloud-relay-dev-deploy.md)
+- [External network smoke test runbook](docs/runbooks/external-network-smoke-test.md)
 
 ## Local MVP Foundation
 

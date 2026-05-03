@@ -58,13 +58,13 @@ docs/superpowers/specs/2026-05-02-external-network-access-design.md
 - Modify: `apps/server/src/index.ts`
 - Test: `apps/server/tests/config.test.ts`
 
-- [ ] 增加 `loadServerConfig(env)`。
-- [ ] 配置项包括 `host`、`port`、`requireDevToken`、`devToken`、`publicBaseUrl`。
-- [ ] 默认开发配置保持 `host=127.0.0.1`、`port=8787`。
-- [ ] 当 `REMOTE_REQUIRE_DEV_TOKEN=1` 且缺少 `REMOTE_DEV_TOKEN` 时，server 启动失败。
-- [ ] 测试默认配置、云端配置、缺 token 失败。
-- [ ] 运行 `pnpm --filter @remote/server test`。
-- [ ] 提交 `git commit -m "feat: add server runtime config"`。
+- [x] 增加 `loadServerConfig(env)`。
+- [x] 配置项包括 `host`、`port`、`requireDevToken`、`devToken`、`publicBaseUrl`。
+- [x] 默认开发配置保持 `host=127.0.0.1`、`port=8787`。
+- [x] 当 `REMOTE_REQUIRE_DEV_TOKEN=1` 且缺少 `REMOTE_DEV_TOKEN` 时，server 启动失败。
+- [x] 测试默认配置、云端配置、缺 token 失败。
+- [x] 运行 `pnpm --filter @remote/server test`。
+- [x] 提交 `git commit -m "feat: add server runtime config"`。
 
 ### Task 2: 最小开发 token
 
@@ -74,14 +74,14 @@ docs/superpowers/specs/2026-05-02-external-network-access-design.md
 - Test: `apps/server/tests/auth/devToken.test.ts`
 - Test: `apps/server/tests/ws.test.ts`
 
-- [ ] 实现 `validateDevToken({ expectedToken, providedToken })`。
-- [ ] 支持 WebSocket query：`?token=<token>`。
-- [ ] 支持 header：`authorization: Bearer <token>`。
-- [ ] `requireDevToken=false` 时保持局域网开发兼容。
-- [ ] `requireDevToken=true` 时，缺 token 或 token 错误直接关闭 socket。
-- [ ] 测试 Agent 和 Mobile 两条 WebSocket 都执行 token 校验。
-- [ ] 运行 `pnpm --filter @remote/server test`。
-- [ ] 提交 `git commit -m "feat: guard websocket relay with dev token"`。
+- [x] 实现 `validateDevToken({ expectedToken, providedToken })`。
+- [x] 支持 WebSocket query：`?token=<token>`。
+- [x] 支持 header：`authorization: Bearer <token>`。
+- [x] `requireDevToken=false` 时保持局域网开发兼容。
+- [x] `requireDevToken=true` 时，缺 token 或 token 错误直接关闭 socket。
+- [x] 测试 Agent 和 Mobile 两条 WebSocket 都执行 token 校验。
+- [x] 运行 `pnpm --filter @remote/server test`。
+- [x] 提交 `git commit -m "feat: guard websocket relay with dev token"`。
 
 ### Task 3: Agent 云端 URL 和 token
 
@@ -91,13 +91,13 @@ docs/superpowers/specs/2026-05-02-external-network-access-design.md
 - Test: `apps/agent/tests/config.test.ts`
 - Test: `apps/agent/tests/agentClient.test.ts`
 
-- [ ] Agent 支持 `REMOTE_SERVER_URL=wss://dev-api.example.com/ws/agent`。
-- [ ] Agent 支持 `REMOTE_DEV_TOKEN`。
-- [ ] 当 token 存在时，Agent 在 URL 上附加 query token。
-- [ ] 保持本地默认 `ws://127.0.0.1:8787/ws/agent`。
-- [ ] 测试本地默认、云端 URL、token query 拼接。
-- [ ] 运行 `pnpm --filter @remote/agent test`。
-- [ ] 提交 `git commit -m "feat: support cloud relay agent auth config"`。
+- [x] Agent 支持 `REMOTE_SERVER_URL=wss://dev-api.example.com/ws/agent`。
+- [x] Agent 支持 `REMOTE_DEV_TOKEN`。
+- [x] 当 token 存在时，Agent 在 URL 上附加 query token。
+- [x] 保持本地默认 `ws://127.0.0.1:8787/ws/agent`。
+- [x] 测试本地默认、云端 URL、token query 拼接。
+- [x] 运行 `pnpm --filter @remote/agent test`。
+- [x] 提交 `git commit -m "feat: support cloud relay agent auth config"`。
 
 ### Task 4: Mobile 云端 URL 和 token
 
@@ -106,13 +106,13 @@ docs/superpowers/specs/2026-05-02-external-network-access-design.md
 - Modify: `apps/mobile/src/components/TerminalScreen.tsx`
 - Test: `apps/mobile/tests/runtimeConfig.test.ts`
 
-- [ ] Mobile 支持 `EXPO_PUBLIC_REMOTE_WS_URL=wss://dev-api.example.com/ws/mobile`。
-- [ ] Mobile 支持 `EXPO_PUBLIC_REMOTE_DEV_TOKEN`。
-- [ ] 当 token 存在时，Mobile 在 URL 上附加 query token。
-- [ ] UI 继续显示当前连接目标，但 token 必须脱敏。
-- [ ] 测试默认 URL、云端 URL、token query、展示 URL 脱敏。
-- [ ] 运行 `pnpm --filter @remote/mobile test`。
-- [ ] 提交 `git commit -m "feat: support cloud relay mobile auth config"`。
+- [x] Mobile 支持 `EXPO_PUBLIC_REMOTE_WS_URL=wss://dev-api.example.com/ws/mobile`。
+- [x] Mobile 支持 `EXPO_PUBLIC_REMOTE_DEV_TOKEN`。
+- [x] 当 token 存在时，Mobile 在 URL 上附加 query token。
+- [x] UI 继续显示当前连接目标，但 token 必须脱敏。
+- [x] 测试默认 URL、云端 URL、token query、展示 URL 脱敏。
+- [x] 运行 `pnpm --filter @remote/mobile test`。
+- [x] 提交 `git commit -m "feat: support cloud relay mobile auth config"`。
 
 ## Phase 2: 云端部署
 
@@ -121,25 +121,25 @@ docs/superpowers/specs/2026-05-02-external-network-access-design.md
 **Files:**
 - Create: `docs/runbooks/cloud-relay-dev-deploy.md`
 
-- [ ] 写明前置条件：VPS、域名、DNS、Node、pnpm、Caddy/Nginx。
-- [ ] 写明 server 环境变量：`HOST=127.0.0.1`、`PORT=8787`、`REMOTE_REQUIRE_DEV_TOKEN=1`、`REMOTE_DEV_TOKEN=<secret>`。
-- [ ] 写明 Caddy 反代配置：`api.example.com -> 127.0.0.1:8787`。
-- [ ] 写明 systemd 或 pm2 启动方式。
-- [ ] 写明 `/health` 验证。
-- [ ] 写明 WebSocket 连接排障。
-- [ ] 提交 `git commit -m "docs: add cloud relay deploy runbook"`。
+- [x] 写明前置条件：VPS、域名、DNS、Node、pnpm、Caddy/Nginx。
+- [x] 写明 server 环境变量：`HOST=127.0.0.1`、`PORT=8787`、`REMOTE_REQUIRE_DEV_TOKEN=1`、`REMOTE_DEV_TOKEN=<secret>`。
+- [x] 写明 Caddy 反代配置：`api.example.com -> 127.0.0.1:8787`。
+- [x] 写明 systemd 或 pm2 启动方式。
+- [x] 写明 `/health` 验证。
+- [x] 写明 WebSocket 连接排障。
+- [x] 提交 `git commit -m "docs: add cloud relay deploy runbook"`。
 
 ### Task 6: 外网冒烟 runbook
 
 **Files:**
 - Create: `docs/runbooks/external-network-smoke-test.md`
 
-- [ ] 写明 Agent 启动命令：`REMOTE_SERVER_URL=wss://api.example.com/ws/agent REMOTE_DEV_TOKEN=<secret> pnpm dev:agent`。
-- [ ] 写明 Mobile 启动命令：`EXPO_PUBLIC_REMOTE_WS_URL=wss://api.example.com/ws/mobile EXPO_PUBLIC_REMOTE_DEV_TOKEN=<secret> pnpm dev:mobile`。
-- [ ] 写明 iPhone 关闭 Wi-Fi，使用蜂窝网络。
-- [ ] 写明验收命令：`printf "__CELL__%s\n" "$PWD"`。
-- [ ] 写明失败排查：DNS、TLS、token、Agent 在线状态、server 日志。
-- [ ] 提交 `git commit -m "docs: add external network smoke runbook"`。
+- [x] 写明 Agent 启动命令：`REMOTE_SERVER_URL=wss://api.example.com/ws/agent REMOTE_DEV_TOKEN=<secret> pnpm dev:agent`。
+- [x] 写明 Mobile 启动命令：`EXPO_PUBLIC_REMOTE_WS_URL=wss://api.example.com/ws/mobile EXPO_PUBLIC_REMOTE_DEV_TOKEN=<secret> pnpm dev:mobile`。
+- [x] 写明 iPhone 关闭 Wi-Fi，使用蜂窝网络。
+- [x] 写明验收命令：`printf "__CELL__%s\n" "$PWD"`。
+- [x] 写明失败排查：DNS、TLS、token、Agent 在线状态、server 日志。
+- [x] 提交 `git commit -m "docs: add external network smoke runbook"`。
 
 ## Phase 3: 验收
 
@@ -148,9 +148,9 @@ docs/superpowers/specs/2026-05-02-external-network-access-design.md
 **Files:**
 - No production file changes.
 
-- [ ] 运行 `pnpm test`。
-- [ ] 运行 `pnpm typecheck`。
-- [ ] 运行 `pnpm build`。
+- [x] 运行 `pnpm test`。
+- [x] 运行 `pnpm typecheck`。
+- [x] 运行 `pnpm build`。
 - [ ] 本地启动 server、Agent、mobile simulator。
 - [ ] 发送 `printf "__LOCAL__%s\n" "$PWD"`。
 - [ ] 确认输出包含 `__LOCAL__`。
